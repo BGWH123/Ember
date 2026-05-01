@@ -33,15 +33,15 @@ The 101 problems cover what's actually inside Transformers, vLLM, TRL, diffusion
 
 ### Features
 
-- **Browser editor** — Monaco with Python syntax highlighting, no IDE setup
-- **Instant feedback** — submit and see pass/fail per test case in seconds
-- **Reference solutions** — compare after your own attempt, with line-by-line annotations
-- **八股文 (Interview Q&A)** — 13 chapters covering LLM fundamentals, fine-tuning, RLHF, distillation, distributed training, and more
-- **Mock interview** — random mix of theory questions and coding problems for realistic interview practice
-- **Learning paths** — curated problem sequences from Transformer internals to GNNs
-- **Progress tracking** — solved count and attempt history, persisted across sessions
-- **AI Help** — optional AI-powered hints via any OpenAI-compatible API (configure in `.env` or per-user in the UI)
-- **Fully local** — nothing leaves your machine (unless you opt into AI Help)
+- **Zero-config coding** — write Python directly in your browser with a full-featured editor; no local setup or IDE installation required
+- **Real-time validation** — run your code against hidden test suites and get a detailed pass/fail breakdown within seconds
+- **Annotated walkthroughs** — after your own attempt, unlock reference implementations with inline commentary explaining the "why" behind each line
+- **Theory Q&A bank (八股文)** — 13 chapters of structured interview questions spanning LLM architecture, alignment techniques, distributed systems, inference optimization, and beyond
+- **Interview simulator** — randomized sessions that blend hands-on coding with theory drills to replicate the pressure and pacing of real interviews
+- **Guided learning tracks** — follow curated sequences from attention mechanisms and positional encodings to graph neural networks and diffusion models
+- **Persistent progress** — solve counts, retry histories, and per-problem stats are saved locally and survive browser restarts
+- **Optional AI tutor** — plug in any OpenAI-compatible endpoint for contextual hints and guided nudges when you're stuck
+- **Offline-first execution** — the entire grading pipeline runs on your own machine; no code or data is sent externally unless you explicitly enable AI assistance
 
 ### Tech Stack
 
