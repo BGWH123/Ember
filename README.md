@@ -17,61 +17,132 @@
 
 ---
 
-## 🧠 What is Ember?
+## 💡 The Idea
 
-**101 coding problems** + **13 chapters of interview Q&A (八股文)** + **mock interview mode**.
+Ember is a hands-on gym for people who want to **understand AI systems by building them**.
 
-Write the implementation, a local grading service runs the tests, you see what broke. Read the 八股文 to nail the theory questions. Use mock interview to mix coding + theory on the fly. That's it.
+It pairs 101 coding exercises with a local FastAPI grading engine so you can write, test, and iterate entirely on your own machine. Alongside the code, there's a 13-chapter theory Q&A bank (八股文) and a mock interview mode that throws randomized coding + theory challenges at you.
 
-The 101 problems cover what's actually inside Transformers, vLLM, TRL, diffusion models, and GNNs — attention variants, training tricks, inference kernels, alignment algorithms, graph neural networks. No GPU needed.
+No cloud accounts. No GPU rentals. Just you, your browser, and the code.
 
-### Who is this for?
-
-- **Preparing for ML interviews** — practice implementing core components under test, not just reading about them
-- **Learning by building** — if you learn best by writing code rather than watching lectures, this is your gym
-- **Deepening your understanding** — you've used `nn.MultiheadAttention`, now write it yourself
-
-### Features
-
-- **Zero-config coding** — write Python directly in your browser with a full-featured editor; no local setup or IDE installation required
-- **Real-time validation** — run your code against hidden test suites and get a detailed pass/fail breakdown within seconds
-- **Annotated walkthroughs** — after your own attempt, unlock reference implementations with inline commentary explaining the "why" behind each line
-- **Theory Q&A bank (八股文)** — 13 chapters of structured interview questions spanning LLM architecture, alignment techniques, distributed systems, inference optimization, and beyond
-- **Interview simulator** — randomized sessions that blend hands-on coding with theory drills to replicate the pressure and pacing of real interviews
-- **Guided learning tracks** — follow curated sequences from attention mechanisms and positional encodings to graph neural networks and diffusion models
-- **Persistent progress** — solve counts, retry histories, and per-problem stats are saved locally and survive browser restarts
-- **Optional AI tutor** — plug in any OpenAI-compatible endpoint for contextual hints and guided nudges when you're stuck
-- **Offline-first execution** — the entire grading pipeline runs on your own machine; no code or data is sent externally unless you explicitly enable AI assistance
-
-### Tech Stack
-
-| Layer        | Technology                                                                           |
-| ------------ | ------------------------------------------------------------------------------------ |
-| Frontend     | Next.js + Monaco Editor + Tailwind CSS                                               |
-| Backend      | FastAPI grading service                                                              |
-| Judge Engine | [torch_judge](https://github.com/duoan/TorchCode) — executes and validates 101 problems with 3–5 test cases each |
-| Storage      | SQLite (progress tracking)                                                           |
+**Built for:**
+- Engineers preparing for ML system design interviews
+- Researchers who've used `nn.MultiheadAttention` but never wrote one
+- Anyone who learns faster by typing than by watching
 
 ---
 
-## 📢 News
+## 🛠️ What You Can Do Here
 
-- **[2026/05/01]** Expanded to **101 problems** across **22 categories** — from attention mechanisms to SSM, MoE, and graph neural networks. 🔥
-- **[2026/04/28]** **八股文 (Interview Q&A)** — 13 chapters with 200+ theory questions covering LLM fundamentals, RLHF, distillation, and distributed training. 🔥
-- **[2026/04/25]** **Mock interview mode** — random mix of theory questions and coding problems for realistic interview practice. 🔥
-- **[2026/04/20]** New GNN learning path — 8 problems covering GCN, GAT, GIN, MPNN, GraphSAGE, link prediction, and graph autoencoders. 🔥
-- **[2026/04/20]** New UI redesign with OKLch color system, dark mode, and Geist typography. 🔥
-- **[2026/04/13]** Submission history — review all your past attempts per problem.
-- **[2026/04/10]** AI Help — optional AI-powered hints via any OpenAI-compatible API. 🔥
-- **[2026/04/09]** Initial release 🎉
+| Capability | Details |
+|---|---|
+| **Browser-first coding** | Write Python in a Monaco editor with syntax highlighting — no IDE setup |
+| **Live test runner** | Submit your code against hidden test suites and get pass/fail breakdowns instantly |
+| **Guided solutions** | After attempting a problem, unlock annotated reference implementations |
+| **Theory Q&A bank** | 13 chapters covering LLM architecture, alignment, distributed training, inference optimization |
+| **Mock interview mode** | Randomized sessions blending coding and theory for realistic practice |
+| **Curated tracks** | Follow structured sequences from attention mechanisms to GNNs and diffusion |
+| **Persistent progress** | Solve history and retry counts are saved locally across browser sessions |
+| **Optional AI hints** | Plug in any OpenAI-compatible endpoint for contextual help when stuck |
+| **Privacy-first** | Everything runs locally; no data leaves your machine unless you enable AI assistance |
 
 ---
 
-## 🚀 Getting Started
+## 📚 Curriculum
+
+### Coding Exercises — 101 Problems, 22 Categories
+
+Every problem includes 3–5 hidden test cases validated by the local grading service.
+
+| Category | Count | Topics |
+|---|---|---|
+| **Attention Mechanisms** | 14 | Scaled Dot-Product, Multi-Head, Causal, Cross, GQA, Sliding Window, Linear, Flash, Differential, MLA, Attention Mask, CLIP, Einsum, Cosine Similarity |
+| **Fundamental Components** | 14 | ReLU, GELU, SwiGLU, Leaky ReLU, Softmax, Dropout, Embedding, Linear, Kaiming Init, Linear Regression, MLP, Residual Connection, LayerScale, Broadcasting |
+| **Loss Functions** | 11 | Cross Entropy, Label Smoothing, Focal Loss, Contrastive Loss, Binary Cross Entropy, MSE, KL Divergence, L1/L2 Regularization, DPO, GRPO, PPO |
+| **Graph Neural Networks** | 7 | GCN, Graph Readout, GAT, GIN, MPNN, GraphSAGE, Link Prediction, Graph Autoencoder |
+| **Activation Functions** | 7 | ReLU, GELU, SwiGLU, Leaky ReLU, Sigmoid (BCE), Softmax |
+| **Transformer Components** | 6 | GPT-2 Block, ViT Patch, ViT Block, Transformer Encoder, Transformer Decoder, CLIP Model |
+| **Optimizers & LR** | 5 | Adam, Cosine LR, Gradient Clipping, L1/L2 Regularization |
+| **Sampling & Decoding** | 5 | Top-k, Beam Search, Speculative Decoding, BPE, Multi-Token Prediction |
+| **Regularization** | 5 | Dropout, L1, L2, Label Smoothing, LayerScale |
+| **Efficient Training** | 4 | Mixed Precision, Gradient Accumulation, Activation Checkpointing, FSDP |
+| **Normalization** | 4 | LayerNorm, BatchNorm, RMSNorm, adaLN-Zero |
+| **Position Encoding & Embedding** | 3 | Sinusoidal PE, RoPE, ALiBi, NTK-aware RoPE |
+| **Mixture of Experts** | 3 | MoE, MoE Load Balance, Multi-Token Prediction |
+| **Diffusion & Flow** | 2 | Noise Schedule, DDIM Step, Flow Matching |
+| **Quantization** | 2 | INT8 Quantization, QLoRA |
+| **Inference Optimization** | 2 | KV Cache, Speculative Decoding |
+| **Training Tricks** | 2 | Gradient Accumulation, Activation Checkpointing |
+| **Tokenization** | 1 | BPE |
+| **Multimodal** | 1 | CLIP Model |
+| **Parameter-Efficient FT** | 1 | LoRA |
+| **State Space Models** | 1 | Mamba SSM |
+| **Reinforcement Learning** | 1 | PPO Loss |
+
+### Learning Tracks
+
+Pick a track based on your goal:
+
+| Track | Problems | What you'll build |
+|---|---|---|
+| **Transformer Internals** | 12 | Activations → Normalization → Attention → GPT-2 Block |
+| **Attention & Position Encoding** | 13 | Every attention variant + RoPE, ALiBi, NTK-RoPE |
+| **Train a GPT from Scratch** | 15 | Embeddings → architecture → loss → optimizer → training tricks |
+| **Inference & Distributed Training** | 9 | KV cache, quantization, sampling, tensor parallel, FSDP |
+| **Alignment & Agent Reasoning** | 6 | Reward model → DPO → GRPO → PPO → MCTS |
+| **Vision Transformer Pipeline** | 7 | Conv → patch embedding → ViT block |
+| **Diffusion Models & DiT** | 5 | Noise schedule → DDIM → flow matching → adaLN-Zero |
+| **LLM Frontier Architectures** | 7 | GQA, Differential Attention, MLA, MoE, Multi-Token Prediction |
+| **Graph Neural Networks** | 8 | GCN → GAT → GIN → MPNN → GraphSAGE → Link Prediction → GAE |
+
+```
+Not sure where to start?
+
+Fundamentals ──→ Transformer Internals ──→ Train a GPT from Scratch
+                       │                          │
+                       ▼                          ▼
+              Attention & Position       Inference & Distributed
+                       │                          │
+                       ▼                          ▼
+              LLM Frontier Archs         Alignment & Reasoning
+                       │
+               ┌───────┼───────┐
+               ▼       ▼       ▼
+     Vision Trans.  Diffusion  Graph Neural Networks
+```
+
+### Interview Prep — 八股文 & Mock Interview
+
+Beyond coding, Ember includes a full theory Q&A module and mock interview mode:
+
+**八股文 — 13 chapters, 200+ questions:**
+
+| Chapter | Topics |
+|---|---|
+| LLM Fundamentals | Architecture (Encoder-Decoder / Causal / Prefix), training objectives, emergent capabilities |
+| Advanced LLM | Repetition problem, LLaMA series, long-context techniques |
+| Evaluation | POPE, MME, CHAIR, AMBER, benchmark design |
+| Inference | KV cache, quantization, decoding strategies, vLLM |
+| Fine-tuning | LoRA, QLoRA, full fine-tuning, instruction tuning |
+| Training Data | Data collection, cleaning, deduplication, mixture of domains |
+| Agent | Tool use, ReAct, planning, multi-agent systems |
+| RLHF / PPO | Reward modeling, PPO, DPO, GRPO, preference optimization |
+| LangChain | Chains, agents, memory, retrieval-augmented generation |
+| Continual Pre-training | Domain adaptation, catastrophic forgetting |
+| Distillation | Knowledge distillation, self-distillation |
+| Distributed Training | Data parallel, tensor parallel, pipeline parallel, FSDP |
+| GPU Memory | Gradient checkpointing, activation recomputation, offloading |
+
+**Mock Interview:**
+- Randomly draws theory questions from 八股文 + coding problems from the problem set
+- Simulates realistic interview pacing (theory → coding → follow-up)
+- Tracks your performance across sessions
+
+---
+
+## 🚀 Getting Up & Running
 
 ### Prerequisites
-
-Before you begin, make sure you have the following installed:
 
 | Dependency | Minimum Version | Verify Command |
 |------------|-----------------|----------------|
@@ -266,6 +337,17 @@ If both are accessible, you're all set. Pick a problem and start coding!
 
 ---
 
+### Configuration
+
+| Variable                | Default                   | Description                           |
+| ----------------------- | ------------------------- | ------------------------------------- |
+| `GRADING_SERVICE_URL` | `http://localhost:8000` | Grading service URL                   |
+| `DB_PATH`             | `./data/ember.db`   | SQLite database for progress tracking |
+
+Set in `web/.env.local` to override.
+
+---
+
 ### AI Help (Optional)
 
 To enable server-side AI hints, copy the example environment file and fill in your API details:
@@ -343,107 +425,20 @@ No. All problems run on CPU. A GPU is only needed if you want to train large mod
 
 </details>
 
-## 📋 Problem Set
+---
 
-**101 problems** across **22 categories** — every problem has **3–5 test cases** validated by a local FastAPI grading service.
+## 🏗️ Architecture
 
-| Category | Count | Problems |
-|---|---|---|
-| **Attention Mechanisms** | 14 | Scaled Dot-Product, Multi-Head, Causal, Cross, GQA, Sliding Window, Linear, Flash, Differential, MLA, Attention Mask, CLIP, Einsum, Cosine Similarity |
-| **Fundamental Components** | 14 | ReLU, GELU, SwiGLU, Leaky ReLU, Softmax, Dropout, Embedding, Linear, Kaiming Init, Linear Regression, MLP, Residual Connection, LayerScale, Broadcasting |
-| **Loss Functions** | 11 | Cross Entropy, Label Smoothing, Focal Loss, Contrastive Loss, Binary Cross Entropy, MSE, KL Divergence, L1/L2 Regularization, DPO, GRPO, PPO |
-| **Graph Neural Networks** | 7 | GCN, Graph Readout, GAT, GIN, MPNN, GraphSAGE, Link Prediction, Graph Autoencoder |
-| **Activation Functions** | 7 | ReLU, GELU, SwiGLU, Leaky ReLU, Sigmoid (BCE), Softmax |
-| **Transformer Components** | 6 | GPT-2 Block, ViT Patch, ViT Block, Transformer Encoder, Transformer Decoder, CLIP Model |
-| **Optimizers & LR** | 5 | Adam, Cosine LR, Gradient Clipping, L1/L2 Regularization |
-| **Sampling & Decoding** | 5 | Top-k, Beam Search, Speculative Decoding, BPE, Multi-Token Prediction |
-| **Regularization** | 5 | Dropout, L1, L2, Label Smoothing, LayerScale |
-| **Efficient Training** | 4 | Mixed Precision, Gradient Accumulation, Activation Checkpointing, FSDP |
-| **Normalization** | 4 | LayerNorm, BatchNorm, RMSNorm, adaLN-Zero |
-| **Position Encoding & Embedding** | 3 | Sinusoidal PE, RoPE, ALiBi, NTK-aware RoPE |
-| **Mixture of Experts** | 3 | MoE, MoE Load Balance, Multi-Token Prediction |
-| **Diffusion & Flow** | 2 | Noise Schedule, DDIM Step, Flow Matching |
-| **Quantization** | 2 | INT8 Quantization, QLoRA |
-| **Inference Optimization** | 2 | KV Cache, Speculative Decoding |
-| **Training Tricks** | 2 | Gradient Accumulation, Activation Checkpointing |
-| **Tokenization** | 1 | BPE |
-| **Multimodal** | 1 | CLIP Model |
-| **Parameter-Efficient FT** | 1 | LoRA |
-| **State Space Models** | 1 | Mamba SSM |
-| **Reinforcement Learning** | 1 | PPO Loss |
-
-### 📝 八股文 & Mock Interview
-
-Beyond coding, Ember includes a full **interview Q&A (八股文)** module and **mock interview** mode:
-
-**八股文 — 13 chapters, 200+ questions:**
-| Chapter | Topics |
-|---|---|
-| LLM Fundamentals | Architecture (Encoder-Decoder / Causal / Prefix), training objectives, emergent capabilities |
-| Advanced LLM | Repetition problem, LLaMA series, long-context techniques |
-| Evaluation | POPE, MME, CHAIR, AMBER, benchmark design |
-| Inference | KV cache, quantization, decoding strategies, vLLM |
-| Fine-tuning | LoRA, QLoRA, full fine-tuning, instruction tuning |
-| Training Data | Data collection, cleaning, deduplication, mixture of domains |
-| Agent | Tool use, ReAct, planning, multi-agent systems |
-| RLHF / PPO | Reward modeling, PPO, DPO, GRPO, preference optimization |
-| LangChain | Chains, agents, memory, retrieval-augmented generation |
-| Continual Pre-training | Domain adaptation, catastrophic forgetting |
-| Distillation | Knowledge distillation, self-distillation |
-| Distributed Training | Data parallel, tensor parallel, pipeline parallel, FSDP |
-| GPU Memory | Gradient checkpointing, activation recomputation, offloading |
-
-**Mock Interview:**
-- Randomly draws theory questions from 八股文 + coding problems from the problem set
-- Simulates realistic interview pacing (theory → coding → follow-up)
-- Tracks your performance across sessions
-
-### Learning Paths
-
-Pick one based on what you're working toward:
-
-| Path | Problems | Description |
-|---|---|---|
-| **Transformer Internals** | 12 | Activations → Normalization → Attention → GPT-2 Block |
-| **Attention & Position Encoding** | 13 | Every attention variant + RoPE, ALiBi, NTK-RoPE |
-| **Train a GPT from Scratch** | 15 | Embeddings → architecture → loss → optimizer → training tricks |
-| **Inference & Distributed Training** | 9 | KV cache, quantization, sampling, tensor parallel, FSDP |
-| **Alignment & Agent Reasoning** | 6 | Reward model → DPO → GRPO → PPO → MCTS |
-| **Vision Transformer Pipeline** | 7 | Conv → patch embedding → ViT block |
-| **Diffusion Models & DiT** | 5 | Noise schedule → DDIM → flow matching → adaLN-Zero |
-| **LLM Frontier Architectures** | 7 | GQA, Differential Attention, MLA, MoE, Multi-Token Prediction |
-| **Graph Neural Networks** | 8 | GCN → GAT → GIN → MPNN → GraphSAGE → Link Prediction → GAE |
-
-```
-Not sure where to start?
-
-Fundamentals ──→ Transformer Internals ──→ Train a GPT from Scratch
-                       │                          │
-                       ▼                          ▼
-              Attention & Position       Inference & Distributed
-                       │                          │
-                       ▼                          ▼
-              LLM Frontier Archs         Alignment & Reasoning
-                       │
-               ┌───────┼───────┐
-               ▼       ▼       ▼
-     Vision Trans.  Diffusion  Graph Neural Networks
-```
+| Layer        | Technology                                                                           |
+| ------------ | ------------------------------------------------------------------------------------ |
+| Frontend     | Next.js + Monaco Editor + Tailwind CSS                                               |
+| Backend      | FastAPI grading service                                                              |
+| Judge Engine | [torch_judge](https://github.com/duoan/TorchCode) — executes and validates 101 problems with 3–5 test cases each |
+| Storage      | SQLite (progress tracking)                                                           |
 
 ---
 
-## ⚙️ Configuration
-
-| Variable                | Default                   | Description                           |
-| ----------------------- | ------------------------- | ------------------------------------- |
-| `GRADING_SERVICE_URL` | `http://localhost:8000` | Grading service URL                   |
-| `DB_PATH`             | `./data/ember.db`   | SQLite database for progress tracking |
-
-Set in `web/.env.local` to override.
-
----
-
-## 📁 Project Structure
+## 📁 Project Layout
 
 ```
 ember/
@@ -456,6 +451,19 @@ ember/
 ├── scripts/              # Build & test scripts (export problems, test grading)
 └── package.json          # Dev scripts (runs frontend + backend concurrently)
 ```
+
+---
+
+## 📢 Changelog
+
+- **[2026/05/01]** Expanded to **101 problems** across **22 categories** — from attention mechanisms to SSM, MoE, and graph neural networks. 🔥
+- **[2026/04/28]** **八股文 (Interview Q&A)** — 13 chapters with 200+ theory questions covering LLM fundamentals, RLHF, distillation, and distributed training. 🔥
+- **[2026/04/25]** **Mock interview mode** — random mix of theory questions and coding problems for realistic interview practice. 🔥
+- **[2026/04/20]** New GNN learning path — 8 problems covering GCN, GAT, GIN, MPNN, GraphSAGE, link prediction, and graph autoencoders. 🔥
+- **[2026/04/20]** New UI redesign with OKLch color system, dark mode, and Geist typography. 🔥
+- **[2026/04/13]** Submission history — review all your past attempts per problem.
+- **[2026/04/10]** AI Help — optional AI-powered hints via any OpenAI-compatible API. 🔥
+- **[2026/04/09]** Initial release 🎉
 
 ---
 
