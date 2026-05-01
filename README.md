@@ -484,6 +484,8 @@ Please open an issue first for larger changes so we can discuss the approach.
 
 Problem set and judge engine based on [TorchCode](https://github.com/duoan/TorchCode) by [duoan](https://github.com/duoan), licensed under MIT.
 
+UI, learning paths, and additional features inspired by [pyre-code](https://github.com/whwangovo/pyre-code) by [whwangovo](https://github.com/whwangovo). Many thanks for the excellent reference implementation.
+
 ---
 
 ## 📄 License

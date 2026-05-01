@@ -473,6 +473,8 @@ pyre-code/
 
 题库和评测引擎基于 [duoan](https://github.com/duoan) 的 [TorchCode](https://github.com/duoan/TorchCode)，MIT 协议。
 
+前端 UI、学习路径及扩展功能参考了 [whwangovo](https://github.com/whwangovo) 的 [pyre-code](https://github.com/whwangovo/pyre-code)，感谢其出色的参考实现。
+
 ---
 
 ## 📄 许可证
