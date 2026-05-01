@@ -1,0 +1,94 @@
+{
+  "paths": [
+    {
+      "id": "transformer-internals",
+      "titleEn": "Transformer Internals",
+      "titleZh": "Transformer 内部机制",
+      "descriptionEn": "Build every component of a Transformer from scratch — activations, normalization, attention, and the full GPT-2 block.",
+      "descriptionZh": "从零构建 Transformer 的每个组件——激活函数、归一化、注意力机制到完整的 GPT-2 Block。",
+      "icon": "Layers",
+      "problems": ["relu", "gelu", "swiglu", "layernorm", "batchnorm", "rmsnorm", "linear", "softmax", "attention", "mha", "mlp", "gpt2_block"],
+      "prerequisites": []
+    },
+    {
+      "id": "attention-position",
+      "titleEn": "Attention & Position Encoding",
+      "titleZh": "注意力与位置编码",
+      "descriptionEn": "Master every attention variant and position encoding technique — from scaled dot-product to Flash Attention, RoPE, and ALiBi.",
+      "descriptionZh": "掌握所有注意力变体和位置编码技术——从缩放点积到 Flash Attention、RoPE 和 ALiBi。",
+      "icon": "Eye",
+      "problems": ["sinusoidal_pe", "rope", "alibi", "ntk_rope", "softmax", "attention", "causal_attention", "mha", "cross_attention", "gqa", "sliding_window", "linear_attention", "flash_attention"],
+      "prerequisites": []
+    },
+    {
+      "id": "train-gpt-from-scratch",
+      "titleEn": "Train a GPT from Scratch",
+      "titleZh": "从零训练 GPT",
+      "descriptionEn": "Build and train a complete GPT — from embeddings and transformer blocks to Adam, cosine LR, and mixed precision.",
+      "descriptionZh": "构建并训练完整的 GPT——从 Embedding 和 Transformer Block 到 Adam、余弦学习率和混合精度。",
+      "icon": "Brain",
+      "problems": ["sinusoidal_pe", "embedding", "layernorm", "attention", "mha", "mlp", "gpt2_block", "cross_entropy", "label_smoothing", "weight_init", "adam", "cosine_lr", "gradient_clipping", "gradient_accumulation", "mixed_precision"],
+      "prerequisites": []
+    },
+    {
+      "id": "inference-distributed",
+      "titleEn": "Inference & Distributed Training",
+      "titleZh": "推理与分布式训练",
+      "descriptionEn": "Speed up inference with KV cache, quantization, and decoding strategies. Scale training with tensor parallelism, FSDP, and ring attention.",
+      "descriptionZh": "通过 KV Cache、量化和解码策略加速推理。用张量并行、FSDP 和环形注意力扩展训练规模。",
+      "icon": "Zap",
+      "problems": ["kv_cache", "int8_quantization", "topk_sampling", "beam_search", "speculative_decoding", "mixed_precision", "tensor_parallel", "fsdp_step", "ring_attention"],
+      "prerequisites": ["transformer-internals"]
+    },
+    {
+      "id": "alignment-agents",
+      "titleEn": "Alignment & Agent Reasoning",
+      "titleZh": "对齐与 Agent 推理",
+      "descriptionEn": "Implement the loss functions and search algorithms behind modern AI alignment — from reward modeling to PPO and MCTS.",
+      "descriptionZh": "实现现代 AI 对齐背后的损失函数和搜索算法——从奖励建模到 PPO 和 MCTS。",
+      "icon": "Target",
+      "problems": ["cross_entropy", "reward_model", "dpo_loss", "grpo_loss", "ppo_loss", "mcts_search"],
+      "prerequisites": []
+    },
+    {
+      "id": "vision-transformer",
+      "titleEn": "Vision Transformer Pipeline",
+      "titleZh": "Vision Transformer 流水线",
+      "descriptionEn": "Build a ViT from the ground up — convolutions, patch embeddings, attention, and the full ViT block.",
+      "descriptionZh": "从零构建 ViT——卷积、Patch Embedding、注意力机制到完整的 ViT Block。",
+      "icon": "Microscope",
+      "problems": ["conv2d", "max_pool2d", "depthwise_conv", "vit_patch", "attention", "mha", "vit_block"],
+      "prerequisites": []
+    },
+    {
+      "id": "diffusion-transformer",
+      "titleEn": "Diffusion Models & DiT",
+      "titleZh": "扩散模型与 DiT",
+      "descriptionEn": "From noise schedules to flow matching — implement the core algorithms behind Stable Diffusion 3, Flux, and DiT.",
+      "descriptionZh": "从噪声调度到流匹配——实现 Stable Diffusion 3、Flux 和 DiT 背后的核心算法。",
+      "icon": "Wand2",
+      "problems": ["noise_schedule", "ddim_step", "flow_matching", "adaln_zero", "vit_block"],
+      "prerequisites": []
+    },
+    {
+      "id": "llm-frontiers",
+      "titleEn": "LLM Frontier Architectures",
+      "titleZh": "LLM 前沿架构",
+      "descriptionEn": "Implement the cutting-edge attention and routing mechanisms powering DeepSeek, Meta, and Microsoft's latest models.",
+      "descriptionZh": "实现驱动 DeepSeek、Meta 和微软最新模型的前沿注意力与路由机制。",
+      "icon": "Sparkles",
+      "problems": ["mha", "gqa", "diff_attention", "mla", "moe", "moe_load_balance", "multi_token_prediction"],
+      "prerequisites": []
+    },
+    {
+      "id": "graph-neural-networks",
+      "titleEn": "Graph Neural Networks",
+      "titleZh": "图神经网络",
+      "descriptionEn": "Master GNN fundamentals — from basic graph convolution to attention, message passing, and graph-level tasks.",
+      "descriptionZh": "掌握图神经网络基础——从图卷积到注意力、消息传递和图级任务。",
+      "icon": "Network",
+      "problems": ["gcn_layer", "graph_readout", "gat_layer", "gin_layer", "mpnn_layer", "link_prediction", "graphsage_layer", "gae"],
+      "prerequisites": []
+    }
+  ]
+}

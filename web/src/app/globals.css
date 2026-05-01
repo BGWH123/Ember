@@ -1,0 +1,170 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+    --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+    --bg:          #faf6f1;
+    --bg-elev:     #ffffff;
+    --bg-sunken:   #f5f0e8;
+    --bg-code:     #f7f3ec;
+    --line:        #e8e0d4;
+    --line-strong: #d6cdc0;
+    --text:        #3d3929;
+    --text-2:      #6b6655;
+    --text-3:      #a39e8f;
+    --accent:      #d97706;
+    --accent-ink:  #b45309;
+    --accent-wash: color-mix(in oklab, #d97706 8%, var(--bg));
+    --accent-line: color-mix(in oklab, #d97706 22%, var(--line));
+    --accent-glow: color-mix(in oklab, #d97706 35%, transparent);
+    --easy:        #16a34a;
+    --medium:      #d97706;
+    --hard:        #dc2626;
+
+    --code-keyword: #d97706;
+    --code-string:  #16a34a;
+    --code-comment: #a39e8f;
+    --code-number:  #dc2626;
+    --code-builtin: #7c3aed;
+    --code-func:    #dc2626;
+  }
+
+  [data-theme="dark"] {
+    --bg:          #1c1917;
+    --bg-elev:     #292524;
+    --bg-sunken:   #0c0a09;
+    --bg-code:     #231f1c;
+    --line:        #3f3a34;
+    --line-strong: #57514a;
+    --text:        #f5f5f4;
+    --text-2:      #a8a29e;
+    --text-3:      #78716c;
+    --accent:      #f59e0b;
+    --accent-ink:  #fbbf24;
+    --accent-wash: color-mix(in oklab, #f59e0b 14%, var(--bg));
+    --accent-line: color-mix(in oklab, #f59e0b 28%, var(--line));
+    --accent-glow: color-mix(in oklab, #f59e0b 45%, transparent);
+    --easy:        #4ade80;
+    --medium:      #f59e0b;
+    --hard:        #f87171;
+
+    --code-keyword: #f59e0b;
+    --code-string:  #4ade80;
+    --code-comment: #78716c;
+    --code-number:  #f87171;
+    --code-builtin: #c084fc;
+    --code-func:    #f87171;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { background: var(--bg); }
+
+  body {
+    font-family: var(--font-sans);
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "ss01", "cv11";
+    font-synthesis-weight: none;
+  }
+
+  a { color: inherit; text-decoration: none; }
+}
+
+@layer components {
+  .mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "zero";
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--text-3);
+    font-weight: 500;
+  }
+
+  .kbd {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--bg-sunken);
+    border: 1px solid var(--line);
+    color: var(--text-3);
+  }
+}
+
+/* Scrollbars */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+
+/* Classic design: map CSS vars to classic palette */
+[data-design="classic"] {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --bg:          #faf6f1;
+  --bg-elev:     #ffffff;
+  --bg-sunken:   #f5f0e8;
+  --bg-code:     #f7f3ec;
+  --line:        #e8e0d4;
+  --line-strong: #d6cdc0;
+  --text:        #3d3929;
+  --text-2:      #6b6655;
+  --text-3:      #a39e8f;
+  --accent:      #d97706;
+  --accent-ink:  #b45309;
+  --accent-wash: rgba(217,119,6,0.08);
+  --accent-line: rgba(217,119,6,0.22);
+  --easy:        #16a34a;
+  --medium:      #d97706;
+  --hard:        #dc2626;
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/80 backdrop-blur-lg border-b border-border/50;
+  }
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--text-3);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(.97); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; filter: drop-shadow(0 0 2px var(--accent)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 6px var(--accent)); }
+}
+@keyframes nav-underline-in {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-ticker {
+  animation: ticker 40s linear infinite;
+}

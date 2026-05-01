@@ -1,0 +1,1336 @@
+{
+  "activation_checkpointing": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch.utils.checkpoint as cp\n\ndef checkpoint_sequential(fns, x):\n    for fn in fns:\n        x = cp.checkpoint(fn, x, use_reentrant=False)\n    return x",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nlayers = [torch.nn.Linear(16, 16) for _ in range(4)]\nx = torch.randn(4, 16, requires_grad=True)\n\nout_cp = checkpoint_sequential(layers, x)\n\nx2 = x.detach().requires_grad_(True)\nout_naive = x2\nfor layer in layers:\n    out_naive = layer(out_naive)\n\nprint(\"Outputs match:\", torch.allclose(out_cp, out_naive, atol=1e-5))\n\nout_cp.sum().backward()\nprint(\"Gradient flows (x.grad is not None):\", x.grad is not None)",
+        "role": "demo"
+      }
+    ]
+  },
+  "adaln_zero": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def adaln_zero(x, cond, W_ada, b_ada):\n    B, N, D = x.shape\n    params = cond @ W_ada + b_ada          # (B, 6*D)\n    chunks = params.chunk(6, dim=-1)       # 6 x (B, D)\n    gamma1, beta1, alpha1 = chunks[0], chunks[1], chunks[2]\n    # LayerNorm manually\n    mean = x.mean(dim=-1, keepdim=True)  # 求均值\n    var = x.var(dim=-1, keepdim=True, unbiased=False)  # 求方差\n    x_norm = (x - mean) / (var + 1e-6).sqrt()\n    # Modulate: unsqueeze for broadcast over N tokens\n    out = alpha1.unsqueeze(1) * (gamma1.unsqueeze(1) * x_norm + beta1.unsqueeze(1))\n    return out",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\n\nB, N, D = 4, 16, 32\nC = 16  # conditioning dim\n\nx    = torch.randn(B, N, D)\ncond = torch.randn(B, C)\n\nW_ada = torch.zeros(C, 6 * D)\nb_ada = torch.zeros(6 * D)\nout_zero = adaln_zero(x, cond, W_ada, b_ada)\nprint(f\"Zero W_ada, zero b_ada => max abs output: {out_zero.abs().max().item():.6f}  (expected 0.0)\")\n\nW_ada_rand = torch.randn(C, 6 * D) * 0.1\nb_ada_rand = torch.randn(6 * D) * 0.1\nout_rand = adaln_zero(x, cond, W_ada_rand, b_ada_rand)\nprint(f\"Random W_ada          => output shape: {out_rand.shape}, mean abs: {out_rand.abs().mean().item():.4f}\")",
+        "role": "demo"
+      }
+    ]
+  },
+  "adam": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class MyAdam:\n    \"\"\"\n    Adam Optimizer implementation.\n    结合动量（一阶矩估计）和 RMSProp（二阶矩估计），通过偏差校正实现自适应学习率。\n    \"\"\"\n    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8):\n        self.params = list(params)                       # 待优化的参数列表\n        self.lr = lr                                     # 学习率 η\n        self.beta1, self.beta2 = betas                   # 一阶矩衰减 β1=0.9, 二阶矩衰减 β2=0.999\n        self.eps = eps                                   # 数值稳定常数 ε=1e-8，防止除以零\n        self.t = 0                                       # 时间步计数器，用于偏差校正\n\n        # 初始化一阶矩 m 和二阶矩 v 为零张量\n        # m_t: 梯度的一阶矩（动量），v_t: 梯度的二阶矩（RMSProp）\n        self.m = [torch.zeros_like(p) for p in self.params]\n        self.v = [torch.zeros_like(p) for p in self.params]\n\n    def step(self):\n        \"\"\"\n        执行一步参数更新。\n        更新公式:\n            m_t = β1·m_{t-1} + (1-β1)·g_t\n            v_t = β2·v_{t-1} + (1-β2)·g_t²\n            m̂_t = m_t / (1-β1^t)   ← 偏差校正，早期步骤 m_t 偏向零\n            v̂_t = v_t / (1-β2^t)   ← 偏差校正\n            θ_t = θ_{t-1} - η · m̂_t / (√v̂_t + ε)\n        \"\"\"\n        self.t += 1                                      # 更新时间步\n        with torch.no_grad():                            # 参数更新不需要梯度追踪\n            for i, p in enumerate(self.params):\n                if p.grad is None:\n                    continue                             # 跳过无梯度的参数\n\n                g = p.grad                               # 当前梯度 g_t\n\n                # 更新一阶矩（动量估计）: m_t = β1·m_{t-1} + (1-β1)·g_t\n                # 相当于指数移动平均，β1 控制历史梯度的衰减速度\n                self.m[i] = self.beta1 * self.m[i] + (1 - self.beta1) * g\n\n                # 更新二阶矩（梯度平方的移动平均）: v_t = β2·v_{t-1} + (1-β2)·g_t²\n                # 用于自适应调整每个参数的学习率\n                self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * (g ** 2)\n\n                # 偏差校正: m̂_t = m_t / (1 - β1^t)\n                # 早期 t 较小时，(1-β1^t) 接近 0，m̂_t 会被放大，补偿初始化偏差\n                m_hat = self.m[i] / (1 - self.beta1 ** self.t)\n\n                # 偏差校正: v̂_t = v_t / (1 - β2^t)\n                v_hat = self.v[i] / (1 - self.beta2 ** self.t)\n\n                # 参数更新: θ -= η · m̂ / (√v̂ + ε)\n                # m̂ 提供更新方向（类似动量），√v̂ 提供自适应缩放（大梯度参数学习率更小）\n                p -= self.lr * m_hat / (torch.sqrt(v_hat) + self.eps)\n\n    def zero_grad(self):\n        \"\"\"将所有参数的梯度清零。在每次 backward() 前调用，防止梯度累积。\"\"\"\n        for p in self.params:\n            if p.grad is not None:\n                p.grad.zero_()                           # 原地置零，避免内存分配",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nw = torch.randn(4, 3, requires_grad=True)\nopt = MyAdam([w], lr=0.01)\nfor i in range(5):\n    loss = (w ** 2).sum()\n    loss.backward()\n    opt.step()\n    opt.zero_grad()\n    print(f'Step {i}: loss={loss.item():.4f}')",
+        "role": "demo"
+      },
+      {
+        "type": "markdown",
+        "source": "Adam combines momentum (first moment) and RMSProp (second moment) with bias correction.\n\n**Update Rules:**\n$$m_t = \\beta_1 m_{t-1} + (1 - \\beta_1) g_t$$\n$$v_t = \\beta_2 v_{t-1} + (1 - \\beta_2) g_t^2$$\n$$\\hat{m}_t = \\frac{m_t}{1 - \\beta_1^t}, \\quad \\hat{v}_t = \\frac{v_t}{1 - \\beta_2^t}$$\n$$\\theta_t = \\theta_{t-1} - \\eta \\frac{\\hat{m}_t}{\\sqrt{\\hat{v}_t} + \\epsilon}$$\n\n**Hyperparameters:**\n- $\\beta_1 = 0.9$ (momentum decay)\n- $\\beta_2 = 0.999$ (second moment decay)\n- $\\epsilon = 10^{-8}$ (numerical stability)\n\nBias correction is critical in early steps when $m_t$ and $v_t$ are biased toward zero.",
+        "role": "explanation"
+      }
+    ]
+  },
+  "alibi": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def alibi_attention(Q, K, V, num_heads):\n    B, S, D = Q.shape\n    d_h = D // num_heads\n\n    # Compute slopes: m_h = 1/2^(8h/H) for h=1..H\n    h_idx = torch.arange(1, num_heads + 1, dtype=torch.float32, device=Q.device)\n    slopes = 1.0 / (2.0 ** (8.0 * h_idx / num_heads))  # (H,)\n\n    # Distance matrix |i - j|, shape (S, S)\n    pos = torch.arange(S, device=Q.device).float()\n    dist = (pos.unsqueeze(0) - pos.unsqueeze(1)).abs()  # (S, S)\n\n    # ALiBi bias: (H, S, S)\n    bias = -slopes.view(num_heads, 1, 1) * dist.unsqueeze(0)\n\n    # Split into heads: (B, H, S, d_h)\n    Qh = Q.view(B, S, num_heads, d_h).transpose(1, 2)  # Reshape to (B, heads, S, d_k)\n    Kh = K.view(B, S, num_heads, d_h).transpose(1, 2)  # Reshape to (B, heads, S, d_k)\n    Vh = V.view(B, S, num_heads, d_h).transpose(1, 2)  # Reshape to (B, heads, S, d_k)\n\n    scores = (Qh @ Kh.transpose(-2, -1)) / (d_h ** 0.5) + bias.unsqueeze(0)\n    attn = torch.softmax(scores, dim=-1)  # Apply softmax to get attention weights\n    out = (attn @ Vh).transpose(1, 2).reshape(B, S, D)  # Transpose to (B, heads, S, d_k)\n    return out",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nB, S, D, H = 2, 6, 16, 4\nQ = torch.randn(B, S, D)\nK = torch.randn(B, S, D)\nV = torch.randn(B, S, D)\n\nout = alibi_attention(Q, K, V, num_heads=H)\nprint(\"Output shape:\", out.shape)\n\nh_idx = torch.arange(1, H + 1, dtype=torch.float32)\nslopes = 1.0 / (2.0 ** (8.0 * h_idx / H))\nprint(\"Slopes for 4 heads:\", slopes)",
+        "role": "demo"
+      }
+    ]
+  },
+  "attention": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def scaled_dot_product_attention(Q, K, V):\n    \"\"\"\n    Scaled Dot-Product Attention (single-head).\n    计算 Q 和 K 的相似度，用 softmax 归一化后对 V 加权求和。\n    这是 Transformer 的核心算子，也是 MHA 的基础组件。\n    \"\"\"\n    d_k = K.size(-1)                                     # 键的维度，用于缩放因子\n\n    # Step 1: 计算相似度分数 Q @ K^T\n    # torch.bmm: 批量矩阵乘法，Q(B,S_q,D) @ K^T(B,D,S_k) = scores(B, S_q, S_k)\n    scores = torch.bmm(Q, K.transpose(1, 2))             # (B, S_q, S_k)\n\n    # Step 2: 缩放: 除以 sqrt(d_k)\n    # 防止大 d_k 时分数过大导致 softmax 梯度极小（饱和问题）\n    scores = scores / (d_k ** 0.5)                       # (B, S_q, S_k)\n\n    # Step 3: Softmax 归一化得到注意力权重\n    # dim=-1 沿 key 维度归一化，每行和为 1\n    weights = torch.softmax(scores, dim=-1)              # (B, S_q, S_k)\n\n    # Step 4: 加权求和: 注意力权重 @ V\n    # weights(B,S_q,S_k) @ V(B,S_k,D_v) = out(B, S_q, D_v)\n    return torch.bmm(weights, V)                         # (B, S_q, D_v)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(42)\nQ = torch.randn(2, 4, 8)\nK = torch.randn(2, 4, 8)\nV = torch.randn(2, 4, 8)\n\nout = scaled_dot_product_attention(Q, K, V)\nprint(\"Output shape:\", out.shape)\nprint(\"Attention weights sum to 1?\", True)\n\nQ2 = torch.randn(1, 3, 16)\nK2 = torch.randn(1, 5, 16)\nV2 = torch.randn(1, 5, 32)\nout2 = scaled_dot_product_attention(Q2, K2, V2)\nprint(\"Cross-attention shape:\", out2.shape, \"(expected: 1, 3, 32)\")",
+        "role": "demo"
+      }
+    ]
+  },
+  "attention_mask": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef attention_mask(lengths: list[int], max_seq_len: int) -> torch.Tensor:\n    \"\"\"\n    Create padding mask for attention.\n    Valid positions = 0, padding positions = -inf.\n    Shape: (batch_size, max_seq_len)\n    \"\"\"\n    batch_size = len(lengths)\n    # 创建全零掩码\n    # Create zero mask\n    mask = torch.zeros(batch_size, max_seq_len)\n\n    # 对每个序列，将超出实际长度的位置设为 -inf\n    # For each sequence, set positions beyond actual length to -inf\n    for i, length in enumerate(lengths):\n        if length < max_seq_len:\n            mask[i, length:] = float('-inf')\n\n    return mask",
+        "role": "solution"
+      }
+    ]
+  },
+  "batchnorm": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef my_batch_norm(\n    x,\n    gamma,\n    beta,\n    running_mean,\n    running_var,\n    eps=1e-5,\n    momentum=0.1,\n    training=True,\n):\n    \"\"\"BatchNorm with train/eval behavior and running stats.\n\n    - Training: use batch stats, update running_mean / running_var in-place.\n    - Inference: use running_mean / running_var as-is.\n    \"\"\"\n    if training:\n        batch_mean = x.mean(dim=0)  # 求均值\n        batch_var = x.var(dim=0, unbiased=False)  # 求方差\n\n        # Update running statistics in-place. Detach to avoid tracking gradients.\n        running_mean.mul_(1 - momentum).add_(momentum * batch_mean.detach())\n        running_var.mul_(1 - momentum).add_(momentum * batch_var.detach())\n\n        mean = batch_mean\n        var = batch_var\n    else:\n        mean = running_mean\n        var = running_var\n\n    x_norm = (x - mean) / torch.sqrt(var + eps)  # 开方运算\n    return gamma * x_norm + beta",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "x = torch.randn(8, 4)\ngamma = torch.ones(4)\nbeta = torch.zeros(4)\n\nrunning_mean = torch.zeros(4)\nrunning_var = torch.ones(4)\n\nout_train = my_batch_norm(x, gamma, beta, running_mean, running_var, training=True)\nprint(\"[Train] Column means:\", out_train.mean(dim=0))\nprint(\"[Train] Column stds: \", out_train.std(dim=0))\nprint(\"Updated running_mean:\", running_mean)\nprint(\"Updated running_var:\", running_var)\n\nout_eval = my_batch_norm(x, gamma, beta, running_mean, running_var, training=False)\nprint(\"[Eval] Column means (using running stats):\", out_eval.mean(dim=0))",
+        "role": "demo"
+      }
+    ]
+  },
+  "beam_search": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def beam_search(log_prob_fn, start_token, max_len, beam_width, eos_token):\n    beams = [(0.0, [start_token])]\n    completed = []\n    for _ in range(max_len):\n        candidates = []\n        for score, seq in beams:\n            if seq[-1] == eos_token:\n                completed.append((score, seq))\n                continue\n            log_probs = log_prob_fn(torch.tensor(seq))\n            topk_lp, topk_idx = log_probs.topk(beam_width)\n            for j in range(beam_width):\n                candidates.append((score + topk_lp[j].item(), seq + [topk_idx[j].item()]))\n        if not candidates:\n            break\n        candidates.sort(key=lambda x: x[0], reverse=True)\n        beams = candidates[:beam_width]\n    all_seqs = completed + beams\n    all_seqs.sort(key=lambda x: x[0], reverse=True)\n    return all_seqs[0][1]",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "def simple_fn(tokens):\n    lp = torch.full((5,), -10.0)\n    lp[min(len(tokens), 4)] = 0.0\n    return lp\nseq = beam_search(simple_fn, start_token=0, max_len=5, beam_width=2, eos_token=4)\nprint('Sequence:', seq)",
+        "role": "demo"
+      }
+    ]
+  },
+  "binary_cross_entropy": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport torch.nn.functional as F\n\ndef binary_cross_entropy(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:\n    \"\"\"\n    Binary cross-entropy with logits (numerically stable).\n    BCE = -mean[y * log(sigmoid(z)) + (1-y) * log(1 - sigmoid(z))]\n    Using logsigmoid avoids explicit sigmoid computation.\n    \"\"\"\n    # 使用 logsigmoid 实现数值稳定的 BCE\n    # log(σ(z)) = logsigmoid(z), log(1-σ(z)) = logsigmoid(-z)\n    log_p = F.logsigmoid(logits)\n    log_1p = F.logsigmoid(-logits)\n    loss = -(targets * log_p + (1.0 - targets) * log_1p).mean()\n    return loss",
+        "role": "solution"
+      }
+    ]
+  },
+  "bpe": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class SimpleBPE:\n    \"\"\"\n    Byte-Pair Encoding (BPE) module.\n    \"\"\"\n    def __init__(self):  # 初始化: 定义模型结构和参数\n        # Initialize layers and parameters\n        self.merges = []\n\n    def train(self, corpus, num_merges):\n        vocab = {}\n        for word in corpus:\n            symbols = tuple(word) + ('</w>',)\n            vocab[symbols] = vocab.get(symbols, 0) + 1\n        self.merges = []\n        for _ in range(num_merges):\n            pairs = {}\n            for word, freq in vocab.items():\n                for i in range(len(word) - 1):\n                    pair = (word[i], word[i + 1])\n                    pairs[pair] = pairs.get(pair, 0) + freq\n            if not pairs:\n                break\n            best = max(pairs, key=pairs.get)\n            self.merges.append(best)\n            new_vocab = {}\n            for word, freq in vocab.items():\n                new_word = []\n                i = 0\n                while i < len(word):\n                    if i < len(word) - 1 and (word[i], word[i + 1]) == best:\n                        new_word.append(word[i] + word[i + 1])\n                        i += 2\n                    else:\n                        new_word.append(word[i])\n                        i += 1\n                new_vocab[tuple(new_word)] = freq\n            vocab = new_vocab\n\n    def encode(self, text):\n        all_tokens = []\n        for word in text.split():\n            symbols = list(word) + ['</w>']\n            for a, b in self.merges:\n                i = 0\n                while i < len(symbols) - 1:\n                    if symbols[i] == a and symbols[i + 1] == b:\n                        symbols = symbols[:i] + [a + b] + symbols[i + 2:]\n                    else:\n                        i += 1\n            all_tokens.extend(symbols)\n        return all_tokens",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "bpe = SimpleBPE()\nbpe.train(['low', 'low', 'low', 'lower', 'newest', 'widest'], num_merges=10)\nprint('Merges:', bpe.merges)\nprint('Encode:', bpe.encode('low lower newest'))",
+        "role": "demo"
+      }
+    ]
+  },
+  "broadcasting": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def broadcast_and_add(A, B):\n    \"\"\"\n    手动实现 PyTorch 风格的广播机制（Broadcasting）。\n    广播规则: 从后往前比较维度，要么相等，要么其中一个为 1，要么缺失（视为 1）。\n    \"\"\"\n    # 获取形状并在左侧补 1，使两个张量维度相同\n    shape_a = list(A.shape)                            # 例如 [3, 1]\n    shape_b = list(B.shape)                            # 例如 [1, 4]\n    max_ndim = max(len(shape_a), len(shape_b))         # 最大维度数\n    shape_a = [1] * (max_ndim - len(shape_a)) + shape_a   # 左侧补 1: [3, 1] -> [3, 1] (假设 2D)\n    shape_b = [1] * (max_ndim - len(shape_b)) + shape_b   # 左侧补 1: [1, 4] -> [1, 4]\n\n    # 计算广播后的输出形状\n    out_shape = []\n    for da, db in zip(shape_a, shape_b):\n        if da == db:\n            out_shape.append(da)                       # 维度相同，直接保留\n        elif da == 1:\n            out_shape.append(db)                       # A 维度为 1，广播为 B 的维度\n        elif db == 1:\n            out_shape.append(da)                       # B 维度为 1，广播为 A 的维度\n        else:\n            raise ValueError(f\"Incompatible shapes for broadcasting: {A.shape} and {B.shape}\")\n\n    # 辅助函数: 将张量扩展到目标形状\n    def expand_tensor(t, from_shape, to_shape):\n        # 在左侧补充维度 (unsqueeze)\n        for _ in range(len(to_shape) - t.ndim):\n            t = t.unsqueeze(0)                         # 在最左侧添加新维度\n        # 对大小为 1 的维度进行扩展\n        for i, (fs, ts) in enumerate(zip(from_shape, to_shape)):\n            if fs == 1 and ts != 1:\n                t = t.expand(*to_shape[:i+1], *t.shape[i+1:])   # expand 到目标形状\n        return t\n\n    # 扩展两个张量到广播后的形状\n    A_exp = expand_tensor(A, shape_a, out_shape)       # (out_shape)\n    B_exp = expand_tensor(B, shape_b, out_shape)       # (out_shape)\n\n    # 逐元素相加\n    return A_exp + B_exp                               # (out_shape)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "A = torch.tensor([[1], [2], [3]])  # (3, 1)\nB = torch.tensor([[10, 20, 30, 40]])  # (1, 4)\nout = broadcast_and_add(A, B)\nprint(\"A shape:\", A.shape)\nprint(\"B shape:\", B.shape)\nprint(\"Output shape:\", out.shape)\nprint(\"Output:\n\", out)",
+        "role": "demo"
+      }
+    ]
+  },
+  "causal_attention": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def causal_attention(Q, K, V):\n    \"\"\"\n    Causal (Masked) Self-Attention.\n    在标准注意力基础上添加因果掩码，确保每个位置只能关注当前及之前的位置。\n    这是 GPT 等自回归模型的核心机制。\n    \"\"\"\n    d_k = K.size(-1)                                     # 键维度\n\n    # Step 1: 计算相似度分数\n    scores = torch.bmm(Q, K.transpose(1, 2)) / (d_k ** 0.5)   # (B, S, S)\n\n    S = scores.size(-1)                                  # 序列长度\n\n    # Step 2: 生成因果掩码 (上三角为 True，需遮蔽)\n    # torch.triu(..., diagonal=1) 生成主对角线以上的上三角矩阵\n    # 例如 S=4: [[F,T,T,T],[F,F,T,T],[F,F,F,T],[F,F,F,F]]\n    mask = torch.triu(torch.ones(S, S, device=scores.device, dtype=torch.bool), diagonal=1)\n\n    # Step 3: 应用掩码: 将未来位置设为负无穷\n    # masked_fill(mask, value) 将 mask=True 的位置替换为 value\n    # -inf 经过 softmax 后概率为 0，实现\"看不见未来\"\n    scores = scores.masked_fill(mask.unsqueeze(0), float('-inf'))   # (B, S, S)\n\n    # Step 4: Softmax 归一化 (被遮蔽的位置概率为 0)\n    weights = torch.softmax(scores, dim=-1)              # (B, S, S)\n\n    # Step 5: 加权求和得到输出\n    return torch.bmm(weights, V)                         # (B, S, D_v)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nQ = torch.randn(1, 4, 8)\nK = torch.randn(1, 4, 8)\nV = torch.randn(1, 4, 8)\nout = causal_attention(Q, K, V)\nprint(\"Pos 0 == V[0]?\", torch.allclose(out[:, 0], V[:, 0], atol=1e-5))",
+        "role": "demo"
+      }
+    ]
+  },
+  "clip_model": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class CLIP(nn.Module):\n    \"\"\"\n    CLIP (Contrastive Language-Image Pre-training) simplified implementation.\n    核心思想: 通过对比学习让匹配的图像-文本对在嵌入空间中距离近，不匹配的距离远。\n    \"\"\"\n    def __init__(self, image_encoder, text_encoder, embed_dim, text_dim, temperature=0.07):\n        super().__init__()\n        self.image_encoder = image_encoder               # 图像编码器 (e.g. ResNet/ViT)\n        self.text_encoder = text_encoder                 # 文本编码器 (e.g. Transformer)\n\n        # 文本投影层: 将 text_encoder 的输出维度映射到统一的 embed_dim\n        self.text_proj = nn.Linear(text_dim, embed_dim)\n\n        # 可学习的温度参数: logit_scale = log(1 / temperature)\n        # 温度控制相似度分布的\"尖锐程度\": 温度越低，模型对正负样本区分越严格\n        self.logit_scale = nn.Parameter(torch.ones([]) * math.log(1.0 / temperature))\n\n    def forward(self, images, text_features):\n        # Step 1: 编码图像和文本\n        image_embed = self.image_encoder(images)         # (B, embed_dim)\n        text_embed = self.text_proj(self.text_encoder(text_features))  # (B, embed_dim)\n\n        # Step 2: L2 归一化\n        # 归一化后，点积等价于余弦相似度: a·b = |a||b|cosθ = cosθ (当 |a|=|b|=1)\n        image_embed = image_embed / image_embed.norm(dim=-1, keepdim=True)   # (B, embed_dim)\n        text_embed = text_embed / text_embed.norm(dim=-1, keepdim=True)      # (B, embed_dim)\n\n        # Step 3: 计算相似度矩阵\n        # logits[i,j] = cosine_similarity(image_i, text_j) * scale\n        # scale = exp(logit_scale) = 1 / temperature (可学习)\n        scale = torch.exp(self.logit_scale)              # 标量，可学习\n        logits = image_embed @ text_embed.T * scale      # (B, B)，对角线为匹配对\n\n        # Step 4: 对称交叉熵损失\n        # 图像→文本方向: 对每个图像，找最匹配的文本\n        # 文本→图像方向: 对每个文本，找最匹配的图像\n        targets = torch.arange(logits.shape[0], device=logits.device)        # [0, 1, ..., B-1]\n        loss_i2t = torch.nn.functional.cross_entropy(logits, targets)        # 图像→文本\n        loss_t2i = torch.nn.functional.cross_entropy(logits.T, targets)      # 文本→图像\n        return (loss_i2t + loss_t2i) / 2.0               # 对称平均损失",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nimage_enc = nn.Sequential(nn.Flatten(), nn.Linear(3*8*8, 32))\ntext_enc = nn.Identity()\nclip = CLIP(image_enc, text_enc, embed_dim=32, text_dim=16)\nimages = torch.randn(4, 3, 8, 8)\ntext_feats = torch.randn(4, 16)\nloss = clip(images, text_feats)\nprint(\"Loss:\", loss.item())\nprint(\"Logit scale:\", clip.logit_scale.exp().item())",
+        "role": "demo"
+      }
+    ]
+  },
+  "contrastive_loss": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def contrastive_loss(q, k, temperature=0.07):\n    # q, k: (N, D), assumed L2-normalized\n    logits = (q @ k.T) / temperature  # (N, N)\n    N = q.shape[0]\n    # manual cross-entropy: log_p = logit_ii - log(sum_j exp(logit_ij))\n    log_sum_exp = logits.logsumexp(dim=-1)  # (N,)\n    positive_logits = logits[torch.arange(N, device=q.device), torch.arange(N, device=q.device)]\n    log_p = positive_logits - log_sum_exp\n    return -log_p.mean()  # 求均值",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nN, D = 8, 16\n\nv = torch.randn(N, D)\nq = v / v.norm(dim=-1, keepdim=True)\nk = q.clone()\nloss_perfect = contrastive_loss(q, k)\nprint(f\"Perfect alignment loss: {loss_perfect:.4f}  (should be near log(1/N) = {-torch.log(torch.tensor(N, dtype=torch.float)):.4f})\")\n\nq_rand = torch.randn(N, D)\nq_rand = q_rand / q_rand.norm(dim=-1, keepdim=True)\nk_rand = torch.randn(N, D)\nk_rand = k_rand / k_rand.norm(dim=-1, keepdim=True)\nloss_rand = contrastive_loss(q_rand, k_rand)\nprint(f\"Random embeddings loss:  {loss_rand:.4f}  (should be higher)\")",
+        "role": "demo"
+      }
+    ]
+  },
+  "conv2d": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def my_conv2d(x, weight, bias=None, stride=1, padding=0):\n    if padding > 0:\n        B, C, H, W = x.shape\n        x_pad = torch.zeros(B, C, H + 2*padding, W + 2*padding, dtype=x.dtype, device=x.device)\n        x_pad[:, :, padding:padding+H, padding:padding+W] = x\n        x = x_pad\n    B, C_in, H, W = x.shape\n    C_out, _, kH, kW = weight.shape\n    H_out = (H - kH) // stride + 1\n    W_out = (W - kW) // stride + 1\n    patches = x.unfold(2, kH, stride).unfold(3, kW, stride)\n    out = torch.einsum('bihwjk,oijk->bohw', patches, weight)\n    if bias is not None:\n        out = out + bias.view(1, -1, 1, 1)\n    return out",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "x = torch.randn(1, 3, 8, 8)\nw = torch.randn(16, 3, 3, 3)\nprint('Output:', my_conv2d(x, w).shape)\nprint('Match:', torch.allclose(my_conv2d(x, w), F.conv2d(x, w), atol=1e-4))",
+        "role": "demo"
+      }
+    ]
+  },
+  "cosine_lr": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def cosine_lr_schedule(step, total_steps, warmup_steps, max_lr, min_lr=0.0):\n    if step < warmup_steps:\n        return max_lr * step / warmup_steps\n    if step >= total_steps:\n        return min_lr\n    progress = (step - warmup_steps) / (total_steps - warmup_steps)\n    return min_lr + 0.5 * (max_lr - min_lr) * (1.0 + math.cos(math.pi * progress))",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "lrs = [cosine_lr_schedule(i, 100, 10, 0.001) for i in range(101)]\nprint(f'Start: {lrs[0]:.6f}, Warmup end: {lrs[10]:.6f}, Mid: {lrs[55]:.6f}, End: {lrs[100]:.6f}')",
+        "role": "demo"
+      }
+    ]
+  },
+  "cosine_similarity": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef cosine_similarity(a: torch.Tensor, b: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:\n    \"\"\"\n    Cosine similarity: cos(a,b) = (a·b) / (||a|| * ||b||)\n    For matrices, compute pairwise similarity between rows.\n    \"\"\"\n    # 计算 L2 范数（沿最后一维），keepdim 用于广播\n    # Compute L2 norm along last dim, keepdim for broadcasting\n    norm_a = torch.norm(a, p=2, dim=-1, keepdim=True)\n    norm_b = torch.norm(b, p=2, dim=-1, keepdim=True)\n\n    # 归一化向量（加 eps 避免除零）\n    # Normalize vectors (add eps to avoid division by zero)\n    a_norm = a / (norm_a + eps)\n    b_norm = b / (norm_b + eps)\n\n    # 计算余弦相似度：归一化向量的点积\n    # Cosine similarity = dot product of normalized vectors\n    if a.ndim == 1 and b.ndim == 1:\n        return torch.dot(a_norm, b_norm)\n    else:\n        return torch.matmul(a_norm, b_norm.T)",
+        "role": "solution"
+      }
+    ]
+  },
+  "cross_attention": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class MultiHeadCrossAttention(nn.Module):\n    \"\"\"\n    Multi-Head Cross-Attention implementation.\n    解码器通过交叉注意力关注编码器输出。Q 来自解码器，K/V 来自编码器。\n    与自注意力不同，交叉注意力不使用因果掩码（编码器输出完全可见）。\n    \"\"\"\n    def __init__(self, d_model, num_heads):\n        super().__init__()                               # 调用父类 nn.Module 初始化\n        self.num_heads = num_heads                       # 注意力头数\n        self.d_k = d_model // num_heads                  # 每个头的维度\n\n        # 独立的线性投影层\n        self.W_q = nn.Linear(d_model, d_model)           # Q 投影 (来自解码器)\n        self.W_k = nn.Linear(d_model, d_model)           # K 投影 (来自编码器)\n        self.W_v = nn.Linear(d_model, d_model)           # V 投影 (来自编码器)\n        self.W_o = nn.Linear(d_model, d_model)           # 输出投影\n\n    def forward(self, x_q, x_kv):\n        B, S_q, _ = x_q.shape                            # B: batch, S_q: decoder 序列长度\n        S_kv = x_kv.shape[1]                             # S_kv: encoder 序列长度 (可与 S_q 不同)\n\n        # Q 来自解码器输入 x_q, K/V 来自编码器输入 x_kv\n        q = self.W_q(x_q).view(B, S_q, self.num_heads, self.d_k).transpose(1, 2)    # (B, H, S_q, d_k)\n        k = self.W_k(x_kv).view(B, S_kv, self.num_heads, self.d_k).transpose(1, 2)  # (B, H, S_kv, d_k)\n        v = self.W_v(x_kv).view(B, S_kv, self.num_heads, self.d_k).transpose(1, 2)  # (B, H, S_kv, d_k)\n\n        # 计算注意力分数: Q @ K^T / sqrt(d_k)\n        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)         # (B, H, S_q, S_kv)\n\n        # Softmax 归一化 (无因果掩码，编码器输出完全可见)\n        weights = torch.softmax(scores, dim=-1)          # (B, H, S_q, S_kv)\n\n        # 加权求和\n        attn = torch.matmul(weights, v)                  # (B, H, S_q, d_k)\n\n        # 合并多头并输出投影\n        return self.W_o(attn.transpose(1, 2).contiguous().view(B, S_q, -1))         # (B, S_q, d_model)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "attn = MultiHeadCrossAttention(64, 4)\nx_q = torch.randn(2, 6, 64)\nx_kv = torch.randn(2, 10, 64)\nprint('Output:', attn(x_q, x_kv).shape)",
+        "role": "demo"
+      },
+      {
+        "type": "markdown",
+        "source": "Cross-Attention allows a decoder sequence to attend to an encoder sequence. Q comes from the decoder, while K and V come from the encoder.\n\n**Formula:**\n$$\\text{Attention}(Q_{dec}, K_{enc}, V_{enc}) = \\text{softmax}\\left(\\frac{Q_{dec} K_{enc}^T}{\\sqrt{d_k}}\\right) V_{enc}$$\n\n**Applications:**\n- Machine Translation: decoder attends to source sentence\n- T2I models (Stable Diffusion): image tokens attend to text CLIP embeddings\n- Multimodal LLMs: vision tokens attend to language queries\n\nUnlike self-attention, cross-attention has no causal mask since encoder tokens are fully visible.",
+        "role": "explanation"
+      }
+    ]
+  },
+  "cross_entropy": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def cross_entropy_loss(logits, targets):\n    \"\"\"\n    Cross-Entropy Loss implementation.\n    衡量预测概率分布与真实标签之间的差异。对于 one-hot 标签，等价于负对数似然。\n    \"\"\"\n    # logits: (N, C) 未归一化的分数，targets: (N,) 类别索引\n    N = logits.shape[0]                                  # 样本数\n\n    # Step 1: Log-Sum-Exp 技巧计算 log(Σ_j exp(logit_j))\n    # 先减去最大值防止溢出: log(Σ exp(x_j)) = max(x) + log(Σ exp(x_j - max(x)))\n    log_sum_exp = logits.logsumexp(dim=-1)               # (N,)，每个样本的归一化常数\n\n    # Step 2: 提取正样本（真实标签）对应的 logits\n    # logits[range(N), targets] 取出每个样本真实类别的未归一化分数\n    positive_logits = logits[torch.arange(N), targets]   # (N,)\n\n    # Step 3: 计算交叉熵: -log(p_i) = -(logit_i - log_sum_exp) = log_sum_exp - logit_i\n    # 平均到每个样本，得到最终损失\n    return (log_sum_exp - positive_logits).mean()        # 标量，平均交叉熵损失",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "logits = torch.randn(4, 10)\ntargets = torch.randint(0, 10, (4,))\nprint('Loss:', cross_entropy_loss(logits, targets).item())\nprint('Ref: ', torch.nn.functional.cross_entropy(logits, targets).item())",
+        "role": "demo"
+      },
+      {
+        "type": "markdown",
+        "source": "Cross-Entropy Loss measures the difference between predicted probability distribution and true labels.\n\n**Formula:**\n$$\\mathcal{L}_{CE} = -\\frac{1}{N} \\sum_{i=1}^N \\sum_{c=1}^C y_{i,c} \\log(\\hat{y}_{i,c})$$\n\nFor hard labels (one-hot $y$), this simplifies to:\n$$\\mathcal{L}_{CE} = -\\frac{1}{N} \\sum_{i=1}^N \\log(\\hat{y}_{i, t_i})$$\nwhere $t_i$ is the true class index.\n\n**Log-Sum-Exp Trick:**\nTo compute $\\log \\sum_j e^{x_j}$ stably:\n$$\\text{lse}(x) = \\max(x) + \\log \\sum_j e^{x_j - \\max(x)}$$\nThis prevents overflow when logits are large.",
+        "role": "explanation"
+      }
+    ]
+  },
+  "ddim_step": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def ddim_step(x_t, noise_pred, alpha_bar_t, alpha_bar_prev):\n    # Predict x0\n    x0_pred = (x_t - (1 - alpha_bar_t) ** 0.5 * noise_pred) / (alpha_bar_t ** 0.5)\n    # Direction toward x_t\n    noise_direction = (1 - alpha_bar_prev) ** 0.5 * noise_pred\n    # Previous sample\n    x_prev = (alpha_bar_prev ** 0.5) * x0_pred + noise_direction\n    return x_prev",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(42)\n\nT = 5\nalpha_bars = torch.linspace(0.99, 0.01, T + 1)  # index 0..T\n\nx_clean = torch.tensor([1.0, -1.0, 0.5])  # target signal\nnoise   = torch.randn_like(x_clean)\n\nab_T = alpha_bars[T]\nx_t  = ab_T ** 0.5 * x_clean + (1 - ab_T) ** 0.5 * noise\n\nprint(f\"{'Step':>4}  {'alpha_bar_t':>12}  {'x_t (first elem)':>18}\")\nprint(\"-\" * 42)\nfor step in range(T, 0, -1):\n    ab_t    = alpha_bars[step]\n    ab_prev = alpha_bars[step - 1]\n    noise_pred = (x_t - ab_t ** 0.5 * x_clean) / (1 - ab_t) ** 0.5\n    x_t = ddim_step(x_t, noise_pred, ab_t, ab_prev)\n    print(f\"{step:>4}  {ab_prev.item():>12.4f}  {x_t[0].item():>18.4f}\")\n\nprint(f\"\nFinal x vs clean: {x_t.tolist()}  vs  {x_clean.tolist()}\")",
+        "role": "demo"
+      }
+    ]
+  },
+  "depthwise_conv": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def depthwise_separable_conv(x, dw_weight, pw_weight):\n    B, C_in, H, W = x.shape\n    kH, kW = dw_weight.shape[2], dw_weight.shape[3]\n    H_out, W_out = H - kH + 1, W - kW + 1\n    # Depthwise: unfold spatial dims to extract patches\n    patches = x.unfold(2, kH, 1).unfold(3, kW, 1)  # (B, C_in, H_out, W_out, kH, kW)\n    dw_out = (patches * dw_weight[:, 0].view(1, C_in, 1, 1, kH, kW)).sum(dim=(-2, -1))  # (B, C_in, H_out, W_out)\n    # Pointwise: 1x1 conv = channel-wise linear combination\n    out = torch.einsum('bchw,oc->bohw', dw_out, pw_weight[:, :, 0, 0])\n    return out",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nB, C_in, H, W = 2, 4, 8, 8\nC_out, kH, kW = 8, 3, 3\n\nx         = torch.randn(B, C_in, H, W)\ndw_weight = torch.randn(C_in, 1, kH, kW)   # one kernel per input channel\npw_weight = torch.randn(C_out, C_in, 1, 1)  # 1x1 conv\n\nout = depthwise_separable_conv(x, dw_weight, pw_weight)\nprint(\"Output shape:\", out.shape)  # (2, 8, 6, 6)\n\npatches = x.unfold(2, kH, 1).unfold(3, kW, 1)\ndw_ch0 = (patches[:, 0:1] * dw_weight[0:1, 0].view(1, 1, 1, 1, kH, kW)).sum(dim=(-2, -1))\ndw_ch1 = (patches[:, 1:2] * dw_weight[1:2, 0].view(1, 1, 1, 1, kH, kW)).sum(dim=(-2, -1))\nprint(\"DW ch0 and ch1 are independent (cross-correlation ~0):\",\n      (dw_ch0 * dw_ch1).mean().abs().item() < 1.0)",
+        "role": "demo"
+      }
+    ]
+  },
+  "diff_attention": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def diff_attention(Q, K, V, lambda_val):\n    B, S, D2 = Q.shape\n    D_h = D2 // 2\n    Q1, Q2 = Q[..., :D_h], Q[..., D_h:]\n    K1, K2 = K[..., :D_h], K[..., D_h:]\n    scale = D_h ** -0.5\n    A1 = torch.softmax(Q1 @ K1.transpose(-2, -1) * scale, dim=-1)  # Apply softmax to get attention weights\n    A2 = torch.softmax(Q2 @ K2.transpose(-2, -1) * scale, dim=-1)  # Apply softmax to get attention weights\n    return (A1 - lambda_val * A2) @ V",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nB, S, D2, D_v = 2, 4, 8, 6\nQ = torch.randn(B, S, D2)\nK = torch.randn(B, S, D2)\nV = torch.randn(B, S, D_v)\n\nD_h = D2 // 2\nscale = D_h ** -0.5\nstandard = torch.softmax(Q[..., :D_h] @ K[..., :D_h].transpose(-2, -1) * scale, dim=-1) @ V\ndiff_zero = diff_attention(Q, K, V, lambda_val=0.0)\nprint(\"lambda=0 matches standard attention:\", torch.allclose(diff_zero, standard, atol=1e-6))\n\nQ_same = torch.cat([Q[..., :D_h], Q[..., :D_h]], dim=-1)\nK_same = torch.cat([K[..., :D_h], K[..., :D_h]], dim=-1)\ndiff_one = diff_attention(Q_same, K_same, V, lambda_val=1.0)\nprint(\"lambda=1 with identical halves gives zero:\", torch.allclose(diff_one, torch.zeros_like(diff_one), atol=1e-6))\nprint(\"Output shape:\", diff_zero.shape)  # (2, 4, 6)",
+        "role": "demo"
+      }
+    ]
+  },
+  "dpo_loss": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def dpo_loss(policy_chosen_logps, policy_rejected_logps,\n             ref_chosen_logps, ref_rejected_logps, beta=0.1):\n    chosen_rewards = beta * (policy_chosen_logps - ref_chosen_logps)\n    rejected_rewards = beta * (policy_rejected_logps - ref_rejected_logps)\n    diff = chosen_rewards - rejected_rewards\n    return -torch.log(torch.sigmoid(diff)).mean()  # 对数运算",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "chosen = torch.tensor([0.0, 0.0])\nrejected = torch.tensor([-5.0, -5.0])\nref_c = torch.tensor([-1.0, -1.0])\nref_r = torch.tensor([-1.0, -1.0])\nprint('Loss:', dpo_loss(chosen, rejected, ref_c, ref_r, beta=0.1).item())",
+        "role": "demo"
+      }
+    ]
+  },
+  "dropout": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def MyDropout(x, p=0.5, training=True):\n    \"\"\"\n    Dropout implementation (Inverted Dropout).\n    训练时随机将 p 比例的元素置零，并将保留的元素缩放 1/(1-p)。\n    推理时直接返回输入（无需调整，因为训练时已缩放）。\n    \"\"\"\n    if not training:\n        return x                                         # 推理模式: 恒等映射\n\n    # 生成与 x 同形状的随机掩码，元素以概率 (1-p) 为 1，概率 p 为 0\n    # torch.rand_like(x) 生成 [0,1) 均匀分布，> p 的位置保留\n    mask = (torch.rand_like(x) > p).float()              # Bernoulli(1-p) 掩码\n\n    # 应用掩码并缩放: 保留的元素乘以 1/(1-p)\n    # 缩放保证期望值不变: E[mask] = 1-p, 所以 E[x * mask / (1-p)] = x\n    return x * mask / (1 - p)                            # (B, S, D)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "d = MyDropout(p=0.5)\nd.train()\nx = torch.ones(10)\nprint('Train:', d(x))\nd.eval()\nprint('Eval: ', d(x))",
+        "role": "demo"
+      },
+      {
+        "type": "markdown",
+        "source": "Dropout randomly sets a fraction of input elements to zero during training, preventing co-adaptation of neurons.\n\n**Training:**\n$$y = m \\odot x \\cdot \\frac{1}{1-p}$$\nwhere $m \\sim \\text{Bernoulli}(1-p)$\n\n**Inference:**\n$$y = x$$ (identity)\n\n**Inverted Dropout:**\nThe scaling $1/(1-p)$ is applied during training, so no adjustment is needed at test time. This is the modern standard.\n\n**Why it works:**\n- Each training iteration uses a different 'thinned' network\n- At test time, averaging predictions over all $2^N$ possible networks approximates the geometric mean",
+        "role": "explanation"
+      }
+    ]
+  },
+  "einsum_ops": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def einsum_operations(A, B):\n    \"\"\"\n    Einsum operations demonstration.\n    实现 batch matrix multiplication、trace、outer product 和 diagonal extraction。\n    \"\"\"\n    results = {}\n\n    # 1. Batch Matrix Multiplication: 'bmk,bkn->bmn'\n    # A: (B, M, K), B: (B, K, N) -> out: (B, M, N)\n    # 相当于对每个 batch 做独立的矩阵乘法\n    results['batch_matmul'] = torch.einsum('bmk,bkn->bmn', A, B)\n\n    # 2. Matrix Trace (对角线元素之和): 'bii->b'\n    # A: (B, I, I) -> out: (B,)\n    # trace = Σ_i A[:, i, i]，即每个 batch 矩阵对角线元素之和\n    results['trace'] = torch.einsum('bii->b', A)\n\n    # 3. Outer Product: 'i,j->ij'\n    # a: (I,), b: (J,) -> out: (I, J)\n    # outer[i,j] = a[i] * b[j]，所有元素两两相乘\n    a = A[0, :, 0]                                     # 取第一个 batch 的第一列: (M,)\n    b = B[0, 0, :]                                     # 取第一个 batch 的第一行: (N,)\n    results['outer'] = torch.einsum('i,j->ij', a, b)   # (M, N)\n\n    # 4. Diagonal Extraction: 'ii->i'\n    # A: (I, I) -> out: (I,)\n    # 提取方阵的对角线元素\n    mat = A[0] if A.ndim >= 2 else A                   # 取第一个 batch 的 (M, M) 子矩阵\n    min_dim = min(mat.shape[-2], mat.shape[-1])\n    results['diagonal'] = torch.einsum('ii->i', mat[:min_dim, :min_dim])   # (min_dim,)\n\n    return results",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nA = torch.randn(2, 3, 4)\nB = torch.randn(2, 4, 5)\nprint(\"batch_matmul:\", einsum_operations(A, B, None, 'batch_matmul').shape)\n\na = torch.randn(4)\nb = torch.randn(5)\nprint(\"outer:\", einsum_operations(a, b, None, 'outer').shape)\n\nM = torch.randn(3, 3)\nprint(\"diagonal:\", einsum_operations(M, None, None, 'diagonal'))",
+        "role": "demo"
+      }
+    ]
+  },
+  "embedding": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class MyEmbedding(nn.Module):  # 继承 nn.Module，注册为可训练模块\n    \"\"\"\n    Embedding Layer module.\n    \"\"\"\n    def __init__(self, num_embeddings, embedding_dim):  # 初始化: 定义模型结构和参数\n        # Initialize layers and parameters\n        super().__init__()  # 调用父类 nn.Module 初始化，注册所有子模块\n        self.weight = nn.Parameter(torch.randn(num_embeddings, embedding_dim))\n\n    def forward(self, indices):  # 前向传播: 定义数据流\n        # Compute forward pass\n        return self.weight[indices]",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "emb = MyEmbedding(10, 4)\nidx = torch.tensor([0, 3, 7])\nprint('Output shape:', emb(idx).shape)\nprint('Matches manual:', torch.equal(emb(idx)[0], emb.weight[0]))",
+        "role": "demo"
+      }
+    ]
+  },
+  "flash_attention": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def flash_attention(Q, K, V, block_size=32):\n    B, S, D = Q.shape\n    output = torch.zeros_like(Q)\n    for i in range(0, S, block_size):\n        qi = Q[:, i:i+block_size]\n        bs_q = qi.shape[1]\n        row_max = torch.full((B, bs_q, 1), float('-inf'), device=Q.device)\n        row_sum = torch.zeros(B, bs_q, 1, device=Q.device)\n        acc = torch.zeros(B, bs_q, D, device=Q.device)\n        for j in range(0, S, block_size):\n            kj = K[:, j:j+block_size]\n            vj = V[:, j:j+block_size]\n            scores = torch.bmm(qi, kj.transpose(1, 2)) / math.sqrt(D)  # Transpose to (B, heads, S, d_k)\n            block_max = scores.max(dim=-1, keepdim=True).values  # 求最大值\n            new_max = torch.maximum(row_max, block_max)\n            correction = torch.exp(row_max - new_max)  # 指数运算\n            exp_scores = torch.exp(scores - new_max)  # 指数运算\n            acc = acc * correction + torch.bmm(exp_scores, vj)  # 批量矩阵乘法\n            row_sum = row_sum * correction + exp_scores.sum(dim=-1, keepdim=True)  # 求和\n            row_max = new_max\n        output[:, i:i+block_size] = acc / row_sum\n    return output",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "Q, K, V = torch.randn(1, 16, 8), torch.randn(1, 16, 8), torch.randn(1, 16, 8)\nout = flash_attention(Q, K, V, block_size=4)\nscores = torch.bmm(Q, K.transpose(1,2)) / math.sqrt(8)\nref = torch.bmm(torch.softmax(scores, dim=-1), V)\nprint('Shape:', out.shape)\nprint('Max diff:', (out - ref).abs().max().item())",
+        "role": "demo"
+      }
+    ]
+  },
+  "flow_matching": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def flow_matching_loss(model_output, x0, x1, t):\n    target_velocity = x1 - x0\n    diff = model_output - target_velocity\n    return (diff * diff).mean()  # 求均值",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\n\nB, D = 16, 8\nx0 = torch.randn(B, D)\nx1 = torch.randn(B, D)\nt  = torch.rand(B)\n\nperfect_output = x1 - x0\nloss_perfect = flow_matching_loss(perfect_output, x0, x1, t)\nprint(f\"Perfect prediction => loss = {loss_perfect.item():.6f}  (expected 0.0)\")\n\nrandom_output = torch.randn(B, D)\nloss_random = flow_matching_loss(random_output, x0, x1, t)\nprint(f\"Random prediction  => loss = {loss_random.item():.4f}   (expected > 0)\")\n\nnoisy_output = perfect_output + 0.1 * torch.randn(B, D)\nloss_noisy = flow_matching_loss(noisy_output, x0, x1, t)\nprint(f\"Noisy prediction   => loss = {loss_noisy.item():.4f}   (expected small but > 0)\")",
+        "role": "demo"
+      }
+    ]
+  },
+  "focal_loss": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def focal_loss(logits, targets, alpha=0.25, gamma=2.0):\n    N, C = logits.shape\n    # numerically stable softmax\n    shifted = logits - logits.max(dim=-1, keepdim=True).values  # 求最大值\n    exp_s = torch.exp(shifted)  # 指数运算\n    probs = exp_s / exp_s.sum(dim=-1, keepdim=True)  # 求和\n    # p_t: probability assigned to the correct class\n    p_t = probs[torch.arange(N), targets]\n    log_p_t = torch.log(p_t + 1e-8)  # 对数运算\n    fl = -alpha * (1 - p_t) ** gamma * log_p_t\n    return fl.mean()  # 求均值",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nlogits = torch.randn(8, 4)\ntargets = torch.randint(0, 4, (8,))\n\nfl_gamma0 = focal_loss(logits, targets, alpha=0.25, gamma=0.0)\nce = F.cross_entropy(logits, targets)\nprint(f\"Focal (gamma=0): {fl_gamma0:.4f}  |  alpha * CE: {0.25 * ce:.4f}\")\n\nfl_g2 = focal_loss(logits, targets, alpha=0.25, gamma=2.0)\nfl_g5 = focal_loss(logits, targets, alpha=0.25, gamma=5.0)\nprint(f\"Focal gamma=2: {fl_g2:.4f}  |  gamma=5: {fl_g5:.4f}  (higher gamma -> lower loss)\")",
+        "role": "demo"
+      }
+    ]
+  },
+  "fsdp_step": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def fsdp_step(param_shards, grad_fn, world_size):\n    # 1. All-gather: reconstruct full parameter\n    full_param = torch.cat(param_shards)\n\n    # 2. Compute gradient\n    grad = grad_fn(full_param)\n\n    # 3. Reduce-scatter: each worker gets its gradient shard\n    grad_shards = list(grad.chunk(world_size))\n\n    # 4. Update each shard with lr=0.01\n    new_shards = [\n        param_shards[i] - 0.01 * grad_shards[i]\n        for i in range(world_size)\n    ]\n    return new_shards",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nworld_size = 4\nshard_size = 8\n\nparam_shards = [torch.randn(shard_size) for _ in range(world_size)]\n\ngrad_fn = lambda p: 2.0 * p\n\nnew_shards = fsdp_step(param_shards, grad_fn, world_size)\nfsdp_result = torch.cat(new_shards)\n\nfull_param = torch.cat(param_shards)\nref_result = full_param - 0.01 * grad_fn(full_param)\n\nprint(\"FSDP result shape:\", fsdp_result.shape)  # expect (32,)\nprint(\"Max diff vs SGD reference:\", (fsdp_result - ref_result).abs().max().item())  # expect ~0",
+        "role": "demo"
+      }
+    ]
+  },
+  "gae": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def gae(A, X):\n    import torch\n    N = A.shape[0]\n    F = X.shape[1]\n    torch.manual_seed(0)\n    W1 = torch.randn(F, 32) * 0.1\n    W2 = torch.randn(32, 16) * 0.1\n    A_tilde = A + torch.eye(N)\n    D_vec = A_tilde.sum(1)  # 求和\n    D_inv_sqrt = torch.diag(D_vec.pow(-0.5))\n    A_norm = D_inv_sqrt @ A_tilde @ D_inv_sqrt\n    H = torch.relu(A_norm @ X @ W1)  # ReLU activation\n    Z = A_norm @ H @ W2\n    return torch.sigmoid(Z @ Z.T)",
+        "role": "solution"
+      }
+    ]
+  },
+  "gat_layer": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def gat_layer(A, X, W, a, negative_slope=0.2):\n    H = X @ W\n    F_out = H.size(-1)\n    e = (H @ a[:F_out]).unsqueeze(1) + (H @ a[F_out:]).unsqueeze(0)\n    e = torch.nn.functional.leaky_relu(e, negative_slope)  # ReLU activation\n    e = e.masked_fill(A == 0, float('-inf'))  # 应用掩码: 将指定位置替换为指定值\n    alpha = torch.softmax(e, dim=-1)  # Apply softmax to get attention weights\n    return alpha @ H",
+        "role": "solution"
+      }
+    ]
+  },
+  "gcn_layer": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def gcn_layer(A, X, W):\n    import torch\n    N = A.shape[0]\n    A_tilde = A + torch.eye(N)\n    D_vec = A_tilde.sum(1)  # 求和\n    D_inv_sqrt = torch.diag(D_vec.pow(-0.5))\n    A_norm = D_inv_sqrt @ A_tilde @ D_inv_sqrt\n    return torch.relu(A_norm @ X @ W)  # ReLU activation",
+        "role": "solution"
+      }
+    ]
+  },
+  "gelu": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def my_gelu(x):\n    \"\"\"\n    GELU (Gaussian Error Linear Unit) implementation.\n    使用 tanh 近似公式，比精确实现（erf）更快，被 PyTorch 默认采用。\n    公式: GELU(x) ≈ 0.5x * (1 + tanh[√(2/π) * (x + 0.044715x³)])\n    \"\"\"\n    # 系数: √(2/π) ≈ 0.7978845608\n    sqrt_2_over_pi = (2.0 / 3.141592653589793) ** 0.5\n\n    # 内部多项式: x + 0.044715 * x³\n    # 三次项提供非线性，使函数在负值区域平滑趋近于0\n    inner = x + 0.044715 * (x ** 3)\n\n    # tanh(√(2/π) * inner)\n    tanh_val = torch.tanh(sqrt_2_over_pi * inner)\n\n    # GELU(x) = 0.5x * (1 + tanh(...))\n    # 当 x → +∞ 时 tanh → 1，GELU(x) → x；当 x → -∞ 时 tanh → -1，GELU(x) → 0\n    return 0.5 * x * (1.0 + tanh_val)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "x = torch.tensor([-2., -1., 0., 1., 2.])\nprint('Output:', my_gelu(x))\nprint('Ref:   ', torch.nn.functional.gelu(x))",
+        "role": "demo"
+      },
+      {
+        "type": "markdown",
+        "source": "GELU (Gaussian Error Linear Unit) smoothly gates inputs by their probability under a Gaussian distribution.\n\n**Exact Formula:**\n$$\\text{GELU}(x) = x \\cdot \\Phi(x) = x \\cdot \\frac{1}{2} \\left[1 + \\text{erf}\\left(\\frac{x}{\\sqrt{2}}\\right)\\right]$$\n\n**Approximation (faster):**\n$$\\text{GELU}(x) \\approx 0.5x \\left(1 + \\tanh\\left[\\sqrt{\\frac{2}{\\pi}} \\left(x + 0.044715x^3\\right)\\right]\\right)$$\n\n**Properties:**\n- Smooth everywhere (unlike ReLU's kink at 0)\n- Biased toward 0 for negative inputs (stochastic regularization effect)\n- Used in BERT, GPT, ViT, and most modern Transformers",
+        "role": "explanation"
+      }
+    ]
+  },
+  "gin_layer": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def gin_layer(A, X, eps, W1, b1, W2, b2):\n    agg = A @ X\n    h = (1 + eps) * X + agg\n    h = torch.relu(h @ W1 + b1)  # ReLU activation\n    return h @ W2 + b2",
+        "role": "solution"
+      }
+    ]
+  },
+  "gpt2_block": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class GPT2Block(nn.Module):\n    \"\"\"\n    GPT-2 Transformer Block (Pre-Norm architecture).\n    先对输入做 LayerNorm，再经过 Attention/MLP，最后残差连接。\n    Pre-Norm 比 Post-Norm 更稳定，允许训练更深的网络。\n    \"\"\"\n    def __init__(self, d_model, num_heads, dropout=0.1):\n        super().__init__()                               # nn.Module 初始化\n        self.ln1 = nn.LayerNorm(d_model)                 # 注意力前的 LayerNorm\n        self.ln2 = nn.LayerNorm(d_model)                 # MLP 前的 LayerNorm\n        self.attn = nn.MultiheadAttention(d_model, num_heads, batch_first=True)  # 多头自注意力\n        self.mlp = nn.Sequential(                        # MLP: 扩张 -> 激活 -> 收缩\n            nn.Linear(d_model, 4 * d_model),             # 扩张到 4*d_model (GPT-2 惯例)\n            nn.GELU(),                                    # GELU 激活\n            nn.Linear(4 * d_model, d_model),             # 收缩回 d_model\n        )\n        self.dropout = nn.Dropout(dropout)               # Dropout 正则化\n\n    def forward(self, x):\n        # Pre-Norm Attention Block:\n        # 1. LayerNorm -> Attention -> Dropout -> 残差连接\n        # 残差连接缓解梯度消失，允许深层网络训练\n        attn_out, _ = self.attn(self.ln1(x), self.ln1(x), self.ln1(x), need_weights=False)\n        x = x + self.dropout(attn_out)                   # 残差: x + Dropout(Attn(LN(x)))\n\n        # Pre-Norm MLP Block:\n        # 2. LayerNorm -> MLP -> Dropout -> 残差连接\n        mlp_out = self.mlp(self.ln2(x))\n        x = x + self.dropout(mlp_out)                    # 残差: x + Dropout(MLP(LN(x)))\n        return x                                         # (B, S, d_model)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "block = GPT2Block(64, 4)\nprint('Output:', block(torch.randn(2, 8, 64)).shape)\nprint('Params:', sum(p.numel() for p in block.parameters()))",
+        "role": "demo"
+      },
+      {
+        "type": "markdown",
+        "source": "GPT-2 uses a **pre-norm** transformer block: LayerNorm is applied *before* attention and MLP, with residual connections around both.\n\n**Architecture:**\n$$x = x + \\text{Attention}(\\text{LN}_1(x))$$\n$$x = x + \\text{MLP}(\\text{LN}_2(x))$$\n\n**Pre-norm vs Post-norm:**\n- Post-norm (original Transformer): $x = \\text{LN}(x + \\text{Attention}(x))$ — harder to train deep\n- Pre-norm: more stable gradients, allows training deeper networks (GPT-2, GPT-3, LLaMA)\n\n**MLP Structure:**\n$$\\text{MLP}(x) = W_2 \\cdot \\text{GELU}(W_1 x)$$\nwhere hidden dim = $4 \\times d_{model}$ (GPT-2 convention)",
+        "role": "explanation"
+      }
+    ]
+  },
+  "gqa": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class GroupQueryAttention(nn.Module):  # 继承 nn.Module，注册为可训练模块\n    \"\"\"\n    Grouped Query Attention module.\n    \"\"\"\n    def __init__(self, d_model, num_heads, num_kv_heads):  # 初始化: 定义模型结构和参数\n        # Initialize layers and parameters\n        super().__init__()  # 调用父类 nn.Module 初始化，注册所有子模块\n        self.num_heads = num_heads\n        self.num_kv_heads = num_kv_heads\n        self.d_k = d_model // num_heads\n        self.W_q = nn.Linear(d_model, d_model)  # Linear projection\n        self.W_k = nn.Linear(d_model, num_kv_heads * self.d_k)  # Linear projection\n        self.W_v = nn.Linear(d_model, num_kv_heads * self.d_k)  # Linear projection\n        self.W_o = nn.Linear(d_model, d_model)  # Linear projection\n\n    def forward(self, x):  # 前向传播: 定义数据流\n        # Compute forward pass\n        B, S, _ = x.shape\n        q = self.W_q(x).view(B, S, self.num_heads, self.d_k).transpose(1, 2)  # Reshape to (B, heads, S, d_k)\n        k = self.W_k(x).view(B, S, self.num_kv_heads, self.d_k).transpose(1, 2)  # Reshape to (B, heads, S, d_k)\n        v = self.W_v(x).view(B, S, self.num_kv_heads, self.d_k).transpose(1, 2)  # Reshape to (B, heads, S, d_k)\n        repeats = self.num_heads // self.num_kv_heads\n        k = k.repeat_interleave(repeats, dim=1)\n        v = v.repeat_interleave(repeats, dim=1)\n        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)  # Matrix multiplication\n        weights = torch.softmax(scores, dim=-1)  # Apply softmax to get attention weights\n        attn = torch.matmul(weights, v)  # Matrix multiplication\n        out = attn.transpose(1, 2).contiguous().view(B, S, -1)  # Reshape: merge heads back\n        return self.W_o(out)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "gqa = GroupQueryAttention(32, 8, 2)\nprint('Output:', gqa.forward(torch.randn(1, 4, 32)).shape)",
+        "role": "demo"
+      },
+      {
+        "type": "markdown",
+        "source": "Grouped Query Attention reduces KV cache memory by sharing KV heads across groups of query heads.\n\n**Motivation:**\nIn standard MHA with $H$ heads, KV cache stores $2 \\times B \\times S \\times H \\times d_k$ values.\nGQA with $K$ KV heads ($K < H$) stores only $2 \\times B \\times S \\times K \\times d_k$.\n\n**Memory Reduction:**\n$$\\text{Compression ratio} = \\frac{K}{H}$$\n\n**Trade-off:**\n- $K=1$: Maximum Memory Multi-Query Attention (MQA) — fastest, slightly lower quality\n- $1 < K < H$: GQA — balanced\n- $K=H$: Standard MHA — no compression\n\nKV heads are repeated $\\frac{H}{K}$ times via `repeat_interleave` before attention computation.",
+        "role": "explanation"
+      }
+    ]
+  },
+  "gradient_accumulation": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def accumulated_step(model, optimizer, loss_fn, micro_batches):\n    optimizer.zero_grad()\n    total_loss = 0.0\n    n = len(micro_batches)\n    for x, y in micro_batches:\n        loss = loss_fn(model(x), y) / n\n        loss.backward()\n        total_loss += loss.item()\n    optimizer.step()\n    return total_loss",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "model = nn.Linear(4, 2)\nopt = torch.optim.SGD(model.parameters(), lr=0.01)\nloss = accumulated_step(model, opt, nn.MSELoss(),\n    [(torch.randn(2, 4), torch.randn(2, 2)) for _ in range(4)])\nprint('Accumulated loss:', loss)",
+        "role": "demo"
+      }
+    ]
+  },
+  "gradient_clipping": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def clip_grad_norm(parameters, max_norm):\n    parameters = [p for p in parameters if p.grad is not None]\n    total_norm = torch.sqrt(sum(p.grad.norm() ** 2 for p in parameters))  # 开方运算\n    clip_coef = max_norm / (total_norm + 1e-6)\n    if clip_coef < 1:\n        for p in parameters:\n            p.grad.mul_(clip_coef)\n    return total_norm.item()",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "p = torch.randn(100, requires_grad=True)\n(p * 10).sum().backward()\nprint('Before:', p.grad.norm().item())\norig = clip_grad_norm([p], max_norm=1.0)\nprint('After: ', p.grad.norm().item())\nprint('Returned:', orig)",
+        "role": "demo"
+      }
+    ]
+  },
+  "graph_readout": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def graph_readout(X, batch, mode='mean'):\n    import torch\n    num_graphs = batch.max().item() + 1  # 求最大值\n    D = X.shape[1]\n    if mode == 'sum':\n        out = torch.zeros(num_graphs, D)\n        out.index_add_(0, batch, X)\n        return out\n    elif mode == 'mean':\n        out = torch.zeros(num_graphs, D)\n        out.index_add_(0, batch, X)\n        count = torch.zeros(num_graphs)\n        count.index_add_(0, batch, torch.ones(batch.shape[0]))\n        return out / count.unsqueeze(1)\n    elif mode == 'max':\n        out = torch.full((num_graphs, D), float('-inf'))\n        for i in range(num_graphs):\n            mask = batch == i\n            out[i] = X[mask].max(dim=0).values  # 求最大值\n        return out\n    else:\n        raise ValueError(f\"Unsupported mode: {mode}\")",
+        "role": "solution"
+      }
+    ]
+  },
+  "graphsage_layer": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def graphsage_layer(A, X, W, k=None):\n    import torch\n    N = A.shape[0]\n    F_in = X.shape[1]\n    agg_list = []\n    for i in range(N):\n        neighbors = (A[i] > 0).nonzero(as_tuple=True)[0]\n        if len(neighbors) == 0:\n            agg_list.append(torch.zeros(F_in))\n        else:\n            if k is not None and len(neighbors) > k:\n                torch.manual_seed(42)\n                perm = torch.randperm(len(neighbors))[:k]\n                neighbors = neighbors[perm]\n            agg_list.append(X[neighbors].mean(dim=0))  # 求均值\n    agg = torch.stack(agg_list)\n    concat = torch.cat([X, agg], dim=1)\n    out = torch.relu(concat @ W)  # ReLU activation\n    out = out / out.norm(dim=-1, keepdim=True).clamp(min=1e-8)\n    return out",
+        "role": "solution"
+      }
+    ]
+  },
+  "grpo_loss": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def grpo_loss(logps: Tensor, rewards: Tensor, group_ids: Tensor,\n              eps: float = 1e-5) -> Tensor:\n    \"\"\"Group Relative Policy Optimization (GRPO) loss.\n\n    logps: (B,) policy log-probs for each sampled response\n    rewards: (B,) scalar rewards for each response\n    group_ids: (B,) integers, same id = same prompt/group\n    returns: scalar loss (Tensor)\n    \"\"\"\n    # Compute per-group normalized advantages A_i\n    unique_ids = group_ids.unique()\n    advantages = torch.empty_like(rewards)\n    for gid in unique_ids:\n        mask = group_ids == gid\n        r_g = rewards[mask]\n        mean_g = r_g.mean()  # 求均值\n        std_g = r_g.std(unbiased=False)\n        advantages[mask] = (r_g - mean_g) / (std_g + eps)\n\n    # Stop gradient through advantages\n    advantages_detached = advantages.detach()\n\n    # GRPO objective: -E[A_i * logpi_i]\n    return -(advantages_detached * logps).mean()  # 求均值",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "logps = torch.tensor([0.0, -0.5, -1.0, -1.5])\nrewards = torch.tensor([1.0, 0.8, 0.2, 0.0])\ngroup_ids = torch.tensor([0, 0, 1, 1])\nprint('Loss:', grpo_loss(logps, rewards, group_ids).item())",
+        "role": "demo"
+      }
+    ]
+  },
+  "gru_cell": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport torch.nn as nn\n\ndef gru_cell(x_t: torch.Tensor, h_prev: torch.Tensor,\n             input_size: int, hidden_size: int) -> torch.Tensor:\n    \"\"\"\n    Single GRU step.\n    x_t: (B, input_size)\n    h_prev: (B, hidden_size)\n    Returns: h_t (B, hidden_size)\n    \"\"\"\n    # 拼接隐状态和输入，用于计算门控\n    # Concatenate hidden state and input for gate computation\n    hx = torch.cat([h_prev, x_t], dim=-1)  # (B, hidden_size + input_size)\n\n    # 更新门：决定保留多少旧状态\n    # Update gate: how much old state to keep\n    W_z = nn.Linear(hidden_size + input_size, hidden_size)\n    z_t = torch.sigmoid(W_z(hx))\n\n    # 重置门：决定遗忘多少旧状态\n    # Reset gate: how much old state to forget\n    W_r = nn.Linear(hidden_size + input_size, hidden_size)\n    r_t = torch.sigmoid(W_r(hx))\n\n    # 候选隐状态：重置后的旧状态 + 新输入\n    # Candidate hidden state: reset old state + new input\n    hx_reset = torch.cat([r_t * h_prev, x_t], dim=-1)\n    W_h = nn.Linear(hidden_size + input_size, hidden_size)\n    h_tilde = torch.tanh(W_h(hx_reset))\n\n    # 更新隐状态：旧状态的(1-z)部分 + 新候选的z部分\n    # Update hidden state: (1-z) of old + z of new candidate\n    h_t = (1.0 - z_t) * h_prev + z_t * h_tilde\n\n    return h_t",
+        "role": "solution"
+      }
+    ]
+  },
+  "int8_quantization": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class Int8Linear(nn.Module):  # 继承 nn.Module，注册为可训练模块\n    \"\"\"\n    INT8 Quantized Linear module.\n    \"\"\"\n    def __init__(self, weight, bias=None):  # 初始化: 定义模型结构和参数\n        # Initialize layers and parameters\n        super().__init__()  # 调用父类 nn.Module 初始化，注册所有子模块\n        scale = weight.abs().amax(dim=1, keepdim=True) / 127.0\n        self.register_buffer('weight_int8',  # 注册缓冲区: 不参与梯度更新\n            torch.round(weight / (scale + 1e-10)).clamp(-128, 127).to(torch.int8))\n        self.register_buffer('scale', scale)  # 注册缓冲区: 不参与梯度更新\n        self.bias = nn.Parameter(bias.clone()) if bias is not None else None\n\n    def forward(self, x):  # 前向传播: 定义数据流\n        # Compute forward pass\n        w = self.weight_int8.float() * self.scale\n        out = x @ w.T\n        if self.bias is not None:\n            out = out + self.bias\n        return out",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "w = torch.randn(8, 4)\nq = Int8Linear(w)\nprint('Output:', q(torch.randn(2, 4)).shape)\nprint('Weight dtype:', q.weight_int8.dtype)\nprint('Compression: float32 -> int8 = 4x')",
+        "role": "demo"
+      }
+    ]
+  },
+  "kl_divergence": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef kl_divergence(p: torch.Tensor, q: torch.Tensor, eps: float = 1e-10) -> torch.Tensor:\n    \"\"\"\n    KL divergence: KL(p||q) = sum(p * (log(p) - log(q)))\n    p: target distribution, q: predicted distribution.\n    Both should sum to 1 (probability distributions).\n    \"\"\"\n    # 添加 epsilon 避免 log(0)，然后逐元素计算\n    # Add epsilon to avoid log(0), compute element-wise\n    p_safe = p + eps\n    q_safe = q + eps\n    kl = (p_safe * (torch.log(p_safe) - torch.log(q_safe))).sum()\n    return kl",
+        "role": "solution"
+      }
+    ]
+  },
+  "kv_cache": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class KVCacheAttention(nn.Module):  # 继承 nn.Module，注册为可训练模块\n    \"\"\"\n    KV Cache Attention module.\n    \"\"\"\n    def __init__(self, d_model, num_heads):  # 初始化: 定义模型结构和参数\n        # Initialize layers and parameters\n        super().__init__()  # 调用父类 nn.Module 初始化，注册所有子模块\n        self.num_heads = num_heads\n        self.d_k = d_model // num_heads\n        self.W_q = nn.Linear(d_model, d_model)  # Linear projection\n        self.W_k = nn.Linear(d_model, d_model)  # Linear projection\n        self.W_v = nn.Linear(d_model, d_model)  # Linear projection\n        self.W_o = nn.Linear(d_model, d_model)  # Linear projection\n\n    def forward(self, x, cache=None):  # 前向传播: 定义数据流\n        # Compute forward pass\n        B, S_new, _ = x.shape\n\n        q = self.W_q(x).view(B, S_new, self.num_heads, self.d_k).transpose(1, 2)  # Reshape to (B, heads, S, d_k)\n        k = self.W_k(x).view(B, S_new, self.num_heads, self.d_k).transpose(1, 2)  # Reshape to (B, heads, S, d_k)\n        v = self.W_v(x).view(B, S_new, self.num_heads, self.d_k).transpose(1, 2)  # Reshape to (B, heads, S, d_k)\n\n        if cache is not None:\n            k = torch.cat([cache[0], k], dim=2)\n            v = torch.cat([cache[1], v], dim=2)\n\n        new_cache = (k, v)\n        S_total = k.shape[2]\n\n        scores = torch.matmul(q, k.transpose(-2, -1)) / (self.d_k ** 0.5)  # Matrix multiplication\n\n        if S_new > 1:\n            # Causal mask for prefill: each query position can only attend to\n            # positions up to itself in the full sequence\n            S_past = S_total - S_new\n            mask = torch.triu(  # 生成上三角掩码: 用于因果注意力\n                torch.ones(S_new, S_total, device=x.device, dtype=torch.bool),\n                diagonal=S_past + 1,\n            )\n            scores = scores.masked_fill(mask, float('-inf'))  # 应用掩码: 将指定位置替换为指定值\n\n        weights = torch.softmax(scores, dim=-1)  # Apply softmax to get attention weights\n        attn = torch.matmul(weights, v)  # Matrix multiplication\n        out = self.W_o(attn.transpose(1, 2).contiguous().view(B, S_new, -1))  # Reshape: merge heads back\n        return out, new_cache",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nattn = KVCacheAttention(d_model=64, num_heads=4)\nx = torch.randn(1, 6, 64)\n\nfull_out, _ = attn(x)\nout1, cache = attn(x[:, :4])\nout2, cache = attn(x[:, 4:5], cache=cache)\nout3, cache = attn(x[:, 5:6], cache=cache)\ninc_out = torch.cat([out1, out2, out3], dim=1)\n\nprint('Full shape:', full_out.shape)\nprint('Match:', torch.allclose(full_out, inc_out, atol=1e-5))\nprint('Final cache K shape:', cache[0].shape)",
+        "role": "demo"
+      }
+    ]
+  },
+  "l1_regularization": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef l1_regularization(w: torch.Tensor, lambda_reg: float) -> torch.Tensor:\n    \"\"\"\n    Compute L1 regularization penalty.\n    L1 = lambda_reg * sum(|w_i|)\n    \"\"\"\n    # 计算所有权重元素的绝对值之和\n    # Compute the sum of absolute values of all weight elements\n    penalty = lambda_reg * torch.abs(w).sum()\n    return penalty",
+        "role": "solution"
+      }
+    ]
+  },
+  "l2_regularization": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef l2_regularization(w: torch.Tensor, lambda_reg: float) -> torch.Tensor:\n    \"\"\"\n    Compute L2 regularization penalty (weight decay).\n    L2 = 0.5 * lambda_reg * sum(w_i^2)\n    The 0.5 factor makes gradient = lambda_reg * w.\n    \"\"\"\n    # 计算权重平方和的一半，乘以正则化系数\n    # Compute half the sum of squared weights, scaled by lambda\n    penalty = 0.5 * lambda_reg * torch.pow(w, 2).sum()\n    return penalty",
+        "role": "solution"
+      }
+    ]
+  },
+  "label_smoothing": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def label_smoothing(logits, targets, smoothing=0.1):\n    N, C = logits.shape\n    logits_max = logits.max(dim=-1, keepdim=True).values  # 求最大值\n    shifted = logits - logits_max\n    log_probs = shifted - torch.log(torch.exp(shifted).sum(dim=-1, keepdim=True))  # 指数运算\n    soft_targets = torch.full_like(log_probs, smoothing / (C - 1))\n    soft_targets.scatter_(1, targets.unsqueeze(1), 1.0 - smoothing)\n    return -(soft_targets * log_probs).sum(dim=-1).mean()  # 求均值",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nlogits = torch.randn(4, 10)\ntargets = torch.randint(0, 10, (4,))\n\nloss_smoothed = label_smoothing(logits, targets, smoothing=0.1)\nloss_ce = torch.nn.functional.cross_entropy(logits, targets)\n\nprint(f\"Label smoothing loss (eps=0.1): {loss_smoothed.item():.4f}\")\nprint(f\"Standard CE loss (eps=0.0):    {loss_ce.item():.4f}\")\n\nloss_no_smooth = label_smoothing(logits, targets, smoothing=0.0)\nprint(f\"Label smoothing loss (eps=0.0): {loss_no_smooth.item():.4f}  (matches CE: {torch.allclose(loss_no_smooth, loss_ce)})\")",
+        "role": "demo"
+      }
+    ]
+  },
+  "layernorm": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def my_layer_norm(x, gamma, beta, eps=1e-5):\n    \"\"\"\n    Layer Normalization implementation.\n    对每个样本沿特征维度独立归一化，再应用可学习的缩放 γ 和偏移 β。\n    与 BatchNorm 不同，LayerNorm 不依赖 batch size，适合变长序列（Transformer）。\n    \"\"\"\n    # 沿最后一个维度（特征维度）计算均值\n    # x: (B, S, D) 或 (N, D)，mean 结果: (B, S, 1) 或 (N, 1)\n    mean = x.mean(dim=-1, keepdim=True)                # μ = (1/D) Σ_i x_i\n\n    # 计算方差（无偏估计，unbiased=False 对应 PyTorch 默认）\n    var = x.var(dim=-1, keepdim=True, unbiased=False)  # σ² = (1/D) Σ_i (x_i - μ)²\n\n    # 标准化: (x - μ) / √(σ² + ε)\n    # ε 防止除零，保证数值稳定\n    x_norm = (x - mean) / torch.sqrt(var + eps)        # (B, S, D)，均值为0，方差为1\n\n    # 可学习的仿射变换: γ * x_norm + β\n    # γ 控制输出缩放，β 控制输出偏移。允许网络学习到\"不需要归一化\"（γ=1, β=0 即恒等）\n    return gamma * x_norm + beta                       # (B, S, D)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "x = torch.randn(2, 8)\ngamma = torch.ones(8)\nbeta = torch.zeros(8)\nout = my_layer_norm(x, gamma, beta)\nref = torch.nn.functional.layer_norm(x, [8], gamma, beta)\nprint(\"Match ref?\", torch.allclose(out, ref, atol=1e-4))",
+        "role": "demo"
+      },
+      {
+        "type": "markdown",
+        "source": "Layer Normalization normalizes each sample independently across the feature dimension, unlike BatchNorm which normalizes across the batch.\n\n**Formula:**\n$$\\text{LN}(x) = \\gamma \\odot \\frac{x - \\mu}{\\sqrt{\\sigma^2 + \\epsilon}} + \\beta$$\nwhere $\\mu = \\frac{1}{D} \\sum_{i=1}^D x_i$ and $\\sigma^2 = \\frac{1}{D} \\sum_{i=1}^D (x_i - \\mu)^2$\n\n**Why LayerNorm over BatchNorm in Transformers?**\n- Sequence lengths vary; batch statistics become unreliable\n- Independent per-sample normalization avoids batch-size dependencies\n- Pre-norm (LN before attention/FFN) is more stable than post-norm for deep networks",
+        "role": "explanation"
+      }
+    ]
+  },
+  "layerscale": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport torch.nn as nn\n\nclass LayerScale(nn.Module):\n    \"\"\"\n    LayerScale: output = x + gamma * f(x)\n    gamma is a learnable per-channel scaling factor, initialized small.\n    \"\"\"\n    def __init__(self, dim: int, init_value: float = 1e-6):\n        super().__init__()\n        # 可学习的逐通道缩放因子，初始化为很小的值\n        # Learnable per-channel scale, initialized to a tiny value\n        self.gamma = nn.Parameter(init_value * torch.ones(dim))\n\n    def forward(self, x: torch.Tensor, f_x: torch.Tensor) -> torch.Tensor:\n        # gamma 逐元素缩放子层输出，再加回残差\n        # Scale sublayer output element-wise, add back residual\n        return x + self.gamma * f_x",
+        "role": "solution"
+      }
+    ]
+  },
+  "leaky_relu": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef leaky_relu(x: torch.Tensor, alpha: float = 0.01) -> torch.Tensor:\n    \"\"\"\n    Leaky ReLU: f(x) = x if x > 0, else alpha * x.\n    Prevents dying ReLU by allowing small negative gradients.\n    \"\"\"\n    # 正数保持原样，负数乘以 alpha（小斜率）\n    # Positive: keep as is; Negative: multiply by small slope alpha\n    return torch.where(x > 0, x, alpha * x)",
+        "role": "solution"
+      }
+    ]
+  },
+  "linear": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class SimpleLinear:\n    \"\"\"\n    Simple Linear Layer module.\n    \"\"\"\n    def __init__(self, in_features: int, out_features: int):  # 初始化: 定义模型结构和参数\n        # Initialize layers and parameters\n        self.weight = torch.randn(out_features, in_features) * (1 / math.sqrt(in_features))\n        self.weight.requires_grad_(True)\n        self.bias = torch.zeros(out_features, requires_grad=True)\n\n    def forward(self, x: torch.Tensor) -> torch.Tensor:  # 前向传播: 定义数据流\n        # Compute forward pass\n        return x @ self.weight.T + self.bias",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "layer = SimpleLinear(8, 4)\nprint(\"W shape:\", layer.weight.shape)\nprint(\"b shape:\", layer.bias.shape)\nx = torch.randn(2, 8)\nprint(\"Output shape:\", layer.forward(x).shape)",
+        "role": "demo"
+      }
+    ]
+  },
+  "linear_attention": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def linear_attention(Q, K, V):\n    Q_prime = torch.where(Q > 0, Q, torch.exp(Q) - 1) + 1  # 指数运算\n    K_prime = torch.where(K > 0, K, torch.exp(K) - 1) + 1  # 指数运算\n    KV = torch.bmm(K_prime.transpose(1, 2), V)       # (B, D_k, D_v)\n    Z = K_prime.sum(dim=1, keepdim=True)              # (B, 1, D_k)\n    num = torch.bmm(Q_prime, KV)                      # (B, S, D_v)\n    den = torch.bmm(Q_prime, Z.transpose(1, 2))       # (B, S, 1)\n    return num / (den + 1e-6)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "Q=torch.randn(1,8,16); K=torch.randn(1,8,16); V=torch.randn(1,8,32)\nprint('Shape:', linear_attention(Q,K,V).shape)",
+        "role": "demo"
+      }
+    ]
+  },
+  "linear_regression": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class LinearRegression:\n    def closed_form(self, X: torch.Tensor, y: torch.Tensor):\n        \"\"\"Normal equation via augmented matrix.\"\"\"\n        N, D = X.shape\n        # Augment X with ones column for bias\n        X_aug = torch.cat([X, torch.ones(N, 1)], dim=1)  # (N, D+1)\n        # Solve (X^T X) theta = X^T y\n        theta = torch.linalg.lstsq(X_aug, y).solution      # (D+1,)\n        w = theta[:D]\n        b = theta[D]\n        return w.detach(), b.detach()\n\n    def gradient_descent(self, X: torch.Tensor, y: torch.Tensor,\n                         lr: float = 0.01, steps: int = 1000):\n        \"\"\"Manual gradient computation — no autograd.\"\"\"\n        N, D = X.shape\n        w = torch.zeros(D)\n        b = torch.tensor(0.0)\n\n        for _ in range(steps):\n            pred = X @ w + b          # (N,)\n            error = pred - y           # (N,)\n            grad_w = (2.0 / N) * (X.T @ error)  # (D,)\n            grad_b = (2.0 / N) * error.sum()     # scalar\n            w = w - lr * grad_w\n            b = b - lr * grad_b\n\n        return w, b\n\n    def nn_linear(self, X: torch.Tensor, y: torch.Tensor,\n                  lr: float = 0.01, steps: int = 1000):\n        \"\"\"PyTorch nn.Linear with autograd training loop.\"\"\"\n        N, D = X.shape\n        layer = nn.Linear(D, 1)  # 线性投影: D维 -> 1维\n        optimizer = torch.optim.SGD(layer.parameters(), lr=lr)\n        loss_fn = nn.MSELoss()\n\n        for _ in range(steps):\n            optimizer.zero_grad()\n            pred = layer(X).squeeze(-1)  # (N,)\n            loss = loss_fn(pred, y)\n            loss.backward()\n            optimizer.step()\n\n        w = layer.weight.data.squeeze(0)  # (D,)\n        b = layer.bias.data.squeeze(0)    # scalar ()\n        return w, b",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(42)\nX = torch.randn(100, 3)\ntrue_w = torch.tensor([2.0, -1.0, 0.5])\ny = X @ true_w + 3.0\n\nmodel = LinearRegression()\nfor name, method in [(\"Closed-form\", model.closed_form),\n                      (\"Grad Descent\", lambda X, y: model.gradient_descent(X, y, lr=0.05, steps=2000)),\n                      (\"nn.Linear\", lambda X, y: model.nn_linear(X, y, lr=0.05, steps=2000))]:\n    w, b = method(X, y)\n    print(f\"{name:13s}  w={w.tolist()}  b={b.item():.4f}\")\nprint(f\"{'True':13s}  w={true_w.tolist()}  b=3.0000\")",
+        "role": "demo"
+      }
+    ]
+  },
+  "link_prediction": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def link_prediction(A, X, edges):\n    import torch\n    N = A.shape[0]\n    F = X.shape[1]\n    torch.manual_seed(0)\n    W1 = torch.randn(F, 16) * 0.1\n    W2 = torch.randn(16, 8) * 0.1\n    A_tilde = A + torch.eye(N)\n    D_vec = A_tilde.sum(1)  # 求和\n    D_inv_sqrt = torch.diag(D_vec.pow(-0.5))\n    A_norm = D_inv_sqrt @ A_tilde @ D_inv_sqrt\n    H = torch.relu(A_norm @ X @ W1)  # ReLU activation\n    Z = A_norm @ H @ W2\n    scores = torch.sigmoid((Z[edges[:,0]] * Z[edges[:,1]]).sum(dim=1))  # 求和\n    return scores",
+        "role": "solution"
+      }
+    ]
+  },
+  "lora": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class LoRALinear(nn.Module):  # 继承 nn.Module，注册为可训练模块\n    \"\"\"\n    LoRA (Low-Rank Adaptation) module.\n    \"\"\"\n    def __init__(self, in_features, out_features, rank, alpha=1.0):  # 初始化: 定义模型结构和参数\n        # Initialize layers and parameters\n        super().__init__()  # 调用父类 nn.Module 初始化，注册所有子模块\n        self.linear = nn.Linear(in_features, out_features)  # Linear projection\n        self.linear.weight.requires_grad_(False)\n        self.linear.bias.requires_grad_(False)\n        self.lora_A = nn.Parameter(torch.randn(rank, in_features) * 0.01)\n        self.lora_B = nn.Parameter(torch.zeros(out_features, rank))\n        self.scaling = alpha / rank\n\n    def forward(self, x):  # 前向传播: 定义数据流\n        # Compute forward pass\n        return self.linear(x) + (x @ self.lora_A.T @ self.lora_B.T) * self.scaling",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "layer = LoRALinear(16, 8, rank=4)\nx = torch.randn(2, 16)\nprint('Output:', layer(x).shape)\ntrainable = sum(p.numel() for p in layer.parameters() if p.requires_grad)\ntotal = sum(p.numel() for p in layer.parameters())\nprint(f'Trainable: {trainable}/{total} ({100*trainable/total:.1f}%)')",
+        "role": "demo"
+      }
+    ]
+  },
+  "lstm_cell": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport torch.nn as nn\n\ndef lstm_cell(x_t: torch.Tensor, h_prev: torch.Tensor, c_prev: torch.Tensor,\n              input_size: int, hidden_size: int) -> tuple[torch.Tensor, torch.Tensor]:\n    \"\"\"\n    Single LSTM step.\n    x_t: (B, input_size)\n    h_prev, c_prev: (B, hidden_size)\n    Returns: (h_t, c_t) both (B, hidden_size)\n    \"\"\"\n    batch_size = x_t.shape[0]\n\n    # 拼接前一时刻隐状态和当前输入\n    # Concatenate previous hidden state and current input\n    hx = torch.cat([h_prev, x_t], dim=-1)  # (B, hidden_size + input_size)\n\n    # 四个门控的线性投影（实际中通常合并为一个大的矩阵乘法）\n    # Linear projections for four gates (often merged into one big matmul)\n    W_f = nn.Linear(hidden_size + input_size, hidden_size)\n    W_i = nn.Linear(hidden_size + input_size, hidden_size)\n    W_g = nn.Linear(hidden_size + input_size, hidden_size)\n    W_o = nn.Linear(hidden_size + input_size, hidden_size)\n\n    # 遗忘门：决定保留多少旧记忆\n    # Forget gate: how much old memory to keep\n    f_t = torch.sigmoid(W_f(hx))\n\n    # 输入门：决定写入多少新信息\n    # Input gate: how much new info to write\n    i_t = torch.sigmoid(W_i(hx))\n\n    # 候选记忆：新候选值\n    # Candidate memory: new candidate values\n    g_t = torch.tanh(W_g(hx))\n\n    # 输出门：决定读出多少信息\n    # Output gate: how much to read out\n    o_t = torch.sigmoid(W_o(hx))\n\n    # 更新细胞状态：遗忘旧记忆 + 写入新记忆\n    # Update cell state: forget old + write new\n    c_t = f_t * c_prev + i_t * g_t\n\n    # 新的隐状态：输出门过滤后的细胞状态\n    # New hidden state: cell state filtered by output gate\n    h_t = o_t * torch.tanh(c_t)\n\n    return h_t, c_t",
+        "role": "solution"
+      }
+    ]
+  },
+  "mamba_ssm": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def mamba_ssm_step(x, h, A, B, C, delta):\n    # delta: (B, D), A: (D, N), B: (B, D, N), C: (B, D, N)\n    dA = torch.exp(delta.unsqueeze(-1) * A.unsqueeze(0))   # (B, D, N)\n    dB = delta.unsqueeze(-1) * B                            # (B, D, N)\n    h_new = dA * h + dB * x.unsqueeze(-1)                  # (B, D, N)\n    y = (h_new * C).sum(dim=-1)                             # (B, D)\n    return y, h_new",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nB_size, D, N = 2, 8, 4  # batch, channels, state_dim\n\nx     = torch.randn(B_size, D)\nh     = torch.zeros(B_size, D, N)\nA     = -torch.rand(D, N)          # negative for stability\nB_mat = torch.randn(D, N)\nC     = torch.randn(B_size, D, N)\ndelta = torch.rand(B_size, D).add(0.1)  # positive step sizes\n\ny, h_new = mamba_ssm_step(x, h, A, B_mat, C, delta)\n\nprint(\"y shape:    \", y.shape)      # (2, 8)\nprint(\"h_new shape:\", h_new.shape)  # (2, 8, 4)\n\ndA_manual = torch.exp(delta[0, 0] * A[0])\ndA_check  = torch.exp(delta[0:1, 0:1] * A[0:1])[0, 0]\nprint(\"dA formula check (should be ~0):\", (dA_manual - dA_check).abs().max().item())",
+        "role": "demo"
+      }
+    ]
+  },
+  "max_pool2d": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def max_pool2d(x, kernel_size, stride=None):\n    if stride is None:\n        stride = kernel_size\n    # unfold extracts sliding local blocks\n    # after two unfolds: (B, C, H_out, W_out, kernel_size, kernel_size)\n    patches = x.unfold(2, kernel_size, stride).unfold(3, kernel_size, stride)\n    return patches.flatten(-2).max(dim=-1).values  # 求最大值",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "x = torch.randn(1, 1, 4, 4)\nout = max_pool2d(x, kernel_size=2, stride=2)\nref = F.max_pool2d(x, kernel_size=2, stride=2)\nprint(\"Output shape:\", out.shape)\nprint(\"Matches F.max_pool2d:\", torch.allclose(out, ref))",
+        "role": "demo"
+      }
+    ]
+  },
+  "mcts_search": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def mcts_step(values, visit_counts, parent_visits, c_puct=1.414):\n    # UCB1 scores\n    exploration = c_puct * torch.sqrt(  # 开方运算\n        torch.log(torch.tensor(parent_visits + 1, dtype=torch.float32)) /  # 对数运算\n        (visit_counts.float() + 1)\n    )\n    ucb = values + exploration\n    selected_idx = int(ucb.argmax().item())\n    # Simulate rollout: random value in [0, 1]\n    rollout_value = torch.rand(1).item()\n    n = visit_counts[selected_idx].item()\n    new_value = (values[selected_idx].item() * n + rollout_value) / (n + 1)\n    updated_values = values.clone()\n    updated_visits = visit_counts.clone()\n    updated_values[selected_idx] = new_value\n    updated_visits[selected_idx] += 1\n    return selected_idx, updated_values, updated_visits",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(42)\nnum_children = 5\nvalues = torch.zeros(num_children)\nvisits = torch.zeros(num_children, dtype=torch.long)\nparent_visits = 0\n\nprint(\"Running 5 MCTS steps:\")\nprint(f\"{'Step':>4}  {'Selected':>8}  {'Visit counts'}\")\nfor step in range(5):\n    idx, values, visits = mcts_step(values, visits, parent_visits)\n    parent_visits += 1\n    print(f\"{step+1:>4}  {idx:>8}  {visits.tolist()}\")\n\nprint(f\"\nTotal visits: {visits.sum().item()} (expected 5)\")\nprint(f\"All nodes visited at least once: {(visits > 0).all().item()}\")",
+        "role": "demo"
+      }
+    ]
+  },
+  "mha": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class MultiHeadAttention(nn.Module):\n    \"\"\"\n    Multi-Head Attention (MHA) implementation.\n    将输入投影到多个注意力头，分别计算缩放点积注意力，最后拼接并输出投影。\n    \"\"\"\n    def __init__(self, d_model: int, num_heads: int):\n        super().__init__()                               # 调用父类 nn.Module 的初始化，注册所有子模块\n        self.num_heads = num_heads                       # 注意力头数 H\n        self.d_k = d_model // num_heads                  # 每个头的维度 d_k = d_model / H\n        assert d_model % num_heads == 0, \"d_model must be divisible by num_heads\"\n\n        # 四个线性投影层: W_q, W_k, W_v 分别投影 Q/K/V, W_o 合并多头输出\n        self.W_q = nn.Linear(d_model, d_model)           # Q 投影: (B, S, d_model) -> (B, S, d_model)\n        self.W_k = nn.Linear(d_model, d_model)           # K 投影: (B, S, d_model) -> (B, S, d_model)\n        self.W_v = nn.Linear(d_model, d_model)           # V 投影: (B, S, d_model) -> (B, S, d_model)\n        self.W_o = nn.Linear(d_model, d_model)           # 输出投影: 拼接后的 (B, S, d_model) -> (B, S, d_model)\n\n    def forward(self, Q, K, V):\n        B, S_q, _ = Q.shape                              # B: batch size, S_q: query 序列长度\n        S_k = K.shape[1]                                 # S_k: key/value 序列长度 (支持 cross-attention)\n\n        # Step 1: 线性投影 + 多头拆分\n        # view(B, S, H, d_k) 将最后一维拆分为 H 个头，每个头 d_k 维\n        # transpose(1, 2) 交换维度得到 (B, H, S, d_k)，便于并行做矩阵乘法\n        q = self.W_q(Q).view(B, S_q, self.num_heads, self.d_k).transpose(1, 2)   # (B, H, S_q, d_k)\n        k = self.W_k(K).view(B, S_k, self.num_heads, self.d_k).transpose(1, 2)   # (B, H, S_k, d_k)\n        v = self.W_v(V).view(B, S_k, self.num_heads, self.d_k).transpose(1, 2)   # (B, H, S_k, d_k)\n\n        # Step 2: 计算缩放点积注意力分数\n        # scores[b,h,i,j] = q[b,h,i] · k[b,h,j] / sqrt(d_k)\n        # 除以 sqrt(d_k) 防止大 d_k 时 softmax 饱和（梯度消失）\n        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)      # (B, H, S_q, S_k)\n\n        # Step 3: Softmax 归一化得到注意力权重\n        # dim=-1 表示沿 key 维度归一化，每行和为 1\n        weights = torch.softmax(scores, dim=-1)          # (B, H, S_q, S_k)\n\n        # Step 4: 加权求和: 注意力权重 @ V 得到上下文向量\n        attn = torch.matmul(weights, v)                  # (B, H, S_q, d_k)\n\n        # Step 5: 合并多头 + 输出投影\n        # transpose(1,2): (B, H, S_q, d_k) -> (B, S_q, H, d_k)\n        # contiguous(): 保证内存连续，因为 transpose 改变了 strides\n        # view(B, S_q, -1): 将 H * d_k = d_model 合并回最后一维\n        out = attn.transpose(1, 2).contiguous().view(B, S_q, -1)                  # (B, S_q, d_model)\n        return self.W_o(out)                             # 最终线性投影: (B, S_q, d_model) -> (B, S_q, d_model)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nmha = MultiHeadAttention(d_model=32, num_heads=4)\nx = torch.randn(2, 6, 32)\nout = mha.forward(x, x, x)\nprint(\"Self-attn shape:\", out.shape)\n\nQ = torch.randn(1, 3, 32)\nK = torch.randn(1, 7, 32)\nV = torch.randn(1, 7, 32)\nout2 = mha.forward(Q, K, V)\nprint(\"Cross-attn shape:\", out2.shape)",
+        "role": "demo"
+      },
+      {
+        "type": "markdown",
+        "source": "Multi-Head Attention splits the input into multiple heads, allowing the model to jointly attend to information from different representation subspaces.\n\n**Mathematical Formulation:**\nFor each head $h$:\n$$\\text{head}_h = \\text{Attention}(QW_q^h, KW_k^h, VW_v^h) = \\text{softmax}\\left(\\frac{QW_q^h (KW_k^h)^T}{\\sqrt{d_k}}\\right) VW_v^h$$\n$$\\text{MultiHead}(Q,K,V) = \\text{Concat}(\\text{head}_1, ..., \\text{head}_H) W_o$$\n\n**Key Insight:**\n- $d_k = d_{model} / H$ ensures total computation stays constant\n- Each head can learn different attention patterns (syntax, semantics, long-range dependencies)\n- The scaling factor $1/\\sqrt{d_k}$ prevents softmax saturation for large $d_k$",
+        "role": "explanation"
+      }
+    ]
+  },
+  "mixed_precision": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def mixed_precision_step(model, optimizer, loss_fn, x, y, loss_scale=1024.0):\n    # 1. Cast to fp16 for forward pass\n    model.half()\n    x_fp16 = x.half()\n    with torch.no_grad():\n        pass  # weights already fp16\n    output = model(x_fp16)\n    loss = loss_fn(output.float(), y)\n    loss_val = loss.item()\n\n    # 2. Scale loss and backward\n    optimizer.zero_grad()\n    (loss * loss_scale).backward()\n\n    # 3. Unscale gradients\n    for p in model.parameters():\n        if p.grad is not None:\n            p.grad.data = p.grad.data.float() / loss_scale\n\n    # 4. Update (fp32 master weights via optimizer)\n    model.float()\n    optimizer.step()\n\n    return loss_val",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(42)\nmodel = nn.Linear(8, 4)\noptimizer = torch.optim.SGD(model.parameters(), lr=0.01)\nloss_fn = nn.MSELoss()\n\nx = torch.randn(4, 8)\ny = torch.randn(4, 4)\n\nweights_before = model.weight.data.clone()\n\nloss_val = mixed_precision_step(model, optimizer, loss_fn, x, y)\n\nprint(\"Loss:\", loss_val)\nprint(\"Weights updated:\", not torch.allclose(model.weight.data, weights_before))\nprint(\"Model dtype after step:\", model.weight.dtype)",
+        "role": "demo"
+      }
+    ]
+  },
+  "mla": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def mla_attention(X, W_dkv, W_uk, W_uv, W_q, num_heads):\n    B, S, D = X.shape\n    D_h = W_q.shape[1] // num_heads\n    # Compress KV into low-rank latent\n    c_kv = X @ W_dkv                          # (B, S, kv_rank)\n    K = c_kv @ W_uk                            # (B, S, num_heads*D_h)\n    V = c_kv @ W_uv                            # (B, S, num_heads*D_h)\n    Q = X @ W_q                                # (B, S, num_heads*D_h)\n    # Reshape to multi-head format\n    def split_heads(t):\n        return t.view(B, S, num_heads, D_h).transpose(1, 2)  # Reshape to (B, heads, S, d_k)\n    Q, K, V = split_heads(Q), split_heads(K), split_heads(V)\n    scale = D_h ** -0.5\n    attn = torch.softmax(Q @ K.transpose(-2, -1) * scale, dim=-1)  # Apply softmax to get attention weights\n    out = (attn @ V).transpose(1, 2).reshape(B, S, num_heads * D_h)  # Transpose to (B, heads, S, d_k)\n    return out",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nB, S, D = 2, 6, 32\nnum_heads = 4\nD_h = 8          # head dim\nD_c = 8          # compressed KV dim (latent)\n\nW_dkv = torch.randn(D, D_c) * 0.1      # compress to latent\nW_uk  = torch.randn(D_c, num_heads * D_h) * 0.1  # up-project to K\nW_uv  = torch.randn(D_c, num_heads * D_h) * 0.1  # up-project to V\nW_q   = torch.randn(D, num_heads * D_h) * 0.1\n\nX = torch.randn(B, S, D)\n\nc_kv = X @ W_dkv\nK_full = c_kv @ W_uk\nprint(f\"Input shape:          {X.shape}\")       # (2, 6, 32)\nprint(f\"Compressed KV shape:  {c_kv.shape}\")    # (2, 6, 8)  <-- small latent\nprint(f\"Full K shape:         {K_full.shape}\")  # (2, 6, 32) <-- expanded\n\nout = mla_attention(X, W_dkv, W_uk, W_uv, W_q, num_heads)\nprint(f\"Output shape:         {out.shape}\")     # (2, 6, 32)",
+        "role": "demo"
+      }
+    ]
+  },
+  "mlp": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class SwiGLUMLP(nn.Module):  # 继承 nn.Module，注册为可训练模块\n    \"\"\"\n    SwiGLU MLP module.\n    \"\"\"\n    def __init__(self, d_model, d_ff):  # 初始化: 定义模型结构和参数\n        # Initialize layers and parameters\n        super().__init__()  # 调用父类 nn.Module 初始化，注册所有子模块\n        self.gate_proj = nn.Linear(d_model, d_ff)  # Linear projection\n        self.up_proj = nn.Linear(d_model, d_ff)  # Linear projection\n        self.down_proj = nn.Linear(d_ff, d_model)  # Linear projection\n\n    def forward(self, x):  # 前向传播: 定义数据流\n        # Compute forward pass\n        gate = self.gate_proj(x)\n        silu_gate = gate * torch.sigmoid(gate)\n        return self.down_proj(silu_gate * self.up_proj(x))",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "mlp = SwiGLUMLP(d_model=64, d_ff=128)\nx = torch.randn(2, 8, 64)\nprint('Output:', mlp(x).shape)\nprint('Params:', sum(p.numel() for p in mlp.parameters()))",
+        "role": "demo"
+      }
+    ]
+  },
+  "moe": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class _ManualReLU(nn.Module):  # 继承 nn.Module，注册为可训练模块\n    \"\"\"\n    Mixture of Experts (MoE) module.\n    \"\"\"\n    def forward(self, x):  # 前向传播: 定义数据流\n        # Compute forward pass\n        return x.clamp(min=0)\n\nclass MixtureOfExperts(nn.Module):  # 继承 nn.Module，注册为可训练模块\n    \"\"\"\n    Mixture of Experts (MoE) module.\n    \"\"\"\n    def __init__(self, d_model, d_ff, num_experts, top_k=2):  # 初始化: 定义模型结构和参数\n        # Initialize layers and parameters\n        super().__init__()  # 调用父类 nn.Module 初始化，注册所有子模块\n        self.top_k = top_k\n        self.router = nn.Linear(d_model, num_experts)  # Linear projection\n        self.experts = nn.ModuleList([  # 模块列表: PyTorch 自动追踪其中的子模块\n            nn.Sequential(nn.Linear(d_model, d_ff), _ManualReLU(), nn.Linear(d_ff, d_model))  # Linear projection\n            for _ in range(num_experts)\n        ])\n\n    def forward(self, x):  # 前向传播: 定义数据流\n        # Compute forward pass\n        orig_shape = x.shape\n        if x.dim() == 3:\n            B, S, D = x.shape\n            x_flat = x.reshape(-1, D)\n        else:\n            x_flat = x\n        logits = self.router(x_flat)\n        top_vals, top_idx = logits.topk(self.top_k, dim=-1)\n        weights = torch.softmax(top_vals, dim=-1)  # Apply softmax to get attention weights\n        output = torch.zeros_like(x_flat)\n        for k in range(self.top_k):\n            for e in range(len(self.experts)):\n                mask = (top_idx[:, k] == e)\n                if mask.any():\n                    output[mask] += weights[mask, k:k+1] * self.experts[e](x_flat[mask])\n        return output.reshape(orig_shape)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "moe = MixtureOfExperts(32, 64, num_experts=4, top_k=2)\nx = torch.randn(2, 8, 32)\nprint('Output:', moe(x).shape)\nprint('Params:', sum(p.numel() for p in moe.parameters()))",
+        "role": "demo"
+      }
+    ]
+  },
+  "moe_load_balance": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def moe_load_balance_loss(router_logits, num_experts):\n    N = router_logits.shape[0]\n    # f_i: fraction of tokens routed to each expert (argmax, non-differentiable)\n    assignments = router_logits.argmax(dim=-1)  # (N,)\n    f = torch.zeros(num_experts, device=router_logits.device)\n    for e in range(num_experts):\n        f[e] = (assignments == e).float().mean()  # 求均值\n    # P_i: mean router probability per expert (differentiable via softmax)\n    probs = torch.softmax(router_logits, dim=-1)  # (N, num_experts)\n    P = probs.mean(dim=0)                          # (num_experts,)\n    return num_experts * (f * P).sum()  # 求和",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "num_experts = 4\nN_tokens = 100\nlogits_uniform = torch.zeros(N_tokens, num_experts)\nloss_uniform = moe_load_balance_loss(logits_uniform, num_experts)\nprint(f\"Uniform routing loss: {loss_uniform.item():.4f}  (expected 1.0)\")\n\nlogits_collapsed = torch.zeros(N_tokens, num_experts)\nlogits_collapsed[:, 0] = 100.0\nloss_collapsed = moe_load_balance_loss(logits_collapsed, num_experts)\nprint(f\"Collapsed routing loss: {loss_collapsed.item():.4f}  (expected > 1.0)\")\n\ntorch.manual_seed(0)\nlogits_grad = torch.randn(16, num_experts, requires_grad=True)\nloss_grad = moe_load_balance_loss(logits_grad, num_experts)\nloss_grad.backward()\nprint(f\"Gradient exists: {logits_grad.grad is not None}\")",
+        "role": "demo"
+      }
+    ]
+  },
+  "mpnn_layer": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def mpnn_layer(A, X, E, W_msg, W_upd):\n    N, F = X.shape\n    Xi = X.unsqueeze(1).expand(N, N, F)\n    Xj = X.unsqueeze(0).expand(N, N, F)\n    inp = torch.cat([Xi, Xj, E], dim=-1)\n    msgs = torch.relu(inp @ W_msg)  # ReLU activation\n    msgs = msgs * A.unsqueeze(-1)\n    agg = msgs.sum(dim=1)  # 求和\n    return torch.relu(torch.cat([X, agg], dim=-1) @ W_upd)  # ReLU activation",
+        "role": "solution"
+      }
+    ]
+  },
+  "mse_loss": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef mse_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:\n    \"\"\"\n    Mean Squared Error: MSE = mean((pred - target)^2)\n    Standard regression loss.\n    \"\"\"\n    # 计算预测值与目标值的逐元素差，平方后取平均\n    # Element-wise difference, square, then mean\n    loss = torch.pow(pred - target, 2).mean()\n    return loss",
+        "role": "solution"
+      }
+    ]
+  },
+  "multi_token_prediction": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def multi_token_prediction_loss(hidden_states, heads, targets):\n    B, S, D = hidden_states.shape\n    N = len(heads)\n    total_loss = 0.0\n    for i, head in enumerate(heads):\n        logits = hidden_states @ head          # (B, S, vocab_size)\n        # Numerically stable log-softmax\n        logits_max = logits.max(dim=-1, keepdim=True).values  # 求最大值\n        shifted = logits - logits_max\n        log_probs = shifted - torch.log(torch.exp(shifted).sum(dim=-1, keepdim=True))  # 指数运算\n        # Gather log-prob of target tokens\n        tgt = targets[:, :, i]                 # (B, S)\n        log_p = log_probs.gather(-1, tgt.unsqueeze(-1)).squeeze(-1)\n        total_loss = total_loss + (-log_p.mean())  # 求均值\n    return total_loss / N",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nB, S, D, V = 2, 5, 16, 10\n\nhidden = torch.randn(B, S, D)\nhead_single = torch.randn(D, V)\ntargets_single = torch.randint(0, V, (B, S, 1))\n\nmtp_loss = multi_token_prediction_loss(hidden, [head_single], targets_single)\n\nlogits = hidden @ head_single\nce_loss = torch.nn.functional.cross_entropy(logits.reshape(-1, V), targets_single[:, :, 0].reshape(-1))\n\nprint(f\"MTP loss (N=1):  {mtp_loss.item():.6f}\")\nprint(f\"Standard CE:     {ce_loss.item():.6f}\")\nprint(f\"N=1 matches CE:  {torch.allclose(mtp_loss, ce_loss, atol=1e-5)}\")\n\nheads_3 = [torch.randn(D, V) for _ in range(3)]\ntargets_3 = torch.randint(0, V, (B, S, 3))\nloss_3 = multi_token_prediction_loss(hidden, heads_3, targets_3)\nprint(f\"MTP loss (N=3):  {loss_3.item():.6f}\")",
+        "role": "demo"
+      }
+    ]
+  },
+  "noise_schedule": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import math as _math\n\ndef noise_schedule(num_timesteps, schedule_type='cosine'):\n    T = num_timesteps\n    t = torch.arange(T, dtype=torch.float32)\n    if schedule_type == 'linear':\n        beta_start, beta_end = 1e-4, 0.02\n        betas = beta_start + (beta_end - beta_start) * t / (T - 1)\n        alpha_bar = torch.cumprod(1 - betas, dim=0)\n    elif schedule_type == 'cosine':\n        s = 0.008\n        f = torch.cos(((t / T + s) / (1 + s)) * (_math.pi / 2)) ** 2\n        f0 = _math.cos((s / (1 + s)) * (_math.pi / 2)) ** 2\n        alpha_bar = (f / f0).clamp(0.0001, 0.9999)\n    elif schedule_type == 'sigmoid':\n        beta_start, beta_end = 1e-4, 0.02\n        x = t / T * 12 - 6\n        sig = 1 / (1 + torch.exp(-x))  # 指数运算\n        betas = beta_start + (beta_end - beta_start) * (sig - sig.min()) / (sig.max() - sig.min())  # 求最大值\n        alpha_bar = torch.cumprod(1 - betas, dim=0)\n    else:\n        raise ValueError(f'Unknown schedule_type: {schedule_type}')\n    return alpha_bar",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "T = 1000\nschedules = ['linear', 'cosine', 'sigmoid']\ncheckpoints = [0, T // 4, T // 2, 3 * T // 4, T - 1]\nlabels = ['t=0', 'T/4', 'T/2', '3T/4', 'T-1']\n\ncol_w = 10\nheader = f\"{'t':>6}\" + \"\".join(f\"{s:>{col_w}}\" for s in schedules)\nprint(header)\nprint(\"-\" * len(header))\n\nresults = {s: noise_schedule(T, s) for s in schedules}\nfor label, idx in zip(labels, checkpoints):\n    row = f\"{label:>6}\" + \"\".join(f\"{results[s][idx].item():>{col_w}.4f}\" for s in schedules)\n    print(row)",
+        "role": "demo"
+      }
+    ]
+  },
+  "noisy_topk_gating": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass NoisyTopKGating(nn.Module):\n    \"\"\"\n    Noisy Top-K Gating for Mixture-of-Experts.\n    Routes each token to k experts with load-balancing noise.\n    \"\"\"\n    def __init__(self, input_dim: int, num_experts: int, top_k: int = 2):\n        super().__init__()\n        self.num_experts = num_experts\n        self.top_k = top_k\n        # 门控投影：将输入映射到专家数量维度\n        # Gate projection: map input to expert count dimension\n        self.W_g = nn.Linear(input_dim, num_experts)\n        # 噪声投影：学习每个输入的噪声强度\n        # Noise projection: learn noise magnitude per input\n        self.W_noise = nn.Linear(input_dim, num_experts)\n\n    def forward(self, x: torch.Tensor, training: bool = True):\n        # 干净的路由 logits\n        # Clean routing logits\n        clean_logits = self.W_g(x)  # (B, num_experts)\n\n        if training:\n            # 噪声强度：softplus 保证非负\n            # Noise magnitude: softplus ensures non-negative\n            noise_std = F.softplus(self.W_noise(x))\n            # 采样高斯噪声\n            # Sample Gaussian noise\n            noise = torch.randn_like(clean_logits) * noise_std\n            noisy_logits = clean_logits + noise\n        else:\n            noisy_logits = clean_logits\n\n        # Top-K 选择：找出每个 token 最匹配的 k 个专家\n        # Top-K selection: find k best experts per token\n        top_k_logits, top_k_indices = torch.topk(noisy_logits, self.top_k, dim=-1)\n\n        # 对选中的专家做 softmax，得到路由权重\n        # Softmax over selected experts to get routing weights\n        top_k_weights = F.softmax(top_k_logits, dim=-1)\n\n        return top_k_weights, top_k_indices",
+        "role": "solution"
+      }
+    ]
+  },
+  "ntk_rope": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def ntk_rope(q, k, scale):\n    B, S, D = q.shape\n    new_base = 10000.0 * (scale ** (D / (D - 2)))\n    pos = torch.arange(S, device=q.device).float().unsqueeze(1)\n    dim = torch.arange(0, D, 2, device=q.device).float()\n    freqs = 1.0 / (new_base ** (dim / D))\n    angles = pos * freqs\n    cos_a = torch.cos(angles)\n    sin_a = torch.sin(angles)\n\n    def rotate(x):\n        x1, x2 = x[..., 0::2], x[..., 1::2]\n        return torch.stack([x1 * cos_a - x2 * sin_a,\n                            x1 * sin_a + x2 * cos_a], dim=-1).flatten(-2)\n\n    return rotate(q), rotate(k)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "B, S, D = 1, 8, 16\nq = torch.randn(B, S, D)\nk = torch.randn(B, S, D)\n\nq1, k1 = ntk_rope(q, k, scale=1.0)\nq4, k4 = ntk_rope(q, k, scale=4.0)\n\nprint(\"scale=1 base:\", 10000.0 * (1.0 ** (D / (D - 2))))\nprint(\"scale=4 base:\", 10000.0 * (4.0 ** (D / (D - 2))))\nprint()\nprint(\"Norm preservation (scale=1):\")\nprint(\"  q input norm:\", q.norm(dim=-1).mean().item())\nprint(\"  q output norm:\", q1.norm(dim=-1).mean().item())\nprint()\nprint(\"Norm preservation (scale=4):\")\nprint(\"  q input norm:\", q.norm(dim=-1).mean().item())\nprint(\"  q output norm:\", q4.norm(dim=-1).mean().item())",
+        "role": "demo"
+      }
+    ]
+  },
+  "one_hot_encoding": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef one_hot_encoding(indices: torch.Tensor, num_classes: int) -> torch.Tensor:\n    \"\"\"\n    One-hot encode class indices.\n    indices: (N,) with values in [0, num_classes-1]\n    Returns: (N, num_classes) one-hot tensor (float32).\n    \"\"\"\n    # 创建全零输出张量\n    # Create zero output tensor\n    one_hot = torch.zeros(indices.shape[0], num_classes, dtype=torch.float32)\n\n    # 使用 scatter 在对应位置填1\n    # Use scatter to fill 1s at corresponding positions\n    one_hot.scatter_(1, indices.unsqueeze(1), 1.0)\n\n    return one_hot",
+        "role": "solution"
+      }
+    ]
+  },
+  "paged_attention": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def paged_attention(Q, k_pages, v_pages, block_table, context_len, block_size):\n    B, _, D = Q.shape\n    outputs = []\n    for b in range(B):\n        # Gather K/V pages for this sequence\n        phys_blocks = block_table[b]  # (max_blocks,)\n        K_gathered = k_pages[phys_blocks].reshape(-1, D)  # (max_blocks*block_size, D)\n        V_gathered = v_pages[phys_blocks].reshape(-1, D)\n        # Slice to actual context length\n        K_ctx = K_gathered[:context_len].unsqueeze(0)  # (1, context_len, D)\n        V_ctx = V_gathered[:context_len].unsqueeze(0)\n        # Scaled dot-product attention\n        scale = D ** -0.5\n        scores = (Q[b:b+1] @ K_ctx.transpose(-2, -1)) * scale  # (1, 1, context_len)\n        attn = torch.softmax(scores, dim=-1)  # Apply softmax to get attention weights\n        out = attn @ V_ctx  # (1, 1, D)\n        outputs.append(out)\n    return torch.cat(outputs, dim=0)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nB, S, D = 2, 8, 16\nblock_size = 4\nnum_blocks = S // block_size\n\nK_full = torch.randn(B, S, D)\nV_full = torch.randn(B, S, D)\nQ = torch.randn(B, 1, D)\n\nscale = D ** -0.5\nscores_ref = (Q @ K_full.transpose(-2, -1)) * scale\nref_out = torch.softmax(scores_ref, dim=-1) @ V_full\n\ntotal_pages = B * num_blocks\nk_pages = torch.zeros(total_pages, block_size, D)\nv_pages = torch.zeros(total_pages, block_size, D)\nblock_table = []\nfor b in range(B):\n    page_ids = []\n    for blk in range(num_blocks):\n        pid = b * num_blocks + blk\n        k_pages[pid] = K_full[b, blk*block_size:(blk+1)*block_size]\n        v_pages[pid] = V_full[b, blk*block_size:(blk+1)*block_size]\n        page_ids.append(pid)\n    block_table.append(page_ids)\n\npaged_out = paged_attention(Q, k_pages, v_pages, block_table, context_len=S, block_size=block_size)\n\nprint('Shape:', paged_out.shape)\nprint('Max diff vs reference:', (paged_out - ref_out).abs().max().item())\nprint('Match:', torch.allclose(paged_out, ref_out, atol=1e-5))",
+        "role": "demo"
+      }
+    ]
+  },
+  "ppo_loss": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def ppo_loss(new_logps: Tensor, old_logps: Tensor, advantages: Tensor,\n             clip_ratio: float = 0.2) -> Tensor:\n    \"\"\"PPO clipped surrogate loss.\n\n    new_logps: (B,) current policy log-probs\n    old_logps: (B,) old policy log-probs (treated as constant)\n    advantages: (B,) advantage estimates (treated as constant)\n    returns: scalar loss (Tensor)\n    \"\"\"\n    # Detach old_logps and advantages so gradients only flow through new_logps\n    old_logps_detached = old_logps.detach()\n    adv_detached = advantages.detach()\n\n    # Importance sampling ratio r = pi_new / pi_old in log-space\n    ratios = torch.exp(new_logps - old_logps_detached)  # 指数运算\n\n    # Unclipped and clipped objectives\n    unclipped = ratios * adv_detached\n    clipped = torch.clamp(ratios, 1.0 - clip_ratio, 1.0 + clip_ratio) * adv_detached\n\n    # PPO objective: negative mean of the more conservative objective\n    return -torch.min(unclipped, clipped).mean()  # 求均值",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "new_logps = torch.tensor([0.0, -0.2, -0.4, -0.6])\nold_logps = torch.tensor([0.0, -0.1, -0.5, -0.5])\nadvantages = torch.tensor([1.0, -1.0, 0.5, -0.5])\nprint('Loss:', ppo_loss(new_logps, old_logps, advantages, clip_ratio=0.2))",
+        "role": "demo"
+      }
+    ]
+  },
+  "qlora": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class QLoRALinear(nn.Module):  # 继承 nn.Module，注册为可训练模块\n    \"\"\"\n    QLoRA module.\n    \"\"\"\n    def __init__(self, in_features, out_features, rank, alpha=1.0):  # 初始化: 定义模型结构和参数\n        # Initialize layers and parameters\n        super().__init__()  # 调用父类 nn.Module 初始化，注册所有子模块\n        self.rank = rank\n        self.alpha = alpha\n        self.quantized_weight = nn.Parameter(\n            torch.zeros(out_features, in_features, dtype=torch.int8), requires_grad=False)\n        self.scale = nn.Parameter(torch.ones(out_features, 1))\n        self.lora_A = nn.Parameter(torch.randn(in_features, rank) * 0.01)\n        self.lora_B = nn.Parameter(torch.zeros(rank, out_features))\n\n    def set_weight(self, W_fp32):\n        scale = W_fp32.abs().max(dim=1, keepdim=True).values.clamp(min=1e-8) / 127.0  # 求最大值\n        q = (W_fp32 / scale).round().clamp(-127, 127).to(torch.int8)\n        self.quantized_weight.data.copy_(q)\n        self.scale.data.copy_(scale)\n\n    def forward(self, x):  # 前向传播: 定义数据流\n        # Compute forward pass\n        W_fp = self.quantized_weight.float() * self.scale\n        base = x @ W_fp.T\n        delta = x @ self.lora_A @ self.lora_B * (self.alpha / self.rank)\n        return base + delta",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nin_f, out_f, rank = 64, 32, 4\nlayer = QLoRALinear(in_f, out_f, rank, alpha=2.0)\n\nW_ref = torch.randn(out_f, in_f)\nlayer.set_weight(W_ref)\n\nx = torch.randn(8, in_f)\ny_qlora = layer(x)\ny_ref = x @ W_ref.T  # full-precision baseline (no LoRA delta)\n\nprint(\"Output shape:\", y_qlora.shape)          # (8, 32)\nprint(\"Max abs error vs fp32:\", (y_qlora - y_ref).abs().max().item())",
+        "role": "demo"
+      }
+    ]
+  },
+  "relu": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def relu(x: torch.Tensor) -> torch.Tensor:  # ReLU activation\n    return x * (x > 0).float()",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "x = torch.tensor([-2., -1., 0., 1., 2.])\nprint(\"Input: \", x)\nprint(\"Output:\", relu(x))",
+        "role": "demo"
+      },
+      {
+        "type": "markdown",
+        "source": "ReLU (Rectified Linear Unit) is the most widely used activation function.\n\n**Formula:**\n$$\\text{ReLU}(x) = \\max(0, x)$$\n\n**Properties:**\n- Non-linear but piecewise linear\n- Computationally cheap (no exponentials or divisions)\n- Sparse activation: ~50% of neurons are inactive on average\n\n**The Dying ReLU Problem:**\nIf a neuron's weights are updated such that it always outputs 0, gradients are zero and it never recovers. Solutions: LeakyReLU, PReLU, ELU.",
+        "role": "explanation"
+      }
+    ]
+  },
+  "residual_connection": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport torch.nn as nn\n\ndef residual_connection(x: torch.Tensor, f_x: torch.Tensor) -> torch.Tensor:\n    \"\"\"\n    Residual connection: output = x + f(x)\n    If shapes differ, project x to match f(x) shape.\n    \"\"\"\n    # 检查输入和子层输出的形状是否一致\n    # Check if input and sublayer output shapes match\n    if x.shape == f_x.shape:\n        return x + f_x\n    else:\n        # 维度不匹配时，使用线性投影（这里用随机初始化演示）\n        # When dims mismatch, use linear projection (random init for demo)\n        in_features = x.shape[-1]\n        out_features = f_x.shape[-1]\n        proj = nn.Linear(in_features, out_features, bias=False)\n        with torch.no_grad():\n            # Initialize as identity-like for stability demonstration\n            nn.init.eye_(proj.weight[:min(in_features, out_features), :min(in_features, out_features)])\n        return proj(x) + f_x",
+        "role": "solution"
+      }
+    ]
+  },
+  "reward_model": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def reward_model_loss(chosen_hidden, rejected_hidden, reward_head):\n    r_chosen = (chosen_hidden @ reward_head).squeeze(-1)     # (B,)\n    r_rejected = (rejected_hidden @ reward_head).squeeze(-1) # (B,)\n    margin = r_chosen - r_rejected\n    # manual log-sigmoid: log(1/(1+exp(-x))) = -log(1+exp(-x))\n    loss = -torch.log(1.0 / (1.0 + torch.exp(-margin))).mean()  # 指数运算\n    return loss",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\n\nB, D = 8, 64\nreward_head = torch.randn(D, 1)\n\nh = torch.randn(B, D)\nloss_equal = reward_model_loss(h, h, reward_head)\nprint(f\"Equal hidden states => loss = {loss_equal.item():.4f}  (expected ≈ {math.log(2):.4f})\")\n\nchosen  = torch.ones(B, D)\nrejected = -torch.ones(B, D)\nloss_good = reward_model_loss(chosen, rejected, reward_head)\nprint(f\"Chosen >> rejected  => loss = {loss_good.item():.4f}  (expected small)\")",
+        "role": "demo"
+      }
+    ]
+  },
+  "ring_attention": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def ring_attention(Q, K, V, num_devices):\n    B, S, D = Q.shape\n    chunk = S // num_devices\n    scale = D ** -0.5\n\n    Q_chunks = Q.split(chunk, dim=1)   # list of (B, chunk, D)\n    K_chunks = K.split(chunk, dim=1)\n    V_chunks = V.split(chunk, dim=1)\n\n    outputs = []\n    for i, Qi in enumerate(Q_chunks):\n        # Online softmax accumulators\n        m = torch.full((B, chunk, 1), float('-inf'), device=Q.device, dtype=Q.dtype)\n        l = torch.zeros(B, chunk, 1, device=Q.device, dtype=Q.dtype)\n        o = torch.zeros(B, chunk, D, device=Q.device, dtype=Q.dtype)\n\n        for j in range(num_devices):\n            Kj = K_chunks[(i + j) % num_devices]\n            Vj = V_chunks[(i + j) % num_devices]\n            scores = (Qi @ Kj.transpose(-2, -1)) * scale  # (B, chunk, chunk)\n            m_new = torch.maximum(m, scores.max(dim=-1, keepdim=True).values)  # 求最大值\n            exp_scores = torch.exp(scores - m_new)  # 指数运算\n            l_new = l * torch.exp(m - m_new) + exp_scores.sum(dim=-1, keepdim=True)  # 指数运算\n            o = o * (l * torch.exp(m - m_new)) / l_new + (exp_scores @ Vj) / l_new  # 指数运算\n            m, l = m_new, l_new\n\n        outputs.append(o)\n\n    return torch.cat(outputs, dim=1)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(42)\nB, S, D = 2, 8, 16\nQ = torch.randn(B, S, D)\nK = torch.randn(B, S, D)\nV = torch.randn(B, S, D)\n\nscale = D ** -0.5\nscores_ref = (Q @ K.transpose(-2, -1)) * scale\nref_out = torch.softmax(scores_ref, dim=-1) @ V\n\nfor num_devices in [2, 4]:\n    ring_out = ring_attention(Q, K, V, num_devices=num_devices)\n    max_diff = (ring_out - ref_out).abs().max().item()\n    match = torch.allclose(ring_out, ref_out, atol=1e-5)\n    print(f'num_devices={num_devices}  shape={tuple(ring_out.shape)}  max_diff={max_diff:.2e}  match={match}')",
+        "role": "demo"
+      }
+    ]
+  },
+  "rmsnorm": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def rms_norm(x, weight, eps=1e-6):\n    \"\"\"\n    RMS Normalization implementation (used in LLaMA, Mistral).\n    相比 LayerNorm 省去了均值计算，仅使用均方根进行缩放，计算量减少约30%。\n    \"\"\"\n    # 计算均方根 RMS(x) = √( (1/D) Σ_i x_i² )\n    # 沿特征维度求均值后开方，结果形状与 x 的最后一个维度 broadcast 兼容\n    rms = torch.sqrt(x.pow(2).mean(dim=-1, keepdim=True) + eps)   # (B, S, 1)\n\n    # 归一化: x / RMS(x)，再乘以可学习的缩放参数 weight\n    # 没有偏移项（无 β），因为下一层（如注意力）对输入平移不敏感\n    return (x / rms) * weight                            # (B, S, D)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "x = torch.randn(2, 8)\nout = rms_norm(x, torch.ones(8))\nprint('RMS of output:', out.pow(2).mean(dim=-1).sqrt())",
+        "role": "demo"
+      },
+      {
+        "type": "markdown",
+        "source": "RMSNorm simplifies LayerNorm by removing mean centering, using only root-mean-square scaling.\n\n**Formula:**\n$$\\text{RMS}(x) = \\sqrt{\\frac{1}{D} \\sum_{i=1}^D x_i^2}$$\n$$\\text{RMSNorm}(x) = \\frac{x}{\\text{RMS}(x) + \\epsilon} \\odot \\gamma$$\n\n**Comparison with LayerNorm:**\n- ~30% fewer FLOPs (no mean computation)\n- Empirically works as well as LayerNorm for most tasks\n- Used in LLaMA, Mistral, and other modern LLMs\n\nThe key insight: mean subtraction may be unnecessary if the next layer (e.g., attention) is shift-invariant.",
+        "role": "explanation"
+      }
+    ]
+  },
+  "rope": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def apply_rope(q, k):\n    B, S, D = q.shape\n    pos = torch.arange(S, device=q.device).unsqueeze(1).float()\n    dim = torch.arange(0, D, 2, device=q.device).float()\n    freqs = 1.0 / (10000.0 ** (dim / D))\n    angles = pos * freqs\n    cos_a = torch.cos(angles)\n    sin_a = torch.sin(angles)\n\n    def rotate(x):\n        x1, x2 = x[..., 0::2], x[..., 1::2]\n        return torch.stack([x1 * cos_a - x2 * sin_a,\n                            x1 * sin_a + x2 * cos_a], dim=-1).flatten(-2)\n\n    return rotate(q), rotate(k)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "q = torch.randn(1, 8, 16)\nk = torch.randn(1, 8, 16)\nqr, kr = apply_rope(q, k)\nprint('Shape preserved:', qr.shape == q.shape)\nprint('Norm preserved:', torch.allclose(q.norm(dim=-1), qr.norm(dim=-1), atol=1e-4))",
+        "role": "demo"
+      }
+    ]
+  },
+  "sequence_pack": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nfrom torch.nn.utils.rnn import pad_sequence\n\ndef sequence_pack(sequences: list[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:\n    \"\"\"\n    Pack variable-length sequences into a padded tensor.\n    Returns: (padded_tensor, mask)\n    padded_tensor: (batch_size, max_len)\n    mask: (batch_size, max_len), 1 for valid, 0 for padding.\n    \"\"\"\n    # 找到最大序列长度\n    # Find maximum sequence length\n    max_len = max(seq.shape[0] for seq in sequences)\n    batch_size = len(sequences)\n\n    # 创建填充张量和掩码\n    # Create padded tensor and mask\n    padded = torch.zeros(batch_size, max_len, dtype=sequences[0].dtype)\n    mask = torch.zeros(batch_size, max_len, dtype=torch.float32)\n\n    # 将每个序列复制到对应行，并标记有效位置\n    # Copy each sequence to its row and mark valid positions\n    for i, seq in enumerate(sequences):\n        length = seq.shape[0]\n        padded[i, :length] = seq\n        mask[i, :length] = 1.0\n\n    return padded, mask",
+        "role": "solution"
+      }
+    ]
+  },
+  "sgd_momentum": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef sgd_momentum(param: torch.Tensor, grad: torch.Tensor, velocity: torch.Tensor,\n                 lr: float, momentum: float) -> tuple[torch.Tensor, torch.Tensor]:\n    \"\"\"\n    SGD with momentum update step.\n    v_new = momentum * v + grad\n    p_new = p - lr * v_new\n    Returns: (param_new, velocity_new)\n    \"\"\"\n    # 更新速度：保留上一时刻速度的一部分 + 当前梯度\n    # Update velocity: keep part of previous velocity + current gradient\n    velocity_new = momentum * velocity + grad\n\n    # 用新速度更新参数\n    # Update parameter with new velocity\n    param_new = param - lr * velocity_new\n\n    return param_new, velocity_new",
+        "role": "solution"
+      }
+    ]
+  },
+  "sigmoid": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef sigmoid(x: torch.Tensor) -> torch.Tensor:\n    \"\"\"\n    Numerically stable sigmoid: σ(x) = 1 / (1 + exp(-x))\n    For x >= 0: compute as 1 / (1 + exp(-x))\n    For x < 0:  compute as exp(x) / (1 + exp(x)) to avoid overflow.\n    \"\"\"\n    # 数值稳定的实现：根据输入符号选择计算路径\n    # Numerically stable: choose computation path based on sign\n    return torch.where(\n        x >= 0,\n        1.0 / (1.0 + torch.exp(-x)),\n        torch.exp(x) / (1.0 + torch.exp(x))\n    )",
+        "role": "solution"
+      }
+    ]
+  },
+  "sinusoidal_pe": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def sinusoidal_pe(seq_len, d_model):\n    pos = torch.arange(seq_len).float().unsqueeze(1)\n    dim = torch.arange(0, d_model, 2).float()\n    freqs = 1.0 / (10000.0 ** (dim / d_model))\n    angles = pos * freqs\n    pe = torch.zeros(seq_len, d_model)\n    pe[:, 0::2] = torch.sin(angles)\n    pe[:, 1::2] = torch.cos(angles)\n    return pe",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "pe = sinusoidal_pe(10, 16)\nprint(pe.shape)\nprint(pe[:3, :4])",
+        "role": "demo"
+      }
+    ]
+  },
+  "sliding_window": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def sliding_window_attention(Q, K, V, window_size):\n    d_k = K.size(-1)\n    scores = torch.bmm(Q, K.transpose(1, 2)) / math.sqrt(d_k)  # Transpose to (B, heads, S, d_k)\n    S = Q.size(1)\n    idx = torch.arange(S, device=Q.device)\n    mask = (idx.unsqueeze(0) - idx.unsqueeze(1)).abs() > window_size\n    scores = scores.masked_fill(mask.unsqueeze(0), float('-inf'))  # 应用掩码: 将指定位置替换为指定值\n    weights = torch.softmax(scores, dim=-1)  # Apply softmax to get attention weights\n    return torch.bmm(weights, V)  # 批量矩阵乘法",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "Q=torch.randn(1,6,8); K=torch.randn(1,6,8); V=torch.randn(1,6,8)\nprint('window=0==V?', torch.allclose(sliding_window_attention(Q,K,V,0), V, atol=1e-5))",
+        "role": "demo"
+      }
+    ]
+  },
+  "softmax": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def my_softmax(x):\n    \"\"\"\n    Numerically stable Softmax implementation.\n    Softmax 将任意实数向量映射为概率分布，所有元素非负且和为1。\n    \"\"\"\n    # 数值稳定性: 先减去最大值，防止指数溢出\n    # x_max 沿最后一个维度（类别维度）取最大值，keepdim=True 保证广播兼容\n    x_max = x.max(dim=-1, keepdim=True).values           # max(x) 沿类别维\n\n    # 指数化: exp(x - x_max)，所有值 ≤ 1，避免溢出\n    exp_x = torch.exp(x - x_max)                         # e^(x_i - max(x))\n\n    # 归一化: 每个元素除以该维度上的指数和\n    # dim=-1 保证每个样本/位置独立归一化\n    return exp_x / exp_x.sum(dim=-1, keepdim=True)       # (B, S, C)，每行和为1",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "x = torch.tensor([1.0, 2.0, 3.0])\nprint(\"Output:\", my_softmax(x, dim=-1))\nprint(\"Sum:   \", my_softmax(x, dim=-1).sum())\nprint(\"Ref:   \", torch.softmax(x, dim=-1))",
+        "role": "demo"
+      },
+      {
+        "type": "markdown",
+        "source": "Softmax converts a vector of real values into a probability distribution.\n\n**Formula:**\n$$\\text{softmax}(x_i) = \\frac{e^{x_i}}{\\sum_{j=1}^C e^{x_j}}$$\n\n**Numerical Stability:**\nDirect computation can overflow for large $x_i$. The stable version subtracts $\\max(x)$ before exponentiation:\n$$\\text{softmax}(x_i) = \\frac{e^{x_i - \\max(x)}}{\\sum_{j=1}^C e^{x_j - \\max(x)}}$$\n\n**Temperature Scaling:**\n$$\\text{softmax}_\\tau(x_i) = \\frac{e^{x_i / \\tau}}{\\sum_j e^{x_j / \\tau}}$$\n- $\\tau \\to 0$: sharp (argmax-like)\n- $\\tau \\to \\infty$: uniform distribution",
+        "role": "explanation"
+      }
+    ]
+  },
+  "softmax_temperature": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef softmax_temperature(logits: torch.Tensor, temperature: float) -> torch.Tensor:\n    \"\"\"\n    Softmax with temperature scaling.\n    p_i = exp(z_i / T) / sum(exp(z_j / T))\n    T > 1: smoother (more uniform), T < 1: sharper (more peaky).\n    \"\"\"\n    # 先将 logits 除以温度，再做数值稳定的 softmax\n    # Divide logits by temperature, then numerically stable softmax\n    scaled = logits / temperature\n    max_val = scaled.max(dim=-1, keepdim=True).values\n    exp_scaled = torch.exp(scaled - max_val)\n    probs = exp_scaled / exp_scaled.sum(dim=-1, keepdim=True)\n    return probs",
+        "role": "solution"
+      }
+    ]
+  },
+  "speculative_decoding": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def speculative_decode(target_probs, draft_probs, draft_tokens):\n    K = len(draft_tokens)\n    accepted = []\n    for i in range(K):\n        t = draft_tokens[i].item()\n        ratio = target_probs[i, t] / max(draft_probs[i, t].item(), 1e-10)\n        if torch.rand(1).item() < min(1.0, ratio.item()):\n            accepted.append(t)\n        else:\n            adjusted = torch.clamp(target_probs[i] - draft_probs[i], min=0)\n            s = adjusted.sum()  # 求和\n            if s > 0:\n                adjusted = adjusted / s\n            else:\n                adjusted = torch.ones_like(adjusted) / adjusted.shape[0]\n            accepted.append(torch.multinomial(adjusted, 1).item())\n            return accepted\n    return accepted",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nprobs = torch.softmax(torch.randn(4, 10), dim=-1)\ntokens = torch.tensor([2, 5, 1, 8])\nprint('Perfect draft:', speculative_decode(probs, probs, tokens))",
+        "role": "demo"
+      }
+    ]
+  },
+  "stochastic_depth": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport torch.nn as nn\n\nclass StochasticDepth(nn.Module):\n    \"\"\"\n    Stochastic Depth (DropPath): randomly drop residual branches during training.\n    output = x + b * f(x) where b ~ Bernoulli(1 - drop_prob)\n    \"\"\"\n    def __init__(self, drop_prob: float = 0.1):\n        super().__init__()\n        self.drop_prob = drop_prob\n        self.keep_prob = 1.0 - drop_prob\n\n    def forward(self, x: torch.Tensor, f_x: torch.Tensor) -> torch.Tensor:\n        if self.training:\n            if self.drop_prob == 0.0:\n                return x + f_x\n            # 训练时：以概率 drop_prob 丢弃整个分支\n            # Training: drop the entire branch with probability drop_prob\n            shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # (B, 1, 1, ...)\n            mask = torch.rand(shape, device=x.device) < self.keep_prob\n            # 对存活的分支做期望归一化：E[b] = keep_prob，所以除以 keep_prob\n            # Normalize by keep_prob for surviving branches\n            return x + f_x * mask / self.keep_prob\n        else:\n            # 推理时：取期望，输出 = x + (1-p) * f(x)\n            # Inference: expectation, output = x + (1-p) * f(x)\n            return x + self.keep_prob * f_x",
+        "role": "solution"
+      }
+    ]
+  },
+  "swiglu": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def swiglu(x, W1, W2, Wgate):\n    h = x @ W1\n    gate = x @ Wgate\n    swish_gate = gate * torch.sigmoid(gate)\n    return (h * swish_gate) @ W2",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nB, D, H = 2, 8, 16\nx = torch.randn(B, D)\nW1 = torch.randn(D, H)\nW2 = torch.randn(H, D)\nWgate = torch.randn(D, H)\n\nout = swiglu(x, W1, W2, Wgate)\nprint(\"Output shape:\", out.shape)\n\ngate = x @ Wgate\nswish_gate = gate * torch.sigmoid(gate)\nprint(\"Gate (swish) sample values:\", swish_gate[0, :4])",
+        "role": "demo"
+      }
+    ]
+  },
+  "tanh": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef tanh(x: torch.Tensor) -> torch.Tensor:\n    \"\"\"\n    Hyperbolic tangent: tanh(x) = (e^x - e^{-x}) / (e^x + e^{-x})\n    Zero-centered activation with range (-1, 1).\n    \"\"\"\n    # 使用 torch.tanh 是最佳实践（内部有CUDNN优化）\n    # Using torch.tanh is best practice (CUDNN optimized)\n    return torch.tanh(x)",
+        "role": "solution"
+      }
+    ]
+  },
+  "tensor_parallel": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class TensorParallelMLP(nn.Module):  # 继承 nn.Module，注册为可训练模块\n    \"\"\"\n    Tensor Parallel MLP module.\n    \"\"\"\n    def __init__(self, d_model, d_ff, world_size):  # 初始化: 定义模型结构和参数\n        # Initialize layers and parameters\n        super().__init__()  # 调用父类 nn.Module 初始化，注册所有子模块\n        self.world_size = world_size\n        shard_size = d_ff // world_size\n        # Column-parallel: W1 shards (d_model, shard_size) each\n        self.w1_shards = nn.ParameterList([\n            nn.Parameter(torch.randn(d_model, shard_size) * (2 / d_model) ** 0.5)\n            for _ in range(world_size)\n        ])\n        # Row-parallel: W2 shards (shard_size, d_model) each\n        self.w2_shards = nn.ParameterList([\n            nn.Parameter(torch.randn(shard_size, d_model) * (2 / d_ff) ** 0.5)\n            for _ in range(world_size)\n        ])\n\n    def forward(self, x):  # 前向传播: 定义数据流\n        # Compute forward pass\n        # Column-parallel forward + row-parallel + all-reduce (sum)\n        output = None\n        for w1, w2 in zip(self.w1_shards, self.w2_shards):\n            z = x @ w1\n            h = z * 0.5 * (1.0 + torch.erf(z / (2.0 ** 0.5)))  # GELU\n            partial = h @ w2                        # (B, d_model)\n            output = partial if output is None else output + partial\n        return output",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(42)\nd_model, d_ff, world_size = 64, 256, 4\nx = torch.randn(2, d_model)\n\ntp_mlp = TensorParallelMLP(d_model, d_ff, world_size)\nout = tp_mlp(x)\nprint(\"Output shape:\", out.shape)  # expect (2, 64)\n\nw1_full = torch.cat([p.data for p in tp_mlp.w1_shards], dim=1)  # (d_model, d_ff)\nw2_full = torch.cat([p.data for p in tp_mlp.w2_shards], dim=0)  # (d_ff, d_model)\nref = torch.nn.functional.gelu(x @ w1_full) @ w2_full\n\nprint(\"Max diff vs reference:\", (out - ref).abs().max().item())  # expect ~0",
+        "role": "demo"
+      }
+    ]
+  },
+  "topk_sampling": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def sample_top_k_top_p(logits, top_k=0, top_p=1.0, temperature=1.0):\n    logits = logits / max(temperature, 1e-8)\n    if top_k > 0:\n        top_k_val = logits.topk(top_k).values[-1]\n        logits[logits < top_k_val] = float('-inf')\n    if top_p < 1.0:\n        sorted_logits, sorted_idx = torch.sort(logits, descending=True)\n        probs = torch.softmax(sorted_logits, dim=-1)  # Apply softmax to get attention weights\n        cumsum = torch.cumsum(probs, dim=-1)\n        mask = (cumsum - probs) > top_p\n        sorted_logits[mask] = float('-inf')\n        logits = torch.empty_like(logits).scatter_(0, sorted_idx, sorted_logits)\n    probs = torch.softmax(logits, dim=-1)  # Apply softmax to get attention weights\n    return torch.multinomial(probs, 1).item()",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "logits = torch.tensor([1.0, 5.0, 2.0, 0.5])\nprint('top_k=1:', sample_top_k_top_p(logits.clone(), top_k=1))\nprint('top_p=0.5:', sample_top_k_top_p(logits.clone(), top_p=0.5))",
+        "role": "demo"
+      }
+    ]
+  },
+  "transformer_decoder": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class TransformerDecoderLayer(nn.Module):\n    \"\"\"\n    单个 Transformer Decoder Layer (Pre-Norm + 3 sub-layers).\n    1. Masked Self-Attention (causal, 只能看已生成的 token)\n    2. Cross-Attention (Q from decoder, K/V from encoder)\n    3. Feed-Forward Network\n    每层都有残差连接和 Dropout。\n    \"\"\"\n    def __init__(self, d_model, num_heads, d_ff, dropout=0.1):\n        super().__init__()\n        self.self_attn = nn.MultiheadAttention(d_model, num_heads, batch_first=True)\n        self.cross_attn = nn.MultiheadAttention(d_model, num_heads, batch_first=True)\n        self.linear1 = nn.Linear(d_model, d_ff)\n        self.linear2 = nn.Linear(d_ff, d_model)\n        self.norm1 = nn.LayerNorm(d_model)               # Self-Attention 前\n        self.norm2 = nn.LayerNorm(d_model)               # Cross-Attention 前\n        self.norm3 = nn.LayerNorm(d_model)               # FFN 前\n        self.dropout = nn.Dropout(dropout)\n        self.activation = nn.GELU()\n\n    def forward(self, x, memory):\n        # Sub-layer 1: Masked Self-Attention (causal)\n        # attn_mask 保证每个位置只能关注自己和之前的位置\n        attn_mask = torch.triu(torch.ones(x.size(1), x.size(1)), diagonal=1).bool().to(x.device)\n        self_out, _ = self.self_attn(self.norm1(x), self.norm1(x), self.norm1(x),\n                                      attn_mask=attn_mask, need_weights=False)\n        x = x + self.dropout(self_out)                   # 残差连接\n\n        # Sub-layer 2: Cross-Attention (decoder attends to encoder output)\n        # Q from decoder, K/V from encoder memory\n        cross_out, _ = self.cross_attn(self.norm2(x), memory, memory, need_weights=False)\n        x = x + self.dropout(cross_out)                  # 残差连接\n\n        # Sub-layer 3: Feed-Forward Network\n        ffn_out = self.linear2(self.activation(self.linear1(self.norm3(x))))\n        x = x + self.dropout(ffn_out)                    # 残差连接\n        return x\n\n\nclass TransformerDecoder(nn.Module):\n    \"\"\"\n    完整的 Transformer Decoder (用于 Seq2Seq 或自回归生成)。\n    包含词嵌入、位置编码、N 个 Decoder Layer、最终投影到词表。\n    \"\"\"\n    def __init__(self, vocab_size, d_model, num_heads, d_ff, num_layers, max_len=512, dropout=0.1):\n        super().__init__()\n        self.embedding = nn.Embedding(vocab_size, d_model)\n        self.d_model = d_model\n\n        # 正弦位置编码\n        pe = torch.zeros(max_len, d_model)\n        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)\n        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))\n        pe[:, 0::2] = torch.sin(position * div_term)\n        pe[:, 1::2] = torch.cos(position * div_term)\n        self.register_buffer('pe', pe.unsqueeze(0))\n\n        self.layers = nn.ModuleList([\n            TransformerDecoderLayer(d_model, num_heads, d_ff, dropout)\n            for _ in range(num_layers)\n        ])\n        self.norm = nn.LayerNorm(d_model)\n        self.fc_out = nn.Linear(d_model, vocab_size)     # 投影到词表维度，用于预测下一个 token\n        self.dropout = nn.Dropout(dropout)\n\n    def forward(self, x, memory):\n        # 词嵌入 + 位置编码 + Dropout\n        x = self.embedding(x) * math.sqrt(self.d_model)  # (B, S, d_model)\n        x = x + self.pe[:, :x.size(1), :]\n        x = self.dropout(x)\n\n        # 逐层通过 Decoder\n        for layer in self.layers:\n            x = layer(x, memory)                         # (B, S, d_model)\n\n        # 最终归一化 + 投影到词表\n        x = self.norm(x)\n        return self.fc_out(x)                            # (B, S, vocab_size)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\ndec = TransformerDecoder(vocab_size=100, d_model=64, num_heads=4, d_ff=256, num_layers=2)\nx = torch.randint(0, 100, (2, 8))\nenc_out = torch.randn(2, 12, 64)\nout = dec(x, enc_out)\nprint(\"Decoder input:\", x.shape)\nprint(\"Encoder output:\", enc_out.shape)\nprint(\"Decoder output:\", out.shape)",
+        "role": "demo"
+      }
+    ]
+  },
+  "transformer_encoder": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class TransformerEncoderLayer(nn.Module):\n    \"\"\"\n    单个 Transformer Encoder Layer (Pre-Norm + Residual).\n    结构: LN -> Self-Attention -> Residual -> LN -> FFN -> Residual\n    \"\"\"\n    def __init__(self, d_model, num_heads, d_ff, dropout=0.1):\n        super().__init__()\n        self.self_attn = nn.MultiheadAttention(d_model, num_heads, batch_first=True)\n        self.linear1 = nn.Linear(d_model, d_ff)          # FFN 第一层: d_model -> d_ff\n        self.linear2 = nn.Linear(d_ff, d_model)          # FFN 第二层: d_ff -> d_model\n        self.norm1 = nn.LayerNorm(d_model)               # Attention 前的 LayerNorm\n        self.norm2 = nn.LayerNorm(d_model)               # FFN 前的 LayerNorm\n        self.dropout = nn.Dropout(dropout)\n        self.activation = nn.GELU()                      # FFN 激活函数\n\n    def forward(self, x):\n        # Pre-Norm Self-Attention + 残差\n        # self_attn(Q,K,V) 输入均为 self.norm1(x)，因为是自注意力\n        attn_out, _ = self.self_attn(self.norm1(x), self.norm1(x), self.norm1(x), need_weights=False)\n        x = x + self.dropout(attn_out)                   # 残差连接\n\n        # Pre-Norm FFN + 残差\n        # FFN(x) = Linear2(Activation(Linear1(Norm2(x))))\n        ffn_out = self.linear2(self.activation(self.linear1(self.norm2(x))))\n        x = x + self.dropout(ffn_out)                    # 残差连接\n        return x\n\n\nclass TransformerEncoder(nn.Module):\n    \"\"\"\n    完整的 Transformer Encoder (堆叠 N 层)。\n    包含词嵌入、正弦位置编码、N 个 Encoder Layer、最终 LayerNorm。\n    \"\"\"\n    def __init__(self, vocab_size, d_model, num_heads, d_ff, num_layers, max_len=512, dropout=0.1):\n        super().__init__()\n        self.d_model = d_model\n\n        # 词嵌入层: 将整数 token ID 映射为 d_model 维连续向量\n        self.embedding = nn.Embedding(vocab_size, d_model)\n\n        # 正弦位置编码: 为每个序列位置提供唯一的位置表示\n        # 使用不同频率的正弦/余弦函数，使模型能学习相对位置关系\n        pe = torch.zeros(max_len, d_model)\n        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)       # (max_len, 1)\n        # div_term: 频率衰减项，使不同维度的波长呈指数增长\n        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))\n        pe[:, 0::2] = torch.sin(position * div_term)     # 偶数维: sin(pos / 10000^(2i/d_model))\n        pe[:, 1::2] = torch.cos(position * div_term)     # 奇数维: cos(pos / 10000^(2i/d_model))\n        self.register_buffer('pe', pe.unsqueeze(0))      # (1, max_len, d_model)，不参与梯度更新\n\n        # 堆叠 N 个相同的 Encoder Layer\n        self.layers = nn.ModuleList([\n            TransformerEncoderLayer(d_model, num_heads, d_ff, dropout)\n            for _ in range(num_layers)\n        ])\n        self.norm = nn.LayerNorm(d_model)                # 最终输出归一化\n        self.dropout = nn.Dropout(dropout)\n\n    def forward(self, x):\n        # Step 1: 词嵌入 + 位置编码\n        # 乘以 √(d_model) 缩放嵌入向量，使位置编码与嵌入向量量级相当\n        x = self.embedding(x) * math.sqrt(self.d_model)  # (B, S, d_model)\n        x = x + self.pe[:, :x.size(1), :]                # 广播相加: (B,S,d_model) + (1,S,d_model)\n        x = self.dropout(x)                              # 随机丢弃防止过拟合\n\n        # Step 2: 逐层前向传播\n        for layer in self.layers:\n            x = layer(x)                                 # 每层保持 (B, S, d_model)\n\n        # Step 3: 最终 LayerNorm\n        return self.norm(x)                              # (B, S, d_model)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nmodel = TransformerEncoder(vocab_size=100, d_model=64, num_heads=4, d_ff=256, num_layers=2)\nx = torch.randint(0, 100, (2, 10))\nout = model(x)\nprint(\"Input shape:\", x.shape)\nprint(\"Output shape:\", out.shape)\nprint(\"Parameters:\", sum(p.numel() for p in model.parameters()))",
+        "role": "demo"
+      }
+    ]
+  },
+  "vit_block": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import math as _math\n\nclass ViTBlock(nn.Module):  # 继承 nn.Module，注册为可训练模块\n    \"\"\"\n    ViT Transformer Block module.\n    \"\"\"\n    def __init__(self, d_model, num_heads):  # 初始化: 定义模型结构和参数\n        # Initialize layers and parameters\n        super().__init__()  # 调用父类 nn.Module 初始化，注册所有子模块\n        self.num_heads = num_heads\n        self.d_h = d_model // num_heads\n        self.norm1 = nn.LayerNorm(d_model)  # Layer normalization\n        self.norm2 = nn.LayerNorm(d_model)  # Layer normalization\n        self.qkv = nn.Linear(d_model, 3 * d_model, bias=False)  # Linear projection\n        self.proj = nn.Linear(d_model, d_model)  # Linear projection\n        self.fc1 = nn.Linear(d_model, 4 * d_model)  # Linear projection\n        self.fc2 = nn.Linear(4 * d_model, d_model)  # Linear projection\n\n    def _gelu(self, x):  # GELU activation\n        return x * 0.5 * (1.0 + torch.erf(x / _math.sqrt(2.0)))\n\n    def _mha(self, x):\n        B, N, D = x.shape\n        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, self.d_h).permute(2, 0, 3, 1, 4)\n        q, k, v = qkv[0], qkv[1], qkv[2]\n        scale = self.d_h ** -0.5\n        attn = torch.softmax(q @ k.transpose(-2, -1) * scale, dim=-1)  # Apply softmax to get attention weights\n        out = (attn @ v).transpose(1, 2).reshape(B, N, D)  # Transpose to (B, heads, S, d_k)\n        return self.proj(out)\n\n    def forward(self, x):  # 前向传播: 定义数据流\n        # Compute forward pass\n        x = x + self._mha(self.norm1(x))\n        x = x + self.fc2(self._gelu(self.fc1(self.norm2(x))))  # GELU activation\n        return x",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "torch.manual_seed(0)\nbatch, num_patches, d_model, num_heads = 2, 16, 64, 4\n\nblock = ViTBlock(d_model, num_heads)\nx = torch.randn(batch, num_patches, d_model)\nout = block(x)\n\nprint(\"Input shape: \", x.shape)    # (2, 16, 64)\nprint(\"Output shape:\", out.shape)  # (2, 16, 64)\nassert out.shape == x.shape, \"Shape mismatch!\"\nprint(\"Shape preserved: True\")",
+        "role": "demo"
+      }
+    ]
+  },
+  "vit_patch": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "class PatchEmbedding(nn.Module):  # 继承 nn.Module，注册为可训练模块\n    \"\"\"\n    ViT Patch Embedding module.\n    \"\"\"\n    def __init__(self, img_size, patch_size, in_channels, embed_dim):  # 初始化: 定义模型结构和参数\n        # Initialize layers and parameters\n        super().__init__()  # 调用父类 nn.Module 初始化，注册所有子模块\n        self.patch_size = patch_size\n        self.num_patches = (img_size // patch_size) ** 2\n        self.proj = nn.Linear(in_channels * patch_size * patch_size, embed_dim)  # Linear projection\n\n    def forward(self, x):  # 前向传播: 定义数据流\n        # Compute forward pass\n        B, C, H, W = x.shape\n        p = self.patch_size\n        n_h, n_w = H // p, W // p\n        x = x.reshape(B, C, n_h, p, n_w, p)\n        x = x.permute(0, 2, 4, 1, 3, 5).reshape(B, n_h * n_w, C * p * p)\n        return self.proj(x)",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "pe = PatchEmbedding(224, 16, 3, 768)\nx = torch.randn(1, 3, 224, 224)\nprint('Output:', pe(x).shape)\nprint('Patches:', pe.num_patches)",
+        "role": "demo"
+      }
+    ]
+  },
+  "weight_init": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "def kaiming_init(weight):\n    fan_in = weight.shape[1] if weight.dim() >= 2 else weight.shape[0]\n    std = math.sqrt(2.0 / fan_in)\n    with torch.no_grad():\n        weight.normal_(0, std)\n    return weight",
+        "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "w = torch.empty(256, 512)\nkaiming_init(w)\nprint(f'Mean: {w.mean():.4f} (expect ~0)')\nprint(f'Std:  {w.std():.4f} (expect {math.sqrt(2/512):.4f})')",
+        "role": "demo"
+      }
+    ]
+  }
+}
