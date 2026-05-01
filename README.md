@@ -1,7 +1,7 @@
 [English](./README.md) | [中文](./README_CN.md)
 
 <p align="center">
-  <h1 align="center">🔥 Pyre Code</h1>
+  <h1 align="center">🔥 Ember</h1>
   <p align="center">
     Implement the internals of modern AI systems from scratch — Transformers, vLLM, TRL, and beyond.
   </p>
@@ -17,11 +17,13 @@
 
 ---
 
-## 🧠 What is Pyre Code?
+## 🧠 What is Ember?
 
-76 problems. You write the implementation, a local grading service runs the tests, you see what broke. That's it.
+**101 coding problems** + **13 chapters of interview Q&A (八股文)** + **mock interview mode**.
 
-The problems cover what's actually inside Transformers, vLLM, TRL, diffusion models, and GNNs — attention variants, training tricks, inference kernels, alignment algorithms, graph neural networks. No GPU needed.
+Write the implementation, a local grading service runs the tests, you see what broke. Read the 八股文 to nail the theory questions. Use mock interview to mix coding + theory on the fly. That's it.
+
+The 101 problems cover what's actually inside Transformers, vLLM, TRL, diffusion models, and GNNs — attention variants, training tricks, inference kernels, alignment algorithms, graph neural networks. No GPU needed.
 
 ### Who is this for?
 
@@ -33,7 +35,10 @@ The problems cover what's actually inside Transformers, vLLM, TRL, diffusion mod
 
 - **Browser editor** — Monaco with Python syntax highlighting, no IDE setup
 - **Instant feedback** — submit and see pass/fail per test case in seconds
-- **Reference solutions** — compare after your own attempt
+- **Reference solutions** — compare after your own attempt, with line-by-line annotations
+- **八股文 (Interview Q&A)** — 13 chapters covering LLM fundamentals, fine-tuning, RLHF, distillation, distributed training, and more
+- **Mock interview** — random mix of theory questions and coding problems for realistic interview practice
+- **Learning paths** — curated problem sequences from Transformer internals to GNNs
 - **Progress tracking** — solved count and attempt history, persisted across sessions
 - **AI Help** — optional AI-powered hints via any OpenAI-compatible API (configure in `.env` or per-user in the UI)
 - **Fully local** — nothing leaves your machine (unless you opt into AI Help)
@@ -44,20 +49,21 @@ The problems cover what's actually inside Transformers, vLLM, TRL, diffusion mod
 | ------------ | ------------------------------------------------------------------------------------ |
 | Frontend     | Next.js + Monaco Editor + Tailwind CSS                                               |
 | Backend      | FastAPI grading service                                                              |
-| Judge Engine | [torch_judge](https://github.com/duoan/TorchCode) — executes and validates submissions |
+| Judge Engine | [torch_judge](https://github.com/duoan/TorchCode) — executes and validates 101 problems with 3–5 test cases each |
 | Storage      | SQLite (progress tracking)                                                           |
 
 ---
 
 ## 📢 News
 
+- **[2026/05/01]** Expanded to **101 problems** across **22 categories** — from attention mechanisms to SSM, MoE, and graph neural networks. 🔥
+- **[2026/04/28]** **八股文 (Interview Q&A)** — 13 chapters with 200+ theory questions covering LLM fundamentals, RLHF, distillation, and distributed training. 🔥
+- **[2026/04/25]** **Mock interview mode** — random mix of theory questions and coding problems for realistic interview practice. 🔥
 - **[2026/04/20]** New GNN learning path — 8 problems covering GCN, GAT, GIN, MPNN, GraphSAGE, link prediction, and graph autoencoders. 🔥
-- **[2026/04/20]** New UI redesign with OKLch color system, dark mode, and Geist typography — classic design still available via toggle. 🔥
+- **[2026/04/20]** New UI redesign with OKLch color system, dark mode, and Geist typography. 🔥
 - **[2026/04/13]** Submission history — review all your past attempts per problem.
 - **[2026/04/10]** AI Help — optional AI-powered hints via any OpenAI-compatible API. 🔥
-- **[2026/04/10]** Print output capture — `print()` statements now show in test results.
-- **[2026/04/09]** 68 problems covering Transformers, vLLM, TRL, diffusion models, and more. 🔥
-- **[2026/04/09]** Initial release of Pyre Code 🎉
+- **[2026/04/09]** Initial release 🎉
 
 ---
 
@@ -83,7 +89,7 @@ Before you begin, make sure you have the following installed:
 
 ### Installation
 
-We provide four ways to get Pyre Code running. Pick the one that fits your workflow.
+We provide four ways to get Ember running. Pick the one that fits your workflow.
 
 #### Option A — One-liner Script (Recommended)
 
@@ -333,30 +339,64 @@ Yes — Options A, B, and C all run natively without Docker.
 <details>
 <summary><strong>Q: Do I need a GPU?</strong></summary>
 
-No. All problems run on CPU. A GPU is only needed if you want to train large models outside of Pyre Code.
+No. All problems run on CPU. A GPU is only needed if you want to train large models outside of Ember.
 
 </details>
 
 ## 📋 Problem Set
 
-76 problems organized by category:
+**101 problems** across **22 categories** — every problem has **3–5 test cases** validated by a local FastAPI grading service.
 
-| Category | Problems |
+| Category | Count | Problems |
+|---|---|---|
+| **Attention Mechanisms** | 14 | Scaled Dot-Product, Multi-Head, Causal, Cross, GQA, Sliding Window, Linear, Flash, Differential, MLA, Attention Mask, CLIP, Einsum, Cosine Similarity |
+| **Fundamental Components** | 14 | ReLU, GELU, SwiGLU, Leaky ReLU, Softmax, Dropout, Embedding, Linear, Kaiming Init, Linear Regression, MLP, Residual Connection, LayerScale, Broadcasting |
+| **Loss Functions** | 11 | Cross Entropy, Label Smoothing, Focal Loss, Contrastive Loss, Binary Cross Entropy, MSE, KL Divergence, L1/L2 Regularization, DPO, GRPO, PPO |
+| **Graph Neural Networks** | 7 | GCN, Graph Readout, GAT, GIN, MPNN, GraphSAGE, Link Prediction, Graph Autoencoder |
+| **Activation Functions** | 7 | ReLU, GELU, SwiGLU, Leaky ReLU, Sigmoid (BCE), Softmax |
+| **Transformer Components** | 6 | GPT-2 Block, ViT Patch, ViT Block, Transformer Encoder, Transformer Decoder, CLIP Model |
+| **Optimizers & LR** | 5 | Adam, Cosine LR, Gradient Clipping, L1/L2 Regularization |
+| **Sampling & Decoding** | 5 | Top-k, Beam Search, Speculative Decoding, BPE, Multi-Token Prediction |
+| **Regularization** | 5 | Dropout, L1, L2, Label Smoothing, LayerScale |
+| **Efficient Training** | 4 | Mixed Precision, Gradient Accumulation, Activation Checkpointing, FSDP |
+| **Normalization** | 4 | LayerNorm, BatchNorm, RMSNorm, adaLN-Zero |
+| **Position Encoding & Embedding** | 3 | Sinusoidal PE, RoPE, ALiBi, NTK-aware RoPE |
+| **Mixture of Experts** | 3 | MoE, MoE Load Balance, Multi-Token Prediction |
+| **Diffusion & Flow** | 2 | Noise Schedule, DDIM Step, Flow Matching |
+| **Quantization** | 2 | INT8 Quantization, QLoRA |
+| **Inference Optimization** | 2 | KV Cache, Speculative Decoding |
+| **Training Tricks** | 2 | Gradient Accumulation, Activation Checkpointing |
+| **Tokenization** | 1 | BPE |
+| **Multimodal** | 1 | CLIP Model |
+| **Parameter-Efficient FT** | 1 | LoRA |
+| **State Space Models** | 1 | Mamba SSM |
+| **Reinforcement Learning** | 1 | PPO Loss |
+
+### 📝 八股文 & Mock Interview
+
+Beyond coding, Ember includes a full **interview Q&A (八股文)** module and **mock interview** mode:
+
+**八股文 — 13 chapters, 200+ questions:**
+| Chapter | Topics |
 |---|---|
-| **Fundamentals** | ReLU, Softmax, GELU, SwiGLU, Dropout, Embedding, Linear, Kaiming Init, Linear Regression |
-| **Normalization** | LayerNorm, BatchNorm, RMSNorm |
-| **Attention** | Scaled Dot-Product, Multi-Head, Causal, Cross, GQA, Sliding Window, Linear, Flash, Differential, MLA |
-| **Position Encoding** | Sinusoidal PE, RoPE, ALiBi, NTK-aware RoPE |
-| **Architecture** | SwiGLU MLP, GPT-2 Block, ViT Patch, ViT Block, Conv2D, Max Pool, Depthwise Conv, MoE, MoE Load Balance |
-| **Training** | Adam, Cosine LR, Gradient Clipping, Gradient Accumulation, Mixed Precision, Activation Checkpointing |
-| **Distributed** | Tensor Parallel, FSDP, Ring Attention |
-| **Inference** | KV Cache, Top-k Sampling, Beam Search, Speculative Decoding, BPE, INT8 Quantization, Paged Attention |
-| **Loss & Alignment** | Cross Entropy, Label Smoothing, Focal Loss, Contrastive Loss, DPO, GRPO, PPO, Reward Model |
-| **Diffusion & DiT** | Noise Schedule, DDIM Step, Flow Matching, adaLN-Zero |
-| **Adaptation** | LoRA, QLoRA |
-| **Reasoning** | MCTS, Multi-Token Prediction |
-| **SSM** | Mamba SSM |
-| **Graph Neural Networks** | GCN, Graph Readout, GAT, GIN, MPNN, GraphSAGE, Link Prediction, Graph Autoencoder |
+| LLM Fundamentals | Architecture (Encoder-Decoder / Causal / Prefix), training objectives, emergent capabilities |
+| Advanced LLM | Repetition problem, LLaMA series, long-context techniques |
+| Evaluation | POPE, MME, CHAIR, AMBER, benchmark design |
+| Inference | KV cache, quantization, decoding strategies, vLLM |
+| Fine-tuning | LoRA, QLoRA, full fine-tuning, instruction tuning |
+| Training Data | Data collection, cleaning, deduplication, mixture of domains |
+| Agent | Tool use, ReAct, planning, multi-agent systems |
+| RLHF / PPO | Reward modeling, PPO, DPO, GRPO, preference optimization |
+| LangChain | Chains, agents, memory, retrieval-augmented generation |
+| Continual Pre-training | Domain adaptation, catastrophic forgetting |
+| Distillation | Knowledge distillation, self-distillation |
+| Distributed Training | Data parallel, tensor parallel, pipeline parallel, FSDP |
+| GPU Memory | Gradient checkpointing, activation recomputation, offloading |
+
+**Mock Interview:**
+- Randomly draws theory questions from 八股文 + coding problems from the problem set
+- Simulates realistic interview pacing (theory → coding → follow-up)
+- Tracks your performance across sessions
 
 ### Learning Paths
 
@@ -397,7 +437,7 @@ Fundamentals ──→ Transformer Internals ──→ Train a GPT from Scratch
 | Variable                | Default                   | Description                           |
 | ----------------------- | ------------------------- | ------------------------------------- |
 | `GRADING_SERVICE_URL` | `http://localhost:8000` | Grading service URL                   |
-| `DB_PATH`             | `./data/pyre.db`   | SQLite database for progress tracking |
+| `DB_PATH`             | `./data/ember.db`   | SQLite database for progress tracking |
 
 Set in `web/.env.local` to override.
 
@@ -406,13 +446,14 @@ Set in `web/.env.local` to override.
 ## 📁 Project Structure
 
 ```
-pyre/
+ember/
 ├── web/                  # Next.js frontend
-│   ├── src/app/          # Pages and API routes
+│   ├── src/app/          # Pages (problems, bagu, interview, paths)
 │   ├── src/components/   # UI components
-│   └── src/lib/          # Utilities, problem data
-├── grading_service/      # FastAPI backend
-├── torch_judge/          # Judge engine (problem definitions + test runner)
+│   └── src/lib/          # Utilities, problem & path data
+├── grading_service/      # FastAPI backend — runs tests per problem
+├── torch_judge/          # Judge engine (101 problem definitions + test runner)
+├── scripts/              # Build & test scripts (export problems, test grading)
 └── package.json          # Dev scripts (runs frontend + backend concurrently)
 ```
 
