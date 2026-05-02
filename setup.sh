@@ -17,7 +17,11 @@ else
 fi
 
 # Install Node deps
+echo "Installing root Node dependencies..."
 npm ci
+
+echo "Installing frontend Node dependencies..."
+cd web && npm ci && cd ..
 
 echo ""
 echo "Setup complete."
