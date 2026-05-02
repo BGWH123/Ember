@@ -9,7 +9,7 @@
     "url": "https://github.com/BGWH123/Ember"
   },
   "scripts": {
-    "postinstall": "cd web && npm ci",
+    "postinstall": "cd web && npm ci --legacy-peer-deps",
     "build:problems": "node scripts/run-python.js scripts/export_problems.py",
     "build:solutions": "node scripts/run-python.js scripts/build_solutions.py",
     "predev": "node scripts/run-python.js --check-import torch_judge",

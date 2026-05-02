@@ -21,7 +21,7 @@ echo "Installing root Node dependencies..."
 npm ci
 
 echo "Installing frontend Node dependencies..."
-cd web && npm ci && cd ..
+cd web && npm ci --legacy-peer-deps && cd ..
 
 echo ""
 echo "Setup complete."
