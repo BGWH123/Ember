@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyre-code"
+dynamic = ["version"]
+description = "ML coding judge — validate PyTorch implementations against test cases (Pyre)."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "kiren" }
+]
+keywords = ["pytorch", "jupyter", "notebook", "judge", "pyre-code", "ml", "deep-learning", "transformer", "diffusion", "rlhf", "interview", "practice"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Education",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "torch",
+    "numpy",
+    "pydantic",
+]
+
+[project.optional-dependencies]
+dev = [
+    "build",
+    "twine",
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+include = ["torch_judge*"]
+exclude = ["labextension*", "scripts*", "templates*", "solutions*", "jupyter_config*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "torch_judge._version.__version__"}

@@ -1,0 +1,42 @@
+services:
+  grading:
+    build:
+      context: .
+      dockerfile: grading.Dockerfile
+    volumes:
+      - pyre-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "3"
+          memory: 4G
+    networks:
+      - internal
+
+  web:
+    build:
+      context: .
+      dockerfile: web.Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - GRADING_SERVICE_URL=http://grading:8000
+    depends_on:
+      grading:
+        condition: service_healthy
+    networks:
+      - internal
+      - default
+
+volumes:
+  pyre-data:
+
+networks:
+  internal:
+    internal: true

@@ -1,0 +1,58 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.ipynb_checkpoints/
+data/progress.json
+data/*.db
+.DS_Store
+notebooks/
+
+# Environment files
+.env
+.env.local
+web/.env
+web/.env.local
+
+# Playwright CLI artifacts
+.playwright-cli/
+
+# Temporary screenshots
+/*.png
+/*.jpg
+
+# PyPI build artifacts
+dist/
+build/
+.venv/
+
+# JupyterLab extension build artifacts
+labextension/lib/
+labextension/node_modules/
+labextension/torchcode_labext/labextension/
+labextension/tsconfig.tsbuildinfo
+labextension/yarn.lock
+.worktrees/
+.omc/
+CLAUDE.md
+pyre-code-design/
+
+# Runtime data
+web/data/
+
+# Docs
+docs/
+node_modules/
+web/node_modules/
+
+# Next.js build output
+web/.next/
+web/next-env.d.ts
+*.tsbuildinfo
+data/
+
+# Logs
+logs/
+*.log
+
+# IDE / Workspace metadata
+.workbuddy/
