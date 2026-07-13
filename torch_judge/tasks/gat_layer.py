@@ -114,10 +114,7 @@ e = torch.nn.functional.leaky_relu(e, 0.2)
 e = e.masked_fill(A == 0, float('-inf'))
 alpha = torch.softmax(e, dim=-1)
 ref = alpha @ H
-assert torch.allclose(out, ref, atol=1e-5), f'Value mismatch:
-{out}
-vs
-{ref}'
+assert torch.allclose(out, ref, atol=1e-5), f'Value mismatch:\\n{out}\\nvs\\n{ref}'
 
             
             

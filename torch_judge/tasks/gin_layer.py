@@ -114,10 +114,7 @@ agg = A @ X
 h = (1 + eps) * X + agg
 h = torch.relu(h @ W1 + b1)
 ref = h @ W2 + b2
-assert torch.allclose(out, ref, atol=1e-5), f'Value mismatch:
-{out}
-vs
-{ref}'
+assert torch.allclose(out, ref, atol=1e-5), f'Value mismatch:\\n{out}\\nvs\\n{ref}'
 
             
             

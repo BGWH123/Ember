@@ -80,10 +80,7 @@ msgs = msgs * A.unsqueeze(-1)
 agg = msgs.sum(dim=1)
 upd_inp = torch.cat([X, agg], dim=-1)
 ref = torch.relu(upd_inp @ W_upd)
-assert torch.allclose(out, ref, atol=1e-5), f'Value mismatch:
-{out}
-vs
-{ref}'
+assert torch.allclose(out, ref, atol=1e-5), f'Value mismatch:\\n{out}\\nvs\\n{ref}'
 
             
             
@@ -233,10 +230,7 @@ W_upd = torch.randn(F + F_msg, F_out)
 out = {fn}(A, X, E, W_msg, W_upd)
 agg = torch.zeros(N, F_msg)
 ref = torch.relu(torch.cat([X, agg], dim=-1) @ W_upd)
-assert torch.allclose(out, ref, atol=1e-5), f'Empty graph mismatch:
-{out}
-vs
-{ref}'
+assert torch.allclose(out, ref, atol=1e-5), f'Empty graph mismatch:\\n{out}\\nvs\\n{ref}'
 
             
             

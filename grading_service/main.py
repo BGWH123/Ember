@@ -1,359 +1,123 @@
-"""FastAPI grading service for torch_judge tasks."""
+"""HTTP adapter for Ember's queued, tenant-scoped grading service."""
+from __future__ import annotations
 
-import sqlite3
 import sys
+import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-# Add project root to sys.path for torch_judge imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import io
-import os
-import threading
-import time
-from typing import Any
+from fastapi import FastAPI, Header, HTTPException
+from pydantic import BaseModel, Field
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-
+from .database import initialize, resolve_local_session
+from .service import AdmissionError, SubmissionService
 from torch_judge.tasks import get_task
 
-app = FastAPI(title="Grading Service")
-
-# Lock to serialize sys.stdout redirects across concurrent request threads
-_stdout_lock = threading.Lock()
-
-# ---------------------------------------------------------------------------
-# SQLite DB (user sessions + progress)
-# ---------------------------------------------------------------------------
-
-_DB_PATH = os.environ.get("DB_PATH", str(Path(__file__).parent.parent / "data" / "pyre.db"))
+service = SubmissionService()
 
 
-def _get_db() -> sqlite3.Connection:
-    Path(_DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(_DB_PATH)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_token TEXT UNIQUE NOT NULL,
-            created_at TEXT DEFAULT (datetime('now'))
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS progress (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            task_id TEXT NOT NULL,
-            status TEXT NOT NULL CHECK (status IN ('todo', 'attempted', 'solved')),
-            best_time_ms REAL,
-            attempts INTEGER DEFAULT 0,
-            solved_at TEXT,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            UNIQUE(user_id, task_id)
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS submissions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            task_id TEXT NOT NULL,
-            code TEXT NOT NULL,
-            passed INTEGER NOT NULL,
-            exec_time_ms REAL,
-            submitted_at TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        )
-    """)
-    conn.commit()
-    return conn
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    initialize()
+    service.start()
+    yield
+    service.stop()
 
 
-class SubmitRequest(BaseModel):
+app = FastAPI(title="Ember Grading Service", lifespan=lifespan)
+
+
+class SubmissionRequest(BaseModel):
     taskId: str
-    code: str
-
-
-class RunRequest(BaseModel):
-    taskId: str
-    code: str
+    code: str = Field(max_length=64_000)
+    mode: str = "submit"
+    idempotencyKey: str | None = None
     testIndices: list[int] | None = None
-
-
-class TestResult(BaseModel):
-    name: str
-    passed: bool
-    execTimeMs: float
-    error: str | None = None
-    output: str | None = None
-
-
-class GradeResponse(BaseModel):
-    passed: int
-    total: int
-    allPassed: bool
-    results: list[TestResult]
-    totalTimeMs: float
-    error: str | None = None
-
-
-def _validate_code(code: str) -> str | None:
-    """Return an error message if code contains disallowed top-level statements."""
-    import ast
-    allowed = (
-        ast.FunctionDef, ast.AsyncFunctionDef,
-        ast.ClassDef,
-        ast.Import, ast.ImportFrom,
-        ast.Assign, ast.AnnAssign, ast.AugAssign,
-        ast.Expr,  # top-level expressions / docstrings
-    )
-    try:
-        tree = ast.parse(code)
-    except SyntaxError as e:
-        return f"Syntax error: {e}"
-    for node in tree.body:
-        if not isinstance(node, allowed):
-            return f"Only definitions and assignments are allowed at the top level (found: {type(node).__name__})"
-    return None
-
-
-def _execute_tests(code: str, task: dict, test_indices: list[int] | None = None, capture_output: bool = True) -> GradeResponse:
-    import torch, math
-    err = _validate_code(code)
-    if err:
-        return GradeResponse(passed=0, total=0, allPassed=False, results=[], totalTimeMs=0.0, error=err)
-    user_ns: dict[str, Any] = {
-        "torch": torch,
-        "Tensor": torch.Tensor,
-        "nn": torch.nn,
-        "F": torch.nn.functional,
-        "np": __import__("numpy"),
-        "math": math,
-    }
-    try:
-        exec(code, user_ns)
-    except SyntaxError as e:
-        return GradeResponse(passed=0, total=0, allPassed=False, results=[], totalTimeMs=0.0, error=f"Syntax error: {e}")
-
-    fn_name = task.get("function_name")
-    if fn_name is None:
-        return GradeResponse(passed=0, total=0, allPassed=False, results=[], totalTimeMs=0.0, error="Task has no function_name defined")
-
-    if fn_name not in user_ns:
-        return GradeResponse(passed=0, total=0, allPassed=False, results=[], totalTimeMs=0.0, error=f"Function '{fn_name}' not found in submitted code")
-
-    all_tests = task.get("tests", [])
-    tests = [all_tests[i] for i in test_indices if 0 <= i < len(all_tests)] if test_indices is not None else all_tests
-
-    if test_indices is not None and len(test_indices) > 0 and len(tests) == 0:
-        return GradeResponse(
-            passed=0, total=0, allPassed=False, results=[], totalTimeMs=0.0,
-            error=f"All provided test indices are out of range (valid range: 0..{len(all_tests) - 1})",
-        )
-
-    results: list[TestResult] = []
-    passed = 0
-    total_time_ms = 0.0
-
-    for test in tests:
-        _torch = __import__("torch")
-        test_ns: dict[str, Any] = {
-            "torch": _torch,
-            "Tensor": _torch.Tensor,
-            "nn": _torch.nn,
-            "F": _torch.nn.functional,
-            "np": __import__("numpy"),
-            "math": math,
-            fn_name: user_ns[fn_name],
-        }
-        test_code = test["code"].replace("{fn}", fn_name)
-
-        # Capture stdout for print output
-        output = None
-        if capture_output:
-            with _stdout_lock:
-                old_stdout = sys.stdout
-                sys.stdout = captured = io.StringIO()
-                try:
-                    start = time.perf_counter()
-                    exec(test_code, test_ns)
-                    exec_time_ms = (time.perf_counter() - start) * 1000
-                    output = captured.getvalue() or None
-                    results.append(TestResult(name=test["name"], passed=True, execTimeMs=exec_time_ms, output=output))
-                    passed += 1
-                except AssertionError as e:
-                    exec_time_ms = (time.perf_counter() - start) * 1000
-                    output = captured.getvalue() or None
-                    results.append(TestResult(name=test["name"], passed=False, execTimeMs=exec_time_ms, error=str(e), output=output))
-                except Exception as e:
-                    exec_time_ms = (time.perf_counter() - start) * 1000
-                    output = captured.getvalue() or None
-                    results.append(TestResult(name=test["name"], passed=False, execTimeMs=exec_time_ms, error=f"{type(e).__name__}: {e}", output=output))
-                finally:
-                    sys.stdout = old_stdout
-        else:
-            start = time.perf_counter()
-            try:
-                exec(test_code, test_ns)
-                exec_time_ms = (time.perf_counter() - start) * 1000
-                results.append(TestResult(name=test["name"], passed=True, execTimeMs=exec_time_ms))
-                passed += 1
-            except AssertionError as e:
-                exec_time_ms = (time.perf_counter() - start) * 1000
-                results.append(TestResult(name=test["name"], passed=False, execTimeMs=exec_time_ms, error=str(e)))
-            except Exception as e:
-                exec_time_ms = (time.perf_counter() - start) * 1000
-                results.append(TestResult(name=test["name"], passed=False, execTimeMs=exec_time_ms, error=f"{type(e).__name__}: {e}"))
-        total_time_ms += exec_time_ms
-
-    return GradeResponse(passed=passed, total=len(results), allPassed=passed == len(results), results=results, totalTimeMs=total_time_ms)
-
-
-@app.post("/grade", response_model=GradeResponse)
-def grade(request: SubmitRequest) -> GradeResponse:
-    task = get_task(request.taskId)
-    if task is None:
-        raise HTTPException(status_code=404, detail=f"Task '{request.taskId}' not found")
-    return _execute_tests(request.code, task)
-
-
-@app.post("/run", response_model=GradeResponse)
-def run(request: RunRequest) -> GradeResponse:
-    task = get_task(request.taskId)
-    if task is None:
-        raise HTTPException(status_code=404, detail=f"Task '{request.taskId}' not found")
-    return _execute_tests(request.code, task, request.testIndices)
-
-
-
-@app.get("/tasks/{task_id}/notebook")
-def get_notebook(task_id: str) -> dict:
-    task = get_task(task_id)
-    if task is None or not task.get("solution"):
-        raise HTTPException(status_code=404, detail=f"Notebook for '{task_id}' not found")
-    cells = [{"type": "code", "source": task["solution"].strip(), "role": "solution"}]
-    if "explanation" in task:
-        cells.append({"type": "markdown", "source": task["explanation"].strip(), "role": "explanation"})
-    if "demo" in task:
-        cells.append({"type": "code", "source": task["demo"].strip(), "role": "demo"})
-    return {"cells": cells}
-
-
-@app.get("/tasks/{task_id}/solution")
-def get_solution(task_id: str) -> dict[str, str]:
-    task = get_task(task_id)
-    if task is None or not task.get("solution"):
-        raise HTTPException(status_code=404, detail=f"Solution for '{task_id}' not found")
-    return {"solution": task["solution"]}
 
 
 class UserRequest(BaseModel):
     sessionToken: str
 
 
-class ProgressEntry(BaseModel):
-    status: str
-    bestTimeMs: float | None = None
-    attempts: int
-    solvedAt: str | None = None
+def context(session_token: str | None) -> tuple[str, str]:
+    if not session_token:
+        raise HTTPException(401, "A session token is required")
+    return resolve_local_session(session_token)
 
 
-class SaveProgressRequest(BaseModel):
-    sessionToken: str
-    taskId: str
-    status: str
-    execTimeMs: float | None = None
-    code: str | None = None
-    allPassed: bool | None = None
+def create(request: SubmissionRequest, session_token: str | None) -> dict:
+    if get_task(request.taskId) is None:
+        raise HTTPException(404, f"Task '{request.taskId}' not found")
+    tenant_id, user_id = context(session_token)
+    try:
+        return service.create(tenant_id, user_id, request.taskId, request.code, request.mode, request.idempotencyKey or str(uuid.uuid4()), request.testIndices)
+    except AdmissionError as exc:
+        raise HTTPException(exc.status, {"code": exc.code, "message": exc.message}) from exc
+
+
+@app.post("/submissions", status_code=202)
+def create_submission(request: SubmissionRequest, x_session_token: str | None = Header(default=None)) -> dict:
+    return create(request, x_session_token)
+
+
+@app.get("/submissions/{submission_id}")
+def get_submission(submission_id: str, x_session_token: str | None = Header(default=None)) -> dict:
+    tenant_id, _ = context(x_session_token)
+    result = service.get(tenant_id, submission_id)
+    if result is None: raise HTTPException(404, "Submission not found")
+    return result
+
+
+# Compatibility endpoints retain existing browser clients while using the same queue.
+@app.post("/grade", status_code=202)
+def grade(request: SubmissionRequest, x_session_token: str | None = Header(default=None)) -> dict:
+    request.mode = "submit"; return create(request, x_session_token)
+
+
+@app.post("/run", status_code=202)
+def run(request: SubmissionRequest, x_session_token: str | None = Header(default=None)) -> dict:
+    request.mode = "sample"; return create(request, x_session_token)
 
 
 @app.post("/users")
-def get_or_create_user(request: UserRequest) -> dict[str, int]:
-    with _get_db() as conn:
-        row = conn.execute("SELECT id FROM users WHERE session_token = ?", (request.sessionToken,)).fetchone()
-        if row:
-            return {"userId": row[0]}
-        cur = conn.execute("INSERT INTO users (session_token) VALUES (?)", (request.sessionToken,))
-        return {"userId": cur.lastrowid}
+def user(request: UserRequest) -> dict:
+    _, user_id = resolve_local_session(request.sessionToken)
+    return {"userId": user_id}
 
 
-@app.get("/progress/{user_id}")
-def get_progress(user_id: int) -> dict[str, ProgressEntry]:
-    with _get_db() as conn:
-        rows = conn.execute(
-            "SELECT task_id, status, best_time_ms, attempts, solved_at FROM progress WHERE user_id = ?",
-            (user_id,)
-        ).fetchall()
-    return {
-        row[0]: ProgressEntry(status=row[1], bestTimeMs=row[2], attempts=row[3], solvedAt=row[4])
-        for row in rows
-    }
+@app.get("/progress")
+def progress(x_session_token: str | None = Header(default=None)) -> dict:
+    tenant_id, user_id = context(x_session_token)
+    return service.progress(tenant_id, user_id)
 
 
-@app.post("/progress")
-def save_progress(request: SaveProgressRequest) -> dict[str, str]:
-    with _get_db() as conn:
-        row = conn.execute("SELECT id FROM users WHERE session_token = ?", (request.sessionToken,)).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="User not found")
-        user_id = row[0]
-        existing = conn.execute(
-            "SELECT status, best_time_ms FROM progress WHERE user_id = ? AND task_id = ?",
-            (user_id, request.taskId)
-        ).fetchone()
-        if existing:
-            existing_status, existing_best_time = existing
-            if request.status == "solved":
-                if existing_best_time is not None and request.execTimeMs is not None:
-                    best = min(existing_best_time, request.execTimeMs)
-                else:
-                    best = existing_best_time if existing_best_time is not None else request.execTimeMs
-                conn.execute(
-                    "UPDATE progress SET status = ?, best_time_ms = ?, attempts = attempts + 1, solved_at = COALESCE(solved_at, datetime('now')) WHERE user_id = ? AND task_id = ?",
-                    ("solved", best, user_id, request.taskId)
-                )
-            else:
-                next_status = existing_status if existing_status == "solved" and request.status in ("todo", "attempted") else request.status
-                conn.execute(
-                    "UPDATE progress SET status = ?, attempts = attempts + 1 WHERE user_id = ? AND task_id = ?",
-                    (next_status, user_id, request.taskId)
-                )
-        else:
-            if request.status == "solved":
-                conn.execute(
-                    "INSERT INTO progress (user_id, task_id, status, best_time_ms, attempts, solved_at) VALUES (?, ?, ?, ?, 1, datetime('now'))",
-                    (user_id, request.taskId, request.status, request.execTimeMs)
-                )
-            else:
-                conn.execute(
-                    "INSERT INTO progress (user_id, task_id, status, best_time_ms, attempts, solved_at) VALUES (?, ?, ?, ?, 1, NULL)",
-                    (user_id, request.taskId, request.status, None)
-                )
-        if request.code is not None:
-            conn.execute(
-                "INSERT INTO submissions (user_id, task_id, code, passed, exec_time_ms) VALUES (?, ?, ?, ?, ?)",
-                (user_id, request.taskId, request.code, 1 if request.allPassed else 0, request.execTimeMs)
-            )
-    return {"ok": "true"}
+@app.get("/progress/{_user_id}")
+def legacy_progress(_user_id: str, x_session_token: str | None = Header(default=None)) -> dict:
+    tenant_id, user_id = context(x_session_token)
+    return service.progress(tenant_id, user_id)
 
 
-@app.get("/submissions/{user_id}/{task_id}")
-def get_submissions(user_id: int, task_id: str) -> list[dict]:
-    with _get_db() as conn:
-        rows = conn.execute(
-            "SELECT id, passed, exec_time_ms, submitted_at, code FROM submissions "
-            "WHERE user_id = ? AND task_id = ? ORDER BY submitted_at DESC LIMIT 50",
-            (user_id, task_id)
-        ).fetchall()
-    return [
-        {"id": r[0], "passed": bool(r[1]), "execTimeMs": r[2], "submittedAt": r[3], "code": r[4]}
-        for r in rows
-    ]
+@app.get("/submissions/history/{task_id}")
+def history(task_id: str, limit: int = 20, offset: int = 0, x_session_token: str | None = Header(default=None)) -> list[dict]:
+    tenant_id, user_id = context(x_session_token)
+    return service.history(tenant_id, user_id, task_id, limit, offset)
+
+
+@app.get("/tasks/{task_id}/notebook")
+def get_notebook(task_id: str) -> dict:
+    task = get_task(task_id)
+    if task is None or not task.get("solution"): raise HTTPException(404, "Notebook not found")
+    return {"cells": [{"type":"code","source":task["solution"].strip(),"role":"solution"}]}
+
+
+@app.get("/tasks/{task_id}/solution")
+def get_solution(task_id: str) -> dict[str, str]:
+    task = get_task(task_id)
+    if task is None or not task.get("solution"): raise HTTPException(404, "Solution not found")
+    return {"solution": task["solution"]}
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
-
+def health() -> dict[str, str]: return {"status": "ok"}

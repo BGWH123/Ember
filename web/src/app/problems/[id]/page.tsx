@@ -55,6 +55,17 @@ export default function WorkspacePage() {
   const [pathData, setPathData] = useState<(Omit<LearningPath, 'problems'> & { problems: LearningPathProblemSummary[] }) | null>(null);
   const [feedbackResult, setFeedbackResult] = useState<SubmissionResult | null>(null);
 
+  const waitForSubmission = async (submissionId: string): Promise<SubmissionResult> => {
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      const response = await fetch(`/api/submissions/status/${submissionId}`, { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Submission lookup failed');
+      if (data.status === 'completed' || data.status === 'cancelled') return data as SubmissionResult;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    throw new Error('Evaluation is taking longer than expected; check submission history shortly.');
+  };
+
   useEffect(() => {
     fetch(`/api/problems/${id}`)
       .then((r) => r.json())
@@ -95,7 +106,9 @@ export default function WorkspacePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ taskId: id, code: currentCode, testIndices }),
       });
-      const data = await res.json();
+      const accepted = await res.json();
+      if (!res.ok || !accepted.submission_id) throw new Error(accepted.message || 'Unable to queue evaluation');
+      const data = await waitForSubmission(accepted.submission_id);
       setRunResult(data);
       setBottomTab('testresults');
     } catch {
@@ -115,7 +128,9 @@ export default function WorkspacePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ taskId: id, code: currentCode }),
       });
-      const data: SubmissionResult = await res.json();
+      const accepted = await res.json();
+      if (!res.ok || !accepted.submission_id) throw new Error(accepted.message || 'Unable to queue evaluation');
+      const data = await waitForSubmission(accepted.submission_id);
       setSubmissionResult(data);
       setRunResult(data);
       setBottomTab('testresults');

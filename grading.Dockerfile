@@ -15,10 +15,12 @@ COPY torch_judge/ /app/torch_judge/
 COPY grading_service/ /app/grading_service/
 COPY pyproject.toml /app/pyproject.toml
 
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data && useradd --system --create-home ember
+RUN chown -R ember:ember /app
+USER ember
 
 ENV DB_PATH=/app/data/pyre.db
 
 EXPOSE 8000
 
-CMD ["uvicorn", "grading_service.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD ["uvicorn", "grading_service.main:app", "--host", "0.0.0.0", "--port", "8000"]

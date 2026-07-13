@@ -38,6 +38,8 @@ export interface SubmissionResult {
   results: TestResult[];
   totalTimeMs: number;
   error?: string;
+  submissionId?: string;
+  status?: 'queued' | 'running' | 'completed' | 'cancelled';
 }
 
 export interface ProblemProgress {

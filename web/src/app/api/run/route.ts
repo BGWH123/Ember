@@ -1,29 +1,20 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { GRADING_SERVICE_URL } from '@/lib/constants';
-import { SubmissionResult } from '@/lib/types';
 
 export async function POST(request: Request) {
-  const { taskId, code, testIndices } = await request.json();
-
+  const payload = await request.json();
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get('session_token')?.value ?? crypto.randomUUID();
   try {
-    const res = await fetch(`${GRADING_SERVICE_URL}/run`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ taskId, code, testIndices }),
+    const response = await fetch(`${GRADING_SERVICE_URL}/submissions`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Session-Token': sessionToken },
+      body: JSON.stringify({ ...payload, mode: 'sample', idempotencyKey: crypto.randomUUID() }),
     });
-    if (!res.ok) {
-      const errText = await res.text();
-      return NextResponse.json(
-        { passed: 0, total: 0, allPassed: false, results: [], totalTimeMs: 0, error: errText },
-        { status: 502 }
-      );
-    }
-    const result: SubmissionResult = await res.json();
-    return NextResponse.json(result);
+    const result = NextResponse.json(await response.json(), { status: response.status });
+    result.cookies.set('session_token', sessionToken, { httpOnly: true, maxAge: 60 * 60 * 24 * 30, sameSite: 'lax' });
+    return result;
   } catch {
-    return NextResponse.json(
-      { passed: 0, total: 0, allPassed: false, results: [], totalTimeMs: 0, error: 'Grading service unreachable' },
-      { status: 502 }
-    );
+    return NextResponse.json({ code: 'grading_unreachable', message: 'Grading service unreachable' }, { status: 502 });
   }
 }

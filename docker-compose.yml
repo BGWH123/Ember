@@ -16,6 +16,11 @@ services:
         limits:
           cpus: "3"
           memory: 4G
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M,noexec,nosuid,nodev
     networks:
       - internal
 

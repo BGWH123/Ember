@@ -208,9 +208,7 @@ beta_start, beta_end = 1e-4, 0.02
 t = torch.arange(T, dtype=torch.float32)
 betas = beta_start + (beta_end - beta_start) * t / (T - 1)
 alpha_bars = torch.cumprod(1.0 - betas, dim=0)
-assert torch.allclose(out, alpha_bars, atol=1e-5), f'Linear schedule mismatch.
-Expected: {alpha_bars}
-Got: {out}'
+assert torch.allclose(out, alpha_bars, atol=1e-5), f'Linear schedule mismatch.\\nExpected: {alpha_bars}\\nGot: {out}'
 
             
             
