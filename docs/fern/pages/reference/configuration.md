@@ -4,7 +4,7 @@ title: 开发与发布配置
 subtitle: 查找桌面构建、评测进程和开发工具读取的环境变量。
 ---
 
-本页仅覆盖新桌面架构的配置，不包含旧版Next/FastAPI的环境变量。应用设置中的服务选择与构建时嵌入的信任配置作用不同。
+本页覆盖桌面与本地评测配置。应用设置中的本地模块选择与构建时嵌入的信任配置作用不同。
 
 ## 桌面构建与运行
 
@@ -22,7 +22,6 @@ subtitle: 查找桌面构建、评测进程和开发工具读取的环境变量�
 
 | 变量 | 默认值 | 含义 |
 | --- | --- | --- |
-| `EMBER_REMOTE_TOKEN` | 未配置 | 回环参考HTTP服务的Bearer令牌；缺失时鉴权失败 |
 | `EMBER_CATALOG_PATH` | 打包hash文件或仓库catalog | Python握手计算题库hash时使用的JSON路径，主要用于开发联调 |
 | `OMP_NUM_THREADS` | Rust启动器设为1 | 限制本地评测器的OpenMP线程数 |
 | `MKL_NUM_THREADS` | Rust启动器设为1 | 限制本地评测器的MKL线程数 |
@@ -50,7 +49,6 @@ subtitle: 查找桌面构建、评测进程和开发工具读取的环境变量�
 | 设置 | 持久性 | 约束 |
 | --- | --- | --- |
 | 本地活动模块 | 保存到app-data | 安装与切换都须验证兼容性与握手 |
-| 远程地址和令牌 | 当前进程 | HTTPS，回环开发可用HTTP；不跟随重定向 |
 | 学习记录 | 本地SQLite | 不自动同步到其他设备 |
 
 实现入口：[桌面初始化](https://github.com/BGWH123/Ember/blob/main/apps/desktop/src-tauri/src/main.rs)、[发行脚本](https://github.com/BGWH123/Ember/blob/main/scripts/desktop/build-release.mjs)。

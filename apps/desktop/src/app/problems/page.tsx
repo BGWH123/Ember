@@ -3,8 +3,6 @@ import { appFetch } from '@/transport/client';
 import { useEffect, useState, useMemo } from 'react';
 import Link from '@/routing/Link';
 import { Search } from 'lucide-react';
-import { TopNav } from '@/components/layout/TopNav';
-import { Footer } from '@/components/layout/Footer';
 import { StatusIcon } from '@/components/problem/StatusIcon';
 import { Badge } from '@/components/ui/Badge';
 import { useLocale } from '@/context/LocaleContext';
@@ -59,14 +57,14 @@ export default function ProblemsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-bg">
-      <TopNav solvedCount={solvedCount} totalCount={problems.length} />
-      <main className="max-w-[1280px] mx-auto px-7 pt-8 pb-20">
+    <div className="desktop-page bg-bg">
+
+      <main className="max-w-[1280px] mx-auto px-7 pt-6 pb-8">
         {/* Page header */}
         <div className="flex items-end justify-between gap-8 mb-9 pb-6" style={{ borderBottom: '1px solid var(--line)' }}>
           <div>
             <div className="eyebrow mb-2">{t('problems')}</div>
-            <h1 className="text-[clamp(28px,3vw,40px)] font-semibold tracking-[-0.03em] mb-2">{t('problems')}</h1>
+            <h1 className="text-2xl font-semibold tracking-[-0.03em] mb-2">{t('problems')}</h1>
             <p className="text-sm text-text-2 max-w-[52ch]">{t('problemsSubtitle')}</p>
           </div>
           <div className="flex gap-[18px]">
@@ -83,7 +81,7 @@ export default function ProblemsPage() {
 
         <div className="grid grid-cols-[232px_minmax(0,1fr)] gap-10 items-start max-[900px]:grid-cols-1">
           {/* Sidebar */}
-          <aside className="sticky top-[76px]">
+          <aside className="sticky top-5">
             {/* Categories */}
             {categories.length > 0 && (
               <div className="mb-6">
@@ -231,7 +229,7 @@ export default function ProblemsPage() {
           </div>
         </div>
       </main>
-      <Footer />
+
     </div>
   );
 }

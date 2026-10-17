@@ -1,47 +1,15 @@
-import sys
-sys.path.insert(0, r'd:\BGWH_Code\pyre-code-main')
-from torch_judge.tasks import get_task, TASKS
+"""Validate the task registry used by the standalone evaluator."""
+from torch_judge.tasks import TASKS
+import pytest
 
-print(f'Total tasks loaded: {len(TASKS)}')
 
-# Verify all tasks have required fields and valid structure
-errors = []
-for tid, task in TASKS.items():
-    required = ['title', 'title_zh', 'difficulty', 'function_name', 'tests', 'solution']
-    for field in required:
-        if field not in task:
-            errors.append(f'{tid}: missing field {field}')
-    if not isinstance(task.get('tests', []), list):
-        errors.append(f'{tid}: tests is not a list')
-    if not task.get('function_name'):
-        errors.append(f'{tid}: empty function_name')
-    # Check test code format
-    for i, test in enumerate(task.get('tests', [])):
-        if 'code' not in test or 'name' not in test:
-            errors.append(f'{tid}: test {i} missing code or name')
-        elif '{fn}' not in test['code']:
-            errors.append(f'{tid}: test {i} missing {{fn}} placeholder')
-
-if errors:
-    print(f'Found {len(errors)} errors:')
-    for e in errors[:20]:
-        print(f'  {e}')
-else:
-    print('All tasks have valid structure!')
-
-# Show summary of new tasks
-print('\nNew tasks summary:')
-for tid in ['transformer_encoder', 'transformer_decoder', 'clip_model', 'einsum_ops', 'broadcasting']:
-    t = get_task(tid)
-    if t:
-        print(f'  {tid}: {t["title"]} ({t["difficulty"]}) - {len(t["tests"])} tests - cat={t.get("category", "N/A")}')
-    else:
-        print(f'  {tid}: MISSING!')
-
-# Show case-sensitive fix summary
-print('\nCase-sensitive fix check (mha, gqa, cross_attention):')
-for tid in ['mha', 'gqa', 'cross_attention']:
-    t = get_task(tid)
-    tests = t.get('tests', [])
-    fallback_count = sum(1 for test in tests if 'hasattr' in test['code'] and 'else' in test['code'])
-    print(f'  {tid}: {fallback_count}/{len(tests)} tests have case fallback')
+@pytest.mark.parametrize('task_id', TASKS)
+def test_registered_tasks_have_valid_tests(task_id):
+    task = TASKS[task_id]
+    for field in ('title', 'title_zh', 'difficulty', 'function_name', 'tests', 'solution'):
+        assert task.get(field), (task_id, field)
+    assert isinstance(task['tests'], list)
+    assert all(test.get('code', '').strip() for test in task['tests']), task_id
+    for test in task['tests']:
+        assert test.get('name') and '{fn}' in test['code'], task_id
+        compile(test['code'].replace('{fn}', task['function_name']), f"<test:{task_id}>", 'exec')

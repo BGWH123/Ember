@@ -19,7 +19,7 @@ def test_invalid_inputs_before_execution():
 
 
 def test_stdio_real_four_workloads_and_errors():
-    workloads = json.loads((ROOT / 'scripts/loadtest/workload.json').read_text())
+    workloads = json.loads((ROOT / 'scripts/desktop/workload.json').read_text(encoding='utf-8'))
     requests = [{'id':'hello','method':'hello','params':None}]
     for index, item in enumerate(workloads):
         requests.append({'id':str(index),'method':'evaluate','params':{'requestId':str(index),**item}})
@@ -29,7 +29,10 @@ def test_stdio_real_four_workloads_and_errors():
         {'id':'recovery','method':'evaluate','params':{'taskId':'relu','code':workloads[0]['code']}},
     ])
     result = subprocess.run([sys.executable, str(ROOT/'modules/evaluator/runner.py')],
-        input=''.join(json.dumps(r)+'\n' for r in requests),text=True,capture_output=True,timeout=40,cwd=ROOT)
+        input=''.join(json.dumps(r)+'\n' for r in requests),text=True,encoding='utf-8',capture_output=True,
+        # Windows spawn imports Torch for every evaluation; allow each request
+        # its production 10-second budget plus process startup/teardown overhead.
+        timeout=10 + 12 * (len(requests) - 1),cwd=ROOT)
     assert result.returncode == 0, result.stderr
     replies = [json.loads(line) for line in result.stdout.splitlines()]
     assert len(replies)==len(requests)

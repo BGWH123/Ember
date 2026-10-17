@@ -16,7 +16,6 @@ flowchart TB
   App --> DB[SQLite 学习数据]
   App --> Port[Evaluator 接口]
   Port --> Local[本地协议进程]
-  Port --> Remote[远程 HTTP 服务]
   Local --> Worker[单次执行进程]
 ```
 
@@ -28,19 +27,19 @@ flowchart TB
 | --- | --- |
 | `apps/desktop` | 路由、编辑器、设置与 Tauri 壳 |
 | `crates/ember-core` | 题库、应用用例、SQLite 和 AI 请求适配 |
-| `crates/ember-evaluator` | 协议、本地/远程适配器、模块安装与验证 |
+| `crates/ember-evaluator` | 本地协议、模块安装与验证，以及尚不可用的 HTTP 预留接口 |
 | `modules/evaluator` | Python 协议进程、预算检查和单次执行 |
 | `content/catalog` | 随壳打包的展示与测试元数据 |
 | `torch_judge/tasks` | 执行任务与测试的源码 |
 | `scripts/desktop` | 导出、构建、签名、验收和性能工具 |
 
-原版 `web` 和 `grading_service` 仍保留，用于兼容开发与对比；它们不是新桌面应用的请求路径。
+旧版 Next.js 网页端、`grading_service` 与 Python 远程服务均已移除。桌面与本地评测不依赖 HTTP 服务。`remote.rs` 仅保留标注“线上评测预留功能”的接口，调用时直接返回不可用，不发送请求。旧数据库的只读导入由 Rust 核心提供。
 
 ## 依赖方向
 
 `ember-core` 依赖评测接口，接口不依赖前端或业务数据库。前端通过 Tauri 命令调用应用用例，不能直接启动 Python 或修改 SQLite。模块管理器负责下载与签名校验，执行适配器负责协议和进程生命周期，两者不互相承担学习状态更新。
 
-这种边界允许模块与壳独立升级，也允许远程服务实现同一[评测协议](../../reference/evaluator/protocol.mdx)。独立升级仍须满足[兼容性约束](../../reference/compatibility.md)。
+这种边界允许模块与壳独立升级。本地执行遵循[评测协议](../../reference/evaluator/protocol.mdx)，独立升级仍须满足[兼容性约束](../../reference/compatibility.md)。
 
 ## 一致性边界
 

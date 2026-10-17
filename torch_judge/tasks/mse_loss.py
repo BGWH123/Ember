@@ -13,19 +13,19 @@ TASK = {
     "theory_en": "MSE penalizes large errors quadratically. It is the standard loss for regression tasks. The gradient is linear in the error, making optimization stable.",
     "theory_zh": "MSE 对大误差的惩罚是二次增长。是回归任务的标准损失函数。梯度与误差线性相关，优化过程稳定。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Mean over all tensor elements",
+        "code": "p = torch.tensor([[1., -2., 4.], [0., 3., 8.]], dtype=torch.float64)\nt = torch.tensor([[0., 2., 2.], [-1., 1., 5.]], dtype=torch.float64)\nactual = {fn}(p, t)\nassert actual.ndim == 0\nassert torch.allclose(actual, F.mse_loss(p, t), atol=1e-10)"
+    },
+    {
+        "name": "Perfect predictions and scalar",
+        "code": "x = torch.tensor([1., 2., 3.])\nassert {fn}(x, x).item() == 0.\nassert torch.allclose({fn}(torch.tensor(4.), torch.tensor(1.)), torch.tensor(9.))"
+    },
+    {
+        "name": "Backward gradient",
+        "code": "p = torch.tensor([1., -2., 3.], dtype=torch.float64, requires_grad=True)\nt = torch.tensor([0., 4., 1.], dtype=torch.float64)\n{fn}(p, t).backward()\nassert torch.allclose(p.grad, 2 * (p.detach() - t) / p.numel(), atol=1e-10)"
+    }
+],
     "solution": '''
 
 import torch

@@ -46,20 +46,20 @@ def test_strips_whitespace():
 
 # --- integration: verify solutions.json ---
 
-SOLUTIONS_JSON = Path(__file__).parent.parent / "web" / "src" / "lib" / "solutions.json"
+SOLUTIONS_JSON = Path(__file__).parent.parent / "content" / "catalog" / "solutions.json"
 
 
 @pytest.mark.skipif(not SOLUTIONS_JSON.exists(), reason="solutions.json not generated yet")
 def test_solutions_json_has_all_tasks():
     from torch_judge.tasks import TASKS
 
-    data = json.loads(SOLUTIONS_JSON.read_text())
+    data = json.loads(SOLUTIONS_JSON.read_text(encoding="utf-8"))
     assert len(data) == len(TASKS)
 
 
 @pytest.mark.skipif(not SOLUTIONS_JSON.exists(), reason="solutions.json not generated yet")
 def test_solutions_json_relu_shape():
-    data = json.loads(SOLUTIONS_JSON.read_text())
+    data = json.loads(SOLUTIONS_JSON.read_text(encoding="utf-8"))
     assert "relu" in data
     cells = data["relu"]["cells"]
     assert any(c["role"] == "solution" for c in cells)
@@ -70,6 +70,6 @@ def test_solutions_json_relu_shape():
 
 @pytest.mark.skipif(not SOLUTIONS_JSON.exists(), reason="solutions.json not generated yet")
 def test_solutions_json_every_task_has_solution_cell():
-    data = json.loads(SOLUTIONS_JSON.read_text())
+    data = json.loads(SOLUTIONS_JSON.read_text(encoding="utf-8"))
     missing = [tid for tid, entry in data.items() if not any(c["role"] == "solution" for c in entry["cells"])]
     assert missing == [], f"Tasks missing solution cell: {missing}"

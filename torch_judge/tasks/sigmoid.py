@@ -13,19 +13,19 @@ TASK = {
     "theory_en": "Sigmoid squashes any real number to (0, 1), making it useful for binary classification output layers. However, it suffers from vanishing gradient when |x| is large.",
     "theory_zh": "Sigmoid 将任意实数压缩到 (0, 1) 区间，适用于二分类输出层。但在 |x| 很大时会出现梯度消失问题。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Values across signs and dimensions",
+        "code": "x = torch.tensor([[-3., -0.2, 0.], [0.5, 2., 5.]], dtype=torch.float64)\nout = {fn}(x)\nassert out.shape == x.shape\nassert torch.allclose(out, torch.sigmoid(x), atol=1e-10)"
+    },
+    {
+        "name": "Large magnitudes remain finite",
+        "code": "x = torch.tensor([-1000., -100., 0., 100., 1000.])\nout = {fn}(x)\nassert torch.isfinite(out).all()\nassert torch.allclose(out, torch.sigmoid(x), atol=1e-6)"
+    },
+    {
+        "name": "Finite backward including extreme inputs",
+        "code": "x = torch.tensor([-1000., -2., 0., 2., 1000.], dtype=torch.float64, requires_grad=True)\n{fn}(x).sum().backward()\nexpected = torch.sigmoid(x.detach())\nassert torch.isfinite(x.grad).all()\nassert torch.allclose(x.grad, expected * (1 - expected), atol=1e-10)"
+    }
+],
     "solution": '''
 
 import torch
@@ -38,11 +38,12 @@ def sigmoid(x: torch.Tensor) -> torch.Tensor:
     """
     # 数值稳定的实现：根据输入符号选择计算路径
     # Numerically stable: choose computation path based on sign
-    return torch.where(
-        x >= 0,
-        1.0 / (1.0 + torch.exp(-x)),
-        torch.exp(x) / (1.0 + torch.exp(x))
-    )
+    positive = x >= 0
+    result = torch.empty_like(x)
+    result[positive] = 1.0 / (1.0 + torch.exp(-x[positive]))
+    exp_x = torch.exp(x[~positive])
+    result[~positive] = exp_x / (1.0 + exp_x)
+    return result
 
     
     ''',

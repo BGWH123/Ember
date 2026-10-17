@@ -1,8 +1,7 @@
+import { WaitingState } from '@/components/ui/WaitingState';
 import { appFetch } from '@/transport/client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { TopNav } from '@/components/layout/TopNav';
-import { Footer } from '@/components/layout/Footer';
 import {
   Dices,
   Code2,
@@ -486,17 +485,15 @@ export default function InterviewPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
-        <div className="text-text-2 text-sm">加载中...</div>
-      </div>
+      <WaitingState />
     );
   }
 
   return (
-    <div className="min-h-screen bg-bg">
-      <TopNav />
+    <div className="desktop-page bg-bg">
 
-      <main className="max-w-[1200px] mx-auto px-6" style={{ paddingTop: 80 }}>
+
+      <main className="max-w-[1200px] mx-auto px-6" style={{ paddingTop: 28 }}>
         {/* Page Header */}
         <div className="text-center mb-10">
           <h1 className="text-2xl font-bold text-text mb-2">模拟面试</h1>
@@ -525,7 +522,7 @@ export default function InterviewPage() {
         </div>
       </main>
 
-      <Footer />
+
     </div>
   );
 }

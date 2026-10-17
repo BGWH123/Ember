@@ -183,12 +183,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Variable lengths and empty sequences",
+          "code": "mask = {fn}([3, 1, 0, 4], 4)\nassert mask.shape == (4, 4)\nexpected = torch.arange(4).unsqueeze(0) < torch.tensor([3, 1, 0, 4]).unsqueeze(1)\nassert torch.equal(mask[expected], torch.zeros_like(mask[expected]))\nassert torch.all(mask[~expected] < -1e8)"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Padding receives no attention",
+          "code": "mask = {fn}([2, 4], 4)\nscores = torch.tensor([[2., -1., 8., 9.], [1., 2., 3., 4.]])\np = torch.softmax(scores + mask, dim=-1)\nassert torch.allclose(p[0, :2], torch.softmax(scores[0, :2], dim=0))\nassert torch.equal(p[0, 2:], torch.zeros(2))\nassert torch.allclose(p[1], torch.softmax(scores[1], dim=0))"
+        },
+        {
+          "name": "Zero-width batch",
+          "code": "mask = {fn}([0, 0], 0)\nassert mask.shape == (2, 0)"
         }
       ]
     },
@@ -277,12 +281,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Logits and mean reduction",
+          "code": "z = torch.tensor([[0., 2., -3.], [1., -2., 0.5]], dtype=torch.float64)\ny = torch.tensor([[0., 1., 1.], [1., 0., 1.]], dtype=torch.float64)\nactual = {fn}(z, y)\nassert actual.ndim == 0\nassert torch.allclose(actual, F.binary_cross_entropy_with_logits(z, y), atol=1e-10)"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Extreme logits stay finite",
+          "code": "z = torch.tensor([-1000., 1000., -1000., 1000.])\ny = torch.tensor([0., 1., 1., 0.])\nout = {fn}(z, y)\nassert torch.isfinite(out)\nassert torch.allclose(out, torch.tensor(500.), atol=1e-4)"
+        },
+        {
+          "name": "Backward gradient",
+          "code": "x = torch.tensor([-2., 0., 3.], dtype=torch.float64, requires_grad=True)\ny = torch.tensor([1., 0., 1.], dtype=torch.float64)\n{fn}(x, y).backward()\nassert torch.allclose(x.grad, (torch.sigmoid(x.detach()) - y) / 3, atol=1e-10)"
         }
       ]
     },
@@ -581,16 +589,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Vector directions",
+          "code": "a = torch.tensor([3., 4., 0.])\nassert torch.allclose({fn}(a, a), torch.tensor(1.), atol=1e-6)\nassert torch.allclose({fn}(a, -a), torch.tensor(-1.), atol=1e-6)\nassert torch.allclose({fn}(torch.tensor([1., 0.]), torch.tensor([0., 2.])), torch.tensor(0.), atol=1e-6)"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "All row pairs and zero vector",
+          "code": "a = torch.tensor([[1., 0., 0.], [1., 2., 3.]])\nb = torch.tensor([[0., 1., 0.], [3., 2., 1.], [0., 0., 0.], [-1., 0., 0.]])\nexpected = F.normalize(a, dim=-1) @ F.normalize(b, dim=-1).T\nout = {fn}(a, b)\nassert out.shape == (2, 4)\nassert torch.isfinite(out).all()\nassert torch.allclose(out, expected, atol=1e-6)"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Custom epsilon",
+          "code": "a = torch.tensor([1e-10, 0.], dtype=torch.float64)\nb = torch.tensor([1., 1.], dtype=torch.float64)\neps = 1e-3\nexpected = torch.dot(a / (a.norm() + eps), b / (b.norm() + eps))\nassert torch.allclose({fn}(a, b, eps), expected, atol=1e-12)"
         }
       ]
     },
@@ -1542,8 +1550,8 @@
       "titleZh": "GRU 单元",
       "difficulty": "Medium",
       "functionName": "gru_cell",
-      "hint": "Concatenate h and x for gates. For candidate, multiply h_prev by reset gate r before concatenating with x.",
-      "hintZh": "门控计算时拼接 h 和 x。候选值计算时，先将 h_prev 乘以重置门 r，再与 x 拼接。",
+      "hint": "Concatenate h and x for gates. For candidate, multiply h_prev by reset gate r before concatenating with x. Create the gate projections with nn.Linear; tests supply fixed weights to verify the recurrence independently of random initialization.",
+      "hintZh": "门控计算时拼接 h 和 x。候选值计算时，先将 h_prev 乘以重置门 r，再与 x 拼接。 使用 nn.Linear 创建门控投影；测试会提供固定权重，避免随机初始化影响递推公式的验证。",
       "descriptionEn": "Implement a single GRU cell step. Given input x_t and previous hidden state h_{t-1}, compute: update gate z = σ(W_z·[h,x] + b_z), reset gate r = σ(W_r·[h,x] + b_r), candidate h~ = tanh(W_h·[r⊙h, x] + b_h). Then h_t = (1-z)⊙h_{t-1} + z⊙h~.",
       "descriptionZh": "实现单个 GRU 单元的前向步。给定输入 x_t 和前一时刻隐状态 h_{t-1}，计算：更新门 z = σ(W_z·[h,x] + b_z)，重置门 r = σ(W_r·[h,x] + b_r)，候选值 h~ = tanh(W_h·[r⊙h, x] + b_h)。然后 h_t = (1-z)⊙h_{t-1} + z⊙h~。",
       "category": "基础网络组件",
@@ -1553,8 +1561,12 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Gate equations B2 I3 H4",
+          "code": "original_linear = nn.Linear\ndef fixed_linear(*args, **kwargs):\n    layer = original_linear(*args, **kwargs)\n    with torch.no_grad():\n        layer.weight.fill_(0.2)\n        if layer.bias is not None:\n            layer.bias.fill_(0.1)\n    return layer\n\nx = torch.linspace(-0.8, 0.7, 6).reshape(2, 3).requires_grad_()\nh = torch.linspace(-0.5, 0.9, 8).reshape(2, 4).requires_grad_()\ngate = torch.sigmoid(0.2 * (h.sum(-1, keepdim=True) + x.sum(-1, keepdim=True)) + 0.1)\ncandidate = torch.tanh(0.2 * ((gate * h).sum(-1, keepdim=True) + x.sum(-1, keepdim=True)) + 0.1)\nexpected = (1 - gate) * h + gate * candidate\nnn.Linear = fixed_linear\ntry:\n    out = {fn}(x, h, 3, 4)\nfinally:\n    nn.Linear = original_linear\nassert out.shape == h.shape\nassert torch.allclose(out, expected, atol=1e-6)\ngx, gh = torch.autograd.grad(out.sum(), (x, h), retain_graph=True)\nrx, rh = torch.autograd.grad(expected.sum(), (x, h))\nassert torch.allclose(gx, rx, atol=1e-6)\nassert torch.allclose(gh, rh, atol=1e-6)"
+        },
+        {
+          "name": "Gate equations B1 I2 H2",
+          "code": "original_linear = nn.Linear\ndef fixed_linear(*args, **kwargs):\n    layer = original_linear(*args, **kwargs)\n    with torch.no_grad():\n        layer.weight.fill_(0.2)\n        if layer.bias is not None:\n            layer.bias.fill_(0.1)\n    return layer\n\nx = torch.linspace(-0.8, 0.7, 2).reshape(1, 2).requires_grad_()\nh = torch.linspace(-0.5, 0.9, 2).reshape(1, 2).requires_grad_()\ngate = torch.sigmoid(0.2 * (h.sum(-1, keepdim=True) + x.sum(-1, keepdim=True)) + 0.1)\ncandidate = torch.tanh(0.2 * ((gate * h).sum(-1, keepdim=True) + x.sum(-1, keepdim=True)) + 0.1)\nexpected = (1 - gate) * h + gate * candidate\nnn.Linear = fixed_linear\ntry:\n    out = {fn}(x, h, 2, 2)\nfinally:\n    nn.Linear = original_linear\nassert out.shape == h.shape\nassert torch.allclose(out, expected, atol=1e-6)\ngx, gh = torch.autograd.grad(out.sum(), (x, h), retain_graph=True)\nrx, rh = torch.autograd.grad(expected.sum(), (x, h))\nassert torch.allclose(gx, rx, atol=1e-6)\nassert torch.allclose(gh, rh, atol=1e-6)"
         }
       ]
     },
@@ -1613,12 +1625,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Asymmetric KL direction",
+          "code": "p = torch.tensor([0.1, 0.3, 0.6], dtype=torch.float64)\nq = torch.tensor([0.5, 0.25, 0.25], dtype=torch.float64)\nexpected = (p * (p.log() - q.log())).sum()\nassert torch.allclose({fn}(p, q), expected, atol=1e-8)\nassert abs({fn}(p, q).item() - {fn}(q, p).item()) > 0.01"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Zeros and identical distributions",
+          "code": "p = torch.tensor([0., 0.4, 0.6], dtype=torch.float64)\nassert abs({fn}(p, p).item()) < 1e-10\nq = torch.tensor([0.3, 0., 0.7], dtype=torch.float64)\neps = 1e-5\nexpected = ((p + eps) * ((p + eps).log() - (q + eps).log())).sum()\nassert torch.isfinite({fn}(p, q, eps))\nassert torch.allclose({fn}(p, q, eps), expected, atol=1e-10)"
+        },
+        {
+          "name": "Gradient with respect to prediction",
+          "code": "p = torch.tensor([0.2, 0.8], dtype=torch.float64)\nq = torch.tensor([0.6, 0.4], dtype=torch.float64, requires_grad=True)\neps = 1e-6\n{fn}(p, q, eps).backward()\nassert torch.allclose(q.grad, -(p + eps) / (q.detach() + eps), atol=1e-9)"
         }
       ]
     },
@@ -1677,16 +1693,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Signed multidimensional penalty",
+          "code": "w = torch.tensor([[-2., 0., 3.], [4., -1., 2.]], dtype=torch.float64)\nexpected = 0.3 * 1.0 * w.abs().pow(1).sum()\nactual = {fn}(w, 0.3)\nassert actual.ndim == 0\nassert torch.allclose(actual, expected, atol=1e-10)"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Zero coefficient and zero weights",
+          "code": "assert {fn}(torch.tensor([-3., 2.]), 0.).item() == 0.\nassert {fn}(torch.zeros(2, 3), 0.7).item() == 0."
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Gradient and input preservation",
+          "code": "w = torch.tensor([-2., 0., 3.], dtype=torch.float64, requires_grad=True)\nbefore = w.detach().clone()\n{fn}(w, 0.4).backward()\nassert torch.equal(w.detach(), before)\nassert torch.allclose(w.grad, 0.4 * w.detach().sign(), atol=1e-10)"
         }
       ]
     },
@@ -1707,16 +1723,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Signed multidimensional penalty",
+          "code": "w = torch.tensor([[-2., 0., 3.], [4., -1., 2.]], dtype=torch.float64)\nexpected = 0.3 * 0.5 * w.abs().pow(2).sum()\nactual = {fn}(w, 0.3)\nassert actual.ndim == 0\nassert torch.allclose(actual, expected, atol=1e-10)"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Zero coefficient and zero weights",
+          "code": "assert {fn}(torch.tensor([-3., 2.]), 0.).item() == 0.\nassert {fn}(torch.zeros(2, 3), 0.7).item() == 0."
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Gradient and input preservation",
+          "code": "w = torch.tensor([-2., 0., 3.], dtype=torch.float64, requires_grad=True)\nbefore = w.detach().clone()\n{fn}(w, 0.4).backward()\nassert torch.equal(w.detach(), before)\nassert torch.allclose(w.grad, 0.4 * w.detach(), atol=1e-10)"
         }
       ]
     },
@@ -1793,7 +1809,7 @@
       "title": "LayerScale",
       "titleZh": "LayerScale",
       "difficulty": "Medium",
-      "functionName": "layerscale",
+      "functionName": "LayerScale",
       "hint": "Initialize γ as a small constant (e.g., 1e-6). Multiply f(x) element-wise by γ before adding to the residual.",
       "hintZh": "将 γ 初始化为小常数（如 1e-6）。在加入残差前，将 f(x) 逐元素乘以 γ。",
       "descriptionEn": "Implement LayerScale as used in DeiT III and modern Transformers. LayerScale multiplies the output of a sub-layer (e.g., attention or FFN) by a learnable diagonal matrix: output = x + diag(γ) * f(x), where γ is a learnable vector initialized to a small value (e.g., 1e-6). This stabilizes training of deep Transformers.",
@@ -1805,8 +1821,12 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Learnable channel scale and residual",
+          "code": "layer = {fn}(3, init_value=0.2)\nassert isinstance(layer, nn.Module)\nassert isinstance(layer.gamma, nn.Parameter)\nassert layer.gamma.shape == (3,)\nassert torch.allclose(layer.gamma, torch.full((3,), 0.2))\nx = torch.arange(24.).reshape(2, 4, 3)\nbranch = torch.ones_like(x) * 2\nassert torch.allclose(layer(x, branch), x + 0.4)"
+        },
+        {
+          "name": "Independent channels and parameter gradient",
+          "code": "layer = {fn}(3)\nassert torch.allclose(layer.gamma, torch.full((3,), 1e-6))\nwith torch.no_grad():\n    layer.gamma.copy_(torch.tensor([0.1, 0.2, -0.3]))\nx = torch.ones(2, 3, requires_grad=True)\nbranch = torch.tensor([[2., 3., 4.], [1., 2., 3.]], requires_grad=True)\nout = layer(x, branch)\nassert torch.allclose(out, x + branch * torch.tensor([0.1, 0.2, -0.3]))\nout.sum().backward()\nassert torch.allclose(layer.gamma.grad, branch.detach().sum(0))\nassert torch.allclose(x.grad, torch.ones_like(x))\nassert torch.allclose(branch.grad, layer.gamma.detach().expand_as(branch))"
         }
       ]
     },
@@ -1827,12 +1847,12 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Default and custom negative slope",
+          "code": "x = torch.tensor([[-3., -0.5, 0.], [0.5, 2., 4.]])\nassert torch.allclose({fn}(x), F.leaky_relu(x, 0.01))\nassert torch.allclose({fn}(x, 0.2), F.leaky_relu(x, 0.2))\nassert torch.allclose({fn}(x, 0.), torch.relu(x))"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Gradient away from zero",
+          "code": "x = torch.tensor([-3., -1., 2., 4.], requires_grad=True)\nbefore = x.detach().clone()\n{fn}(x, 0.15).sum().backward()\nassert torch.allclose(x.grad, torch.tensor([0.15, 0.15, 1., 1.]))\nassert torch.equal(x.detach(), before)"
         }
       ]
     },
@@ -2032,8 +2052,8 @@
       "titleZh": "LSTM 单元",
       "difficulty": "Medium",
       "functionName": "lstm_cell",
-      "hint": "Concatenate h and x along the last dimension. Use four separate linear projections, then apply sigmoid/tanh to the respective gates.",
-      "hintZh": "沿最后一维拼接 h 和 x。使用四个独立的线性投影，然后对 respective 门应用 sigmoid/tanh。",
+      "hint": "Concatenate h and x along the last dimension. Use four separate linear projections, then apply sigmoid/tanh to the respective gates. Create the gate projections with nn.Linear; tests supply fixed weights to verify the recurrence independently of random initialization.",
+      "hintZh": "沿最后一维拼接 h 和 x。使用四个独立的线性投影，然后对 respective 门应用 sigmoid/tanh。 使用 nn.Linear 创建门控投影；测试会提供固定权重，避免随机初始化影响递推公式的验证。",
       "descriptionEn": "Implement a single LSTM cell step. Given input x_t, previous hidden state h_{t-1}, and previous cell state c_{t-1}, compute: forget gate f = σ(W_f·[h,x] + b_f), input gate i = σ(W_i·[h,x] + b_i), candidate g = tanh(W_g·[h,x] + b_g), output gate o = σ(W_o·[h,x] + b_o). Then c_t = f*c_{t-1} + i*g, h_t = o*tanh(c_t).",
       "descriptionZh": "实现单个 LSTM 单元的前向步。给定输入 x_t、前一时刻隐状态 h_{t-1} 和细胞状态 c_{t-1}，计算：遗忘门 f = σ(W_f·[h,x] + b_f)，输入门 i = σ(W_i·[h,x] + b_i)，候选值 g = tanh(W_g·[h,x] + b_g)，输出门 o = σ(W_o·[h,x] + b_o)。然后 c_t = f*c_{t-1} + i*g，h_t = o*tanh(c_t)。",
       "category": "基础网络组件",
@@ -2043,8 +2063,12 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Cell and output equations B2 I3 H4",
+          "code": "original_linear = nn.Linear\ndef fixed_linear(*args, **kwargs):\n    layer = original_linear(*args, **kwargs)\n    with torch.no_grad():\n        layer.weight.fill_(0.2)\n        if layer.bias is not None:\n            layer.bias.fill_(0.1)\n    return layer\n\nx = torch.linspace(-0.8, 0.7, 6).reshape(2, 3).requires_grad_()\nh = torch.linspace(-0.5, 0.9, 8).reshape(2, 4).requires_grad_()\nc = torch.linspace(0.2, 1.2, 8).reshape(2, 4).requires_grad_()\naffine = 0.2 * (h.sum(-1, keepdim=True) + x.sum(-1, keepdim=True)) + 0.1\ngate = torch.sigmoid(affine)\nexpected_c = gate * c + gate * torch.tanh(affine)\nexpected_h = gate * torch.tanh(expected_c)\nnn.Linear = fixed_linear\ntry:\n    out_h, out_c = {fn}(x, h, c, 3, 4)\nfinally:\n    nn.Linear = original_linear\nassert out_h.shape == out_c.shape == h.shape\nassert torch.allclose(out_h, expected_h, atol=1e-6)\nassert torch.allclose(out_c, expected_c, atol=1e-6)\nactual_grads = torch.autograd.grad((out_h + out_c).sum(), (x, h, c), retain_graph=True)\nexpected_grads = torch.autograd.grad((expected_h + expected_c).sum(), (x, h, c))\nfor actual, expected in zip(actual_grads, expected_grads):\n    assert torch.allclose(actual, expected, atol=1e-6)"
+        },
+        {
+          "name": "Cell and output equations B1 I2 H2",
+          "code": "original_linear = nn.Linear\ndef fixed_linear(*args, **kwargs):\n    layer = original_linear(*args, **kwargs)\n    with torch.no_grad():\n        layer.weight.fill_(0.2)\n        if layer.bias is not None:\n            layer.bias.fill_(0.1)\n    return layer\n\nx = torch.linspace(-0.8, 0.7, 2).reshape(1, 2).requires_grad_()\nh = torch.linspace(-0.5, 0.9, 2).reshape(1, 2).requires_grad_()\nc = torch.linspace(0.2, 1.2, 2).reshape(1, 2).requires_grad_()\naffine = 0.2 * (h.sum(-1, keepdim=True) + x.sum(-1, keepdim=True)) + 0.1\ngate = torch.sigmoid(affine)\nexpected_c = gate * c + gate * torch.tanh(affine)\nexpected_h = gate * torch.tanh(expected_c)\nnn.Linear = fixed_linear\ntry:\n    out_h, out_c = {fn}(x, h, c, 2, 2)\nfinally:\n    nn.Linear = original_linear\nassert out_h.shape == out_c.shape == h.shape\nassert torch.allclose(out_h, expected_h, atol=1e-6)\nassert torch.allclose(out_c, expected_c, atol=1e-6)\nactual_grads = torch.autograd.grad((out_h + out_c).sum(), (x, h, c), retain_graph=True)\nexpected_grads = torch.autograd.grad((expected_h + expected_c).sum(), (x, h, c))\nfor actual, expected in zip(actual_grads, expected_grads):\n    assert torch.allclose(actual, expected, atol=1e-6)"
         }
       ]
     },
@@ -2449,16 +2473,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Mean over all tensor elements",
+          "code": "p = torch.tensor([[1., -2., 4.], [0., 3., 8.]], dtype=torch.float64)\nt = torch.tensor([[0., 2., 2.], [-1., 1., 5.]], dtype=torch.float64)\nactual = {fn}(p, t)\nassert actual.ndim == 0\nassert torch.allclose(actual, F.mse_loss(p, t), atol=1e-10)"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Perfect predictions and scalar",
+          "code": "x = torch.tensor([1., 2., 3.])\nassert {fn}(x, x).item() == 0.\nassert torch.allclose({fn}(torch.tensor(4.), torch.tensor(1.)), torch.tensor(9.))"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Backward gradient",
+          "code": "p = torch.tensor([1., -2., 3.], dtype=torch.float64, requires_grad=True)\nt = torch.tensor([0., 4., 1.], dtype=torch.float64)\n{fn}(p, t).backward()\nassert torch.allclose(p.grad, 2 * (p.detach() - t) / p.numel(), atol=1e-10)"
         }
       ]
     },
@@ -2547,9 +2571,9 @@
       "title": "Noisy Top-K Gating (MoE)",
       "titleZh": "噪声 Top-K 门控（MoE）",
       "difficulty": "Hard",
-      "functionName": "noisy_topk_gating",
-      "hint": "Generate noise using torch.randn. Use softplus for noise scaling. Top-k with softmax on selected logits only.",
-      "hintZh": "使用 torch.randn 生成噪声。用 softplus 做噪声缩放。仅对选中的 top-k logits 做 softmax。",
+      "functionName": "NoisyTopKGating",
+      "hint": "Generate noise using torch.randn. Use softplus for noise scaling. Top-k with softmax on selected logits only. Expose the clean-logit and noise projections as self.W_g and self.W_noise, matching the starter class.",
+      "hintZh": "使用 torch.randn 生成噪声。用 softplus 做噪声缩放。仅对选中的 top-k logits 做 softmax。 按起始模板将干净 logits 和噪声投影分别命名为 self.W_g 与 self.W_noise。",
       "descriptionEn": "Implement Noisy Top-K Gating for Mixture-of-Experts. Given input x and n_experts, compute: logits = x @ W_g + noise * (x @ W_noise), where noise = StandardNormal * softplus(x @ W_noise). Select top-k experts, apply softmax to their logits. Return (weights, expert_indices) where weights sum to 1 for each token.",
       "descriptionZh": "实现混合专家模型（MoE）的噪声 Top-K 门控。给定输入 x 和专家数量 n_experts，计算：logits = x @ W_g + noise * (x @ W_noise)，其中 noise = StandardNormal * softplus(x @ W_noise)。选择 top-k 专家，对它们的 logits 应用 softmax。返回 (weights, expert_indices)，其中每个 token 的权重和为1。",
       "category": "混合专家模型",
@@ -2559,8 +2583,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Deterministic expert ranking without noise",
+          "code": "layer = {fn}(3, 4, top_k=2)\nwith torch.no_grad():\n    layer.W_g.weight.copy_(torch.tensor([[1., 0., 0.], [0., 2., 0.], [0., 0., 3.], [-1., 0., 0.]]))\n    layer.W_g.bias.copy_(torch.tensor([0.1, -0.2, 0.3, 0.4]))\nx = torch.tensor([[2., 1., -1.], [-1., 2., 1.]])\nlogits = F.linear(x, layer.W_g.weight, layer.W_g.bias)\nvalues, indices = logits.topk(2, dim=-1)\nweights, actual_indices = layer(x, training=False)\nassert torch.equal(actual_indices, indices)\nassert torch.allclose(weights, values.softmax(-1), atol=1e-6)"
+        },
+        {
+          "name": "Top-one and all experts",
+          "code": "for k in [1, 5]:\n    torch.manual_seed(123)\n    layer = {fn}(3, 5, top_k=k)\n    weights, indices = layer(torch.ones(4, 3), training=False)\n    assert weights.shape == indices.shape == (4, k)\n    assert indices.dtype == torch.long\n    assert ((indices >= 0) & (indices < 5)).all()\n    assert torch.allclose(weights.sum(-1), torch.ones(4), atol=1e-6)\n    for row in indices:\n        assert row.unique().numel() == k"
+        },
+        {
+          "name": "Training noise and differentiable weights",
+          "code": "layer = {fn}(3, 4, top_k=2)\nwith torch.no_grad():\n    layer.W_g.weight.zero_(); layer.W_g.bias.zero_()\n    layer.W_noise.weight.zero_(); layer.W_noise.bias.zero_()\nx = torch.ones(32, 3)\ntorch.manual_seed(99)\nw1, i1 = layer(x, training=True)\ntorch.manual_seed(99)\nw2, i2 = layer(x, training=True)\nassert torch.equal(i1, i2) and torch.allclose(w1, w2)\nassert i1.unique().numel() > 2\nassert torch.allclose(w1.sum(-1), torch.ones(32), atol=1e-6)\n(w1[:, 0].sum()).backward()\nassert layer.W_noise.bias.grad is not None\nassert layer.W_noise.bias.grad.abs().sum() > 0"
         }
       ]
     },
@@ -2619,12 +2651,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Class positions including repeated indices",
+          "code": "idx = torch.tensor([0, 3, 1, 3, 0])\nout = {fn}(idx, 4)\nassert out.shape == (5, 4)\nassert torch.equal(out, F.one_hot(idx, 4).float())"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Single class and empty input",
+          "code": "assert torch.equal({fn}(torch.zeros(3, dtype=torch.long), 1), torch.ones(3, 1))\nassert {fn}(torch.tensor([], dtype=torch.long), 5).shape == (0, 5)"
+        },
+        {
+          "name": "Does not change indices",
+          "code": "idx = torch.tensor([2, 1, 0])\nbefore = idx.clone()\nout = {fn}(idx, 5)\nassert torch.equal(idx, before)\nassert torch.equal(out.sum(-1), torch.ones(3))\nassert torch.all((out == 0) | (out == 1))"
         }
       ]
     },
@@ -2770,10 +2806,10 @@
       "titleZh": "残差连接（Residual Connection）",
       "difficulty": "Easy",
       "functionName": "residual_connection",
-      "hint": "Check if shapes match. If not, create a projection matrix W such that x @ W has the same shape as f(x).",
-      "hintZh": "检查形状是否匹配。如果不匹配，创建投影矩阵 W 使得 x @ W 与 f(x) 形状相同。",
-      "descriptionEn": "Implement a residual connection: output = x + f(x), where f(x) is a sub-layer (e.g., linear transformation). If the input and output shapes differ, project x with a linear layer before adding.",
-      "descriptionZh": "实现残差连接：output = x + f(x)，其中 f(x) 是子层（如线性变换）。如果输入和输出维度不同，先对 x 做线性投影再相加。",
+      "hint": "Check if shapes match. If not, create a projection matrix W such that x @ W has the same shape as f(x). Initialize the entire rectangular projection with nn.init.eye_, including zeroing off-diagonal entries.",
+      "hintZh": "检查形状是否匹配。如果不匹配，创建投影矩阵 W 使得 x @ W 与 f(x) 形状相同。 使用 nn.init.eye_ 初始化完整矩形投影，包括将对角线以外的位置置零。",
+      "descriptionEn": "Implement a residual connection: output = x + f(x), where f(x) is a sub-layer (e.g., linear transformation). If the input and output shapes differ, project x with a linear layer before adding. In this exercise, use a bias-free identity-like rectangular projection: copy overlapping channels and fill additional output channels with zero.",
+      "descriptionZh": "实现残差连接：output = x + f(x)，其中 f(x) 是子层（如线性变换）。如果输入和输出维度不同，先对 x 做线性投影再相加。 本题使用不含偏置的矩形单位投影：复制共有通道，新增输出通道填零。",
       "category": "基础网络组件",
       "theoryEn": "Residual connections allow gradients to flow directly through the network via shortcut paths, enabling training of very deep networks (ResNet, Transformer).",
       "theoryZh": "残差连接通过捷径路径让梯度直接回流，使得极深网络（ResNet、Transformer）可以训练。",
@@ -2781,8 +2817,12 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Equal shapes and gradients",
+          "code": "x = torch.tensor([[1., 2., 3.], [-1., 0., 2.]], requires_grad=True)\nbranch = torch.tensor([[2., -1., 4.], [3., 2., 1.]], requires_grad=True)\nout = {fn}(x, branch)\nassert torch.allclose(out, x + branch)\nout.sum().backward()\nassert torch.equal(x.grad, torch.ones_like(x))\nassert torch.equal(branch.grad, torch.ones_like(branch))"
+        },
+        {
+          "name": "Projection to narrower channels",
+          "code": "x = torch.tensor([[1., 2., 3.], [-2., 4., 1.]])\nbranch = torch.tensor([[0.5, 1.], [2., -1.]])\n# The documented demo initializes the square portion of the projection as identity.\nout = {fn}(x, branch)\nassert out.shape == (2, 2)\nassert torch.allclose(out, x[:, :2] + branch)"
         }
       ]
     },
@@ -2951,8 +2991,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Ragged sequences and valid zeros",
+          "code": "seqs = [torch.tensor([0, 4, 2]), torch.tensor([7]), torch.tensor([0, 8])]\npadded, mask = {fn}(seqs)\nassert torch.equal(padded, torch.tensor([[0, 4, 2], [7, 0, 0], [0, 8, 0]]))\nassert torch.equal(mask, torch.tensor([[1., 1., 1.], [1., 0., 0.], [1., 1., 0.]]))\nassert padded.dtype == seqs[0].dtype"
+        },
+        {
+          "name": "Empty member and all empty members",
+          "code": "padded, mask = {fn}([torch.tensor([]), torch.tensor([1., 2.])])\nassert torch.equal(padded, torch.tensor([[0., 0.], [1., 2.]]))\nassert torch.equal(mask, torch.tensor([[0., 0.], [1., 1.]]))\npadded, mask = {fn}([torch.tensor([]), torch.tensor([])])\nassert padded.shape == mask.shape == (2, 0)"
+        },
+        {
+          "name": "Preserves input and gradients",
+          "code": "a = torch.tensor([2., 3.], dtype=torch.float64, requires_grad=True)\nb = torch.tensor([-1.], dtype=torch.float64, requires_grad=True)\npadded, mask = {fn}([a, b])\nassert padded.dtype == torch.float64\npadded.sum().backward()\nassert torch.equal(a.grad, torch.ones_like(a))\nassert torch.equal(b.grad, torch.ones_like(b))\nassert torch.equal(a.detach(), torch.tensor([2., 3.], dtype=torch.float64))"
         }
       ]
     },
@@ -2973,8 +3021,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Nonzero velocity update",
+          "code": "p = torch.tensor([[1., -2.], [3., 4.]])\ng = torch.tensor([[0.5, -1.], [2., -0.5]])\nv = torch.tensor([[-0.5, 2.], [1., 0.]])\npn, vn = {fn}(p, g, v, 0.2, 0.8)\nexpected_v = 0.8 * v + g\nassert torch.allclose(vn, expected_v)\nassert torch.allclose(pn, p - 0.2 * expected_v)"
+        },
+        {
+          "name": "Two steps and zero momentum",
+          "code": "p = torch.tensor([2., -3.]); v = torch.zeros(2)\nfor g in [torch.tensor([1., 2.]), torch.tensor([-0.5, 1.])]:\n    old_p, old_v = p.clone(), v.clone()\n    p, v = {fn}(p, g, v, 0.1, 0.9)\n    assert torch.allclose(v, 0.9 * old_v + g)\n    assert torch.allclose(p, old_p - 0.1 * v)\npn, vn = {fn}(p, torch.ones(2), v, 0.1, 0.)\nassert torch.equal(vn, torch.ones(2))\nassert torch.allclose(pn, p - 0.1)"
+        },
+        {
+          "name": "Zero learning rate and input preservation",
+          "code": "p = torch.tensor([2., 4.]); g = torch.tensor([1., -1.]); v = torch.tensor([0.2, 0.3])\nsnapshots = [x.clone() for x in [p, g, v]]\npn, vn = {fn}(p, g, v, 0., 0.5)\nassert torch.equal(pn, p)\nassert torch.allclose(vn, 0.5 * v + g)\nfor x, before in zip([p, g, v], snapshots):\n    assert torch.equal(x, before)"
         }
       ]
     },
@@ -2995,16 +3051,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Values across signs and dimensions",
+          "code": "x = torch.tensor([[-3., -0.2, 0.], [0.5, 2., 5.]], dtype=torch.float64)\nout = {fn}(x)\nassert out.shape == x.shape\nassert torch.allclose(out, torch.sigmoid(x), atol=1e-10)"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Large magnitudes remain finite",
+          "code": "x = torch.tensor([-1000., -100., 0., 100., 1000.])\nout = {fn}(x)\nassert torch.isfinite(out).all()\nassert torch.allclose(out, torch.sigmoid(x), atol=1e-6)"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Finite backward including extreme inputs",
+          "code": "x = torch.tensor([-1000., -2., 0., 2., 1000.], dtype=torch.float64, requires_grad=True)\n{fn}(x).sum().backward()\nexpected = torch.sigmoid(x.detach())\nassert torch.isfinite(x.grad).all()\nassert torch.allclose(x.grad, expected * (1 - expected), atol=1e-10)"
         }
       ]
     },
@@ -3131,16 +3187,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Temperature and final dimension",
+          "code": "x = torch.tensor([[1., 3., -2.], [2., 1., 0.]], dtype=torch.float64)\nfor temperature in [0.25, 1., 4.]:\n    out = {fn}(x, temperature)\n    assert out.shape == x.shape\n    assert torch.allclose(out, torch.softmax(x / temperature, dim=-1), atol=1e-10)"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Large logits and shift invariance",
+          "code": "x = torch.tensor([[10000., 10001., 9999.], [-10000., -10000., -10000.]])\nout = {fn}(x, 0.5)\nassert torch.isfinite(out).all()\nassert torch.allclose(out.sum(-1), torch.ones(2), atol=1e-6)\nassert torch.allclose(out, {fn}(x - 10000., 0.5), atol=1e-6)"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Backward with nonconstant upstream gradient",
+          "code": "x = torch.tensor([0.2, -0.5, 1.], dtype=torch.float64, requires_grad=True)\nreference = x.detach().clone().requires_grad_()\nweights = torch.tensor([1., -2., 3.], dtype=torch.float64)\n({fn}(x, 0.7) * weights).sum().backward()\n(torch.softmax(reference / 0.7, dim=-1) * weights).sum().backward()\nassert torch.allclose(x.grad, reference.grad, atol=1e-10)"
         }
       ]
     },
@@ -3183,7 +3239,7 @@
       "title": "Stochastic Depth (DropPath)",
       "titleZh": "随机深度（DropPath）",
       "difficulty": "Medium",
-      "functionName": "stochastic_depth",
+      "functionName": "StochasticDepth",
       "hint": "Use `torch.rand()` to sample a Bernoulli mask. In eval mode, scale f(x) by (1 - drop_prob).",
       "hintZh": "使用 `torch.rand()` 采样 Bernoulli 掩码。推理模式下将 f(x) 缩放 (1 - drop_prob)。",
       "descriptionEn": "Implement Stochastic Depth (DropPath) regularization. During training, randomly drop entire residual branches with probability `drop_prob`: output = x + b * f(x), where b ~ Bernoulli(1 - drop_prob). During evaluation, use the full network: output = x + (1 - drop_prob) * f(x) (expectation over Bernoulli).",
@@ -3195,8 +3251,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Evaluation expectation",
+          "code": "layer = {fn}(0.25)\nlayer.eval()\nx = torch.ones(3, 2, 4); branch = torch.full_like(x, 2.)\nassert torch.allclose(layer(x, branch), x + 0.75 * branch)"
+        },
+        {
+          "name": "Per-sample branch dropping",
+          "code": "torch.manual_seed(1234)\nlayer = {fn}(0.5)\nlayer.train()\nx = torch.zeros(2048, 3, 4); branch = torch.full_like(x, 2.)\nout = layer(x, branch)\nassert torch.all((out == 0) | (out == 2))\nassert torch.equal(out, out[:, :1, :1].expand_as(out))\nassert abs(out.mean().item() - 1.) < 0.1"
+        },
+        {
+          "name": "Zero and complete drop probabilities",
+          "code": "x = torch.tensor([[1., 2.], [3., 4.]], requires_grad=True)\nbranch = torch.ones_like(x, requires_grad=True)\nfor p in [0., 1.]:\n    layer = {fn}(p)\n    for training in [True, False]:\n        layer.train(training)\n        out = layer(x, branch)\n        assert torch.isfinite(out).all()\n        assert torch.allclose(out, x + (1 - p) * branch)"
         }
       ]
     },
@@ -3247,12 +3311,16 @@
       "diagramZh": "",
       "tests": [
         {
-          "name": "basic",
-          "code": ""
+          "name": "Values across signs and dimensions",
+          "code": "x = torch.tensor([[-3., -0.2, 0.], [0.5, 2., 5.]], dtype=torch.float64)\nout = {fn}(x)\nassert out.shape == x.shape\nassert torch.allclose(out, torch.tanh(x), atol=1e-10)"
         },
         {
-          "name": "basic",
-          "code": ""
+          "name": "Large magnitudes remain finite",
+          "code": "x = torch.tensor([-1000., -100., 0., 100., 1000.])\nout = {fn}(x)\nassert torch.isfinite(out).all()\nassert torch.allclose(out, torch.tanh(x), atol=1e-6)"
+        },
+        {
+          "name": "Finite backward including extreme inputs",
+          "code": "x = torch.tensor([-1000., -2., 0., 2., 1000.], dtype=torch.float64, requires_grad=True)\n{fn}(x).sum().backward()\nexpected = torch.tanh(x.detach())\nassert torch.isfinite(x.grad).all()\nassert torch.allclose(x.grad, 1 - expected.square(), atol=1e-10)"
         }
       ]
     },

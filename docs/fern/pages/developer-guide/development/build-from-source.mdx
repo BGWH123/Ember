@@ -41,8 +41,8 @@ subtitle: 分别验证 Rust 核心、桌面界面和可选 Python 评测器。
 
 ```bash
 uv venv --python 3.11 .venv
-uv pip install --python .venv/bin/python -r modules/evaluator/requirements-server.txt --extra-index-url https://download.pytorch.org/whl/cpu
-uv pip install --python .venv/bin/python pytest httpx httpx2
+uv pip install --python .venv/bin/python -r modules/evaluator/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+uv pip install --python .venv/bin/python pytest
 EMBER_DEV_PYTHON="$PWD/.venv/bin/python" npm --prefix apps/desktop run tauri -- dev
 ```
 
@@ -61,7 +61,7 @@ EMBER_DEV_PYTHON="$PWD/.venv/bin/python" npm --prefix apps/desktop run tauri -- 
 ## 验证评测链路
 
 ```bash
-.venv/bin/python -m pytest modules/evaluator/test_protocol.py grading_service/test_grading_service.py -q
+.venv/bin/python -m pytest modules/evaluator/test_protocol.py scripts/test_build_solutions.py scripts/test_export_problems.py scripts/test_grading.py -q
 cargo build --release -p ember-core --features developer-tools
 npm --prefix apps/desktop test
 ```

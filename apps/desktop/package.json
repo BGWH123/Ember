@@ -1,7 +1,7 @@
 {
   "name": "@ember/desktop",
   "version": "0.1.0",
-  "description": "LeetCode-style ML coding problems \u2014 implement PyTorch modules from scratch",
+  "description": "LeetCode-style ML coding problems — implement PyTorch modules from scratch",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -12,6 +12,9 @@
     "test": "npm run build && playwright test"
   },
   "dependencies": {
+    "@fontsource-variable/fira-code": "5.3.0",
+    "@fontsource-variable/noto-sans": "5.3.0",
+    "@fontsource-variable/noto-sans-sc": "5.3.1",
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-collapsible": "^1.0.3",
     "@radix-ui/react-dialog": "^1.0.5",

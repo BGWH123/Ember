@@ -5,6 +5,7 @@ import { useProblemStore } from '@/store/problemStore';
 import { TestCasesView } from './TestCasesView';
 import { TestResultsView } from './TestResultsView';
 import { SubmissionHistory } from './SubmissionHistory';
+import { WaitingState } from '@/components/ui/WaitingState';
 import type { Test } from '@/lib/types';
 
 interface TestPanelProps {
@@ -14,7 +15,7 @@ interface TestPanelProps {
 
 export function TestPanel({ tests, functionName }: TestPanelProps) {
   const { t } = useLocale();
-  const { bottomTab, setBottomTab, runResult } = useProblemStore();
+  const { bottomTab, setBottomTab, runResult, isRunning, isSubmitting } = useProblemStore();
 
   return (
     <div className="flex flex-col overflow-hidden flex-[2] min-h-0" style={{ borderTop: '1px solid var(--line)', background: 'var(--bg)' }}>
@@ -38,7 +39,9 @@ export function TestPanel({ tests, functionName }: TestPanelProps) {
           <TestCasesView tests={tests} functionName={functionName} />
         </Tabs.Content>
         <Tabs.Content value="testresults" className="flex-1 overflow-hidden">
-          <TestResultsView result={runResult} tests={tests} functionName={functionName} />
+          {isRunning || isSubmitting
+            ? <WaitingState compact evaluation label={t(isSubmitting ? 'judging' : 'running')} />
+            : <TestResultsView result={runResult} tests={tests} functionName={functionName} />}
         </Tabs.Content>
         <Tabs.Content value="submissions" className="flex-1 overflow-hidden">
           <SubmissionHistory />

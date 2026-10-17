@@ -13,6 +13,7 @@
     "windows": [
       {
         "title": "Ember \u2014 AI Systems Lab",
+        "decorations": false,
         "width": 1280,
         "height": 850,
         "minWidth": 900,

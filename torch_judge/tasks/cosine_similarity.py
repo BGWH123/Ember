@@ -13,19 +13,19 @@ TASK = {
     "theory_en": "Cosine similarity measures the angle between two vectors, ignoring magnitude. It is the core of contrastive learning (CLIP, SimCLR) and semantic search.",
     "theory_zh": "余弦相似度衡量两个向量之间的夹角，忽略模长。是对比学习（CLIP、SimCLR）和语义搜索的核心。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Vector directions",
+        "code": "a = torch.tensor([3., 4., 0.])\nassert torch.allclose({fn}(a, a), torch.tensor(1.), atol=1e-6)\nassert torch.allclose({fn}(a, -a), torch.tensor(-1.), atol=1e-6)\nassert torch.allclose({fn}(torch.tensor([1., 0.]), torch.tensor([0., 2.])), torch.tensor(0.), atol=1e-6)"
+    },
+    {
+        "name": "All row pairs and zero vector",
+        "code": "a = torch.tensor([[1., 0., 0.], [1., 2., 3.]])\nb = torch.tensor([[0., 1., 0.], [3., 2., 1.], [0., 0., 0.], [-1., 0., 0.]])\nexpected = F.normalize(a, dim=-1) @ F.normalize(b, dim=-1).T\nout = {fn}(a, b)\nassert out.shape == (2, 4)\nassert torch.isfinite(out).all()\nassert torch.allclose(out, expected, atol=1e-6)"
+    },
+    {
+        "name": "Custom epsilon",
+        "code": "a = torch.tensor([1e-10, 0.], dtype=torch.float64)\nb = torch.tensor([1., 1.], dtype=torch.float64)\neps = 1e-3\nexpected = torch.dot(a / (a.norm() + eps), b / (b.norm() + eps))\nassert torch.allclose({fn}(a, b, eps), expected, atol=1e-12)"
+    }
+],
     "solution": '''
 
 import torch

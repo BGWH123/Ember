@@ -13,15 +13,19 @@ TASK = {
     "theory_en": "Binary cross-entropy measures the divergence between predicted probabilities and binary targets. Using logits directly (with logsigmoid) avoids numerical instability from computing exp of large numbers.",
     "theory_zh": "二元交叉熵衡量预测概率与二元目标的差异。直接使用 logits（配合 logsigmoid）可避免大数 exp 的数值不稳定问题。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Logits and mean reduction",
+        "code": "z = torch.tensor([[0., 2., -3.], [1., -2., 0.5]], dtype=torch.float64)\ny = torch.tensor([[0., 1., 1.], [1., 0., 1.]], dtype=torch.float64)\nactual = {fn}(z, y)\nassert actual.ndim == 0\nassert torch.allclose(actual, F.binary_cross_entropy_with_logits(z, y), atol=1e-10)"
+    },
+    {
+        "name": "Extreme logits stay finite",
+        "code": "z = torch.tensor([-1000., 1000., -1000., 1000.])\ny = torch.tensor([0., 1., 1., 0.])\nout = {fn}(z, y)\nassert torch.isfinite(out)\nassert torch.allclose(out, torch.tensor(500.), atol=1e-4)"
+    },
+    {
+        "name": "Backward gradient",
+        "code": "x = torch.tensor([-2., 0., 3.], dtype=torch.float64, requires_grad=True)\ny = torch.tensor([1., 0., 1.], dtype=torch.float64)\n{fn}(x, y).backward()\nassert torch.allclose(x.grad, (torch.sigmoid(x.detach()) - y) / 3, atol=1e-10)"
+    }
+],
     "solution": '''
 
 import torch

@@ -1,8 +1,6 @@
 import { appFetch } from '@/transport/client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { TopNav } from '@/components/layout/TopNav';
-import { Footer } from '@/components/layout/Footer';
 import { MarkdownContent } from '@/components/workspace/MarkdownContent';
 import { Badge } from '@/components/ui/Badge';
 import { Search, ChevronDown, ExternalLink, Flame, ListFilter } from 'lucide-react';
@@ -170,8 +168,8 @@ export default function HotQuestionsPage() {
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-bg">
-        <TopNav />
+      <div className="desktop-page bg-bg">
+
         <div className="flex items-center justify-center py-32">
           <p className="text-sm text-text-3">加载中…</p>
         </div>
@@ -180,9 +178,9 @@ export default function HotQuestionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg">
-      <TopNav />
-      <main className="mx-auto max-w-[1100px] px-7 pb-20 pt-10">
+    <div className="desktop-page bg-bg">
+
+      <main className="mx-auto max-w-[1100px] px-7 pb-8 pt-6">
         {/* Header */}
         <div className="mb-9 max-w-[760px] border-b pb-7" style={{ borderColor: 'var(--line)' }}>
           <div className="eyebrow mb-2.5 flex items-center gap-2">
@@ -209,7 +207,7 @@ export default function HotQuestionsPage() {
 
         <div className="grid grid-cols-[220px_minmax(0,1fr)] items-start gap-10 max-[860px]:grid-cols-1">
           {/* Sidebar: categories */}
-          <aside className="sticky top-[76px] max-[860px]:static">
+          <aside className="sticky top-5 max-[860px]:static">
             <h5 className="eyebrow mb-2.5 flex items-center gap-1.5">
               <ListFilter className="h-3 w-3" /> 板块
             </h5>
@@ -288,7 +286,7 @@ export default function HotQuestionsPage() {
           </div>
         </div>
       </main>
-      <Footer />
+
     </div>
   );
 }

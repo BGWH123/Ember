@@ -3,8 +3,6 @@ import { appFetch } from '@/transport/client';
 import { useEffect, useState } from 'react';
 import Link from '@/routing/Link';
 import { ArrowRight } from 'lucide-react';
-import { TopNav } from '@/components/layout/TopNav';
-import { Footer } from '@/components/layout/Footer';
 import { useLocale } from '@/context/LocaleContext';
 import type { LearningPath } from '@/lib/types';
 
@@ -21,15 +19,15 @@ export default function PathsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-bg">
-      <TopNav />
-      <main className="max-w-[1280px] mx-auto px-7 pt-10 pb-20">
-        <div className="mb-12 pb-7 max-w-[780px]" style={{ borderBottom: '1px solid var(--line)' }}>
+    <div className="desktop-page bg-bg">
+
+      <main className="max-w-[1280px] mx-auto px-7 pt-6 pb-8">
+        <div className="mb-7 pb-5 max-w-[780px]" style={{ borderBottom: '1px solid var(--line)' }}>
           <div className="eyebrow mb-2.5">{t('paths')}</div>
-          <h1 className="text-[clamp(32px,4vw,52px)] font-semibold tracking-[-0.032em] leading-[1.05] mb-3.5">
+          <h1 className="text-2xl font-semibold tracking-[-0.032em] leading-[1.05] mb-3.5">
             {t('pathsHero')}
           </h1>
-          <p className="text-base text-text-2 leading-relaxed max-w-[58ch]">{t('pathsSubtitle')}</p>
+          <p className="text-sm text-text-2 leading-relaxed max-w-[58ch]">{t('pathsSubtitle')}</p>
         </div>
 
         <div
@@ -103,7 +101,7 @@ export default function PathsPage() {
           })}
         </div>
       </main>
-      <Footer />
+
     </div>
   );
 }

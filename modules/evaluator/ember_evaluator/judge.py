@@ -22,12 +22,16 @@ if _METHOD == "forkserver":
 def prewarm() -> None:
     """Validate every catalog test; the forkserver also caches these code objects."""
     if not _COMPILED_TESTS:
+        compiled = {}
         for task_id, task in TASKS.items():
-            _COMPILED_TESTS[task_id] = [
+            if not task.get('tests') or any(not test.get('code', '').strip() for test in task['tests']):
+                raise ValueError(f'Task {task_id} contains empty test placeholders')
+            compiled[task_id] = [
                 (test["name"], compile(test["code"].replace("{fn}", task["function_name"]),
                                        f"<test:{test['name']}>", "exec"))
                 for test in task.get("tests", [])
             ]
+        _COMPILED_TESTS.update(compiled)
 
 
 def warm_runtime() -> None:

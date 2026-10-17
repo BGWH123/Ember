@@ -20,9 +20,6 @@ fi
 echo "Installing root Node dependencies..."
 npm ci
 
-echo "Installing frontend Node dependencies..."
-cd web && npm ci --legacy-peer-deps && cd ..
-
 echo ""
 echo "Setup complete."
 echo "To start: npm run dev"

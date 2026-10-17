@@ -51,14 +51,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 app.activate(request["version"].as_str().unwrap_or_default())
                     .await
             }
-            "configure" => {
-                app.configure(
-                    request["mode"].as_str().unwrap_or("local"),
-                    request["url"].as_str().unwrap_or_default(),
-                    request["token"].as_str().unwrap_or_default().into(),
-                )
-                .await
-            }
             "shutdown" => {
                 app.shutdown_local().await;
                 Ok(json!({"stopped":true}))

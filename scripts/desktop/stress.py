@@ -10,6 +10,7 @@ from pathlib import Path
 import platform
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -24,7 +25,7 @@ def percentile(values, p):
 
 def main():
     parser = argparse.ArgumentParser(__doc__)
-    parser.add_argument('--binary', default='target/release/ember-stress')
+    parser.add_argument('--binary', default='target/release/ember-stress' + ('.exe' if os.name == 'nt' else ''))
     parser.add_argument('--mode', choices=['catalog', 'history', 'mixed', 'evaluate', 'fault'], default='mixed')
     parser.add_argument('--rate', type=int, default=500)
     parser.add_argument('--seconds', type=int, default=30)
@@ -33,10 +34,12 @@ def main():
     parser.add_argument('--output', required=True)
     parser.add_argument('--profiler', choices=['none', 'nsys', 'cpu', 'heap'], default='none')
     args = parser.parse_args()
+    if os.name == 'nt' and args.profiler != 'none':
+        parser.error('The optional Linux profilers are unavailable on Windows')
     output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
     binary = Path(args.binary).resolve()
-    env = dict(os.environ, EMBER_ROOT=str(ROOT), EMBER_DEV_PYTHON=str(ROOT / '.venv/bin/python'),
+    env = dict(os.environ, EMBER_ROOT=str(ROOT), EMBER_DEV_PYTHON=os.environ.get('EMBER_DEV_PYTHON', sys.executable),
                STRESS_MODE=args.mode, STRESS_ARRIVAL=args.arrival, STRESS_RATE=str(args.rate), STRESS_SECONDS=str(args.seconds), STRESS_HISTORY=str(args.history))
     command = [str(binary)]
     profile_env = {}
@@ -53,12 +56,14 @@ def main():
         command = ['/usr/bin/env', *(f'{key}={value}' for key, value in profile_env.items()), *command]
     # GNU time follows wait/reap accounting. Forkserver grandchildren killed on
     # shutdown may not propagate usage: evaluator totals must be treated as a lower bound.
-    command = ['/usr/bin/time', '-f', '%U %S', '-o', str(output / 'cpu-seconds.txt'), *command]
+    if os.name != 'nt':
+        command = ['/usr/bin/time', '-f', '%U %S', '-o', str(output / 'cpu-seconds.txt'), *command]
     samples = []
+    process_cpu = {}
     with tempfile.TemporaryDirectory(prefix='ember-stress-') as data:
         env['EMBER_DATA'] = data
-        with (output / 'rows.jsonl').open('w') as stdout, (output / 'stderr.log').open('w') as stderr:
-            process = subprocess.Popen(command, env=env, cwd=ROOT, stdout=stdout, stderr=stderr, start_new_session=True)
+        with (output / 'rows.jsonl').open('w', encoding='utf-8') as stdout, (output / 'stderr.log').open('w', encoding='utf-8') as stderr:
+            process = subprocess.Popen(command, env=env, cwd=ROOT, stdout=stdout, stderr=stderr, start_new_session=os.name != 'nt')
             start = time.monotonic()
             try:
                 while process.poll() is None:
@@ -69,9 +74,13 @@ def main():
                             try:
                                 memory = child.memory_full_info()
                                 sample['rss'] += memory.rss
-                                sample['pss'] += memory.pss
+                                if hasattr(memory, 'pss'):
+                                    sample['pss'] += memory.pss
+                                else:
+                                    sample['pss'] = None
                                 cpu = child.cpu_times()
                                 sample['cpu'] += cpu.user + cpu.system
+                                process_cpu[(child.pid, child.create_time())] = cpu.user + cpu.system
                                 sample['processes'] += 1
                             except (psutil.NoSuchProcess, psutil.AccessDenied):
                                 pass
@@ -87,7 +96,10 @@ def main():
                         descendants = psutil.Process(process.pid).children(recursive=True)
                     except psutil.NoSuchProcess:
                         descendants = []
-                    os.killpg(process.pid, signal.SIGTERM)
+                    if os.name == 'nt':
+                        process.kill()
+                    else:
+                        os.killpg(process.pid, signal.SIGTERM)
                     # Evaluators deliberately have their own process group.
                     for child in descendants:
                         try:
@@ -97,7 +109,7 @@ def main():
                     process.wait(timeout=10)
             if process.returncode:
                 raise RuntimeError(f'Stress exited {process.returncode}; see {output / "stderr.log"}')
-    rows = [json.loads(line) for line in (output / 'rows.jsonl').read_text().splitlines() if line.startswith('{')]
+    rows = [json.loads(line) for line in (output / 'rows.jsonl').read_text(encoding='utf-8').splitlines() if line.startswith('{')]
     summary = rows[-1]
     rows = [row for row in rows if 'path' in row]
     counts = collections.Counter(row['outcome'] for row in rows)
@@ -117,12 +129,16 @@ def main():
                    environment={'platform': platform.platform(), 'profiler': args.profiler, 'command': command},
                    dispatchLagP99Ms=percentile([r['dispatchLagMs'] for r in rows], .99),
                    outcomes={outcome: {'count': count, 'p99Ms': percentile([r['ms'] for r in rows if r['outcome'] == outcome], .99)} for outcome, count in counts.items()},
-                   peakPssMiB=max((s['pss'] for s in samples), default=0)/2**20,
-                   pssWindowsMiB=[percentile([s['pss']/2**20 for s in samples if a <= s['t'] < a + 10], .5) for a in range(0, args.seconds, 10)])
-    user_cpu, system_cpu = map(float, (output / 'cpu-seconds.txt').read_text().split())
+                   peakRssMiB=max((s['rss'] for s in samples), default=0)/2**20,
+                   peakPssMiB=max((s['pss'] for s in samples), default=0)/2**20 if all(s['pss'] is not None for s in samples) else None,
+                   pssWindowsMiB=[percentile([s['pss']/2**20 for s in samples if s['pss'] is not None and a <= s['t'] < a + 10], .5) for a in range(0, args.seconds, 10)])
+    if os.name == 'nt':
+        user_cpu, system_cpu = sum(process_cpu.values()), 0
+    else:
+        user_cpu, system_cpu = map(float, (output / 'cpu-seconds.txt').read_text().split())
     summary['cpuSecondsIncludingFixtureAndWarmup'] = user_cpu + system_cpu
     summary['cpuMsPerCompletedIncludingFixtureAndWarmup'] = (user_cpu + system_cpu) * 1000 / len(rows) if rows else None
-    summary['cpuAccountingNote'] = 'GNU time reaped-process accounting; complete for core-only modes, lower bound for evaluator process trees; includes fixture/warmup/driver.'
+    summary['cpuAccountingNote'] = ('Sampled per-process CPU high-water marks; lower bound because short-lived processes and work after the final sample may be missed; PSS unavailable on Windows.' if os.name == 'nt' else 'GNU time reaped-process accounting; complete for core-only modes, lower bound for evaluator process trees; includes fixture/warmup/driver.')
     # CPU sums from live process trees are snapshots, not cumulative totals across departed workers.
     (output / 'resources.json').write_text(json.dumps(samples))
     (output / 'summary.json').write_text(json.dumps(summary, indent=2))

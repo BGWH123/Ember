@@ -13,15 +13,19 @@ TASK = {
     "theory_en": "Padding masks prevent attention from attending to padded positions in variable-length sequences. By adding -inf to attention scores, softmax produces zero probability for padded positions.",
     "theory_zh": "Padding mask 防止注意力关注变长序列中的填充位置。通过在注意力分数上加 -inf，softmax 会为填充位置输出零概率。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Variable lengths and empty sequences",
+        "code": "mask = {fn}([3, 1, 0, 4], 4)\nassert mask.shape == (4, 4)\nexpected = torch.arange(4).unsqueeze(0) < torch.tensor([3, 1, 0, 4]).unsqueeze(1)\nassert torch.equal(mask[expected], torch.zeros_like(mask[expected]))\nassert torch.all(mask[~expected] < -1e8)"
+    },
+    {
+        "name": "Padding receives no attention",
+        "code": "mask = {fn}([2, 4], 4)\nscores = torch.tensor([[2., -1., 8., 9.], [1., 2., 3., 4.]])\np = torch.softmax(scores + mask, dim=-1)\nassert torch.allclose(p[0, :2], torch.softmax(scores[0, :2], dim=0))\nassert torch.equal(p[0, 2:], torch.zeros(2))\nassert torch.allclose(p[1], torch.softmax(scores[1], dim=0))"
+    },
+    {
+        "name": "Zero-width batch",
+        "code": "mask = {fn}([0, 0], 0)\nassert mask.shape == (2, 0)"
+    }
+],
     "solution": '''
 
 import torch

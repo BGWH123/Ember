@@ -141,6 +141,21 @@ async fn learning_without_evaluator_and_invalid_submissions() {
     let dir = tempfile::tempdir().unwrap();
     let app = Application::open(&assets(), dir.path(), None).unwrap();
     assert_eq!(app.status().unwrap()["available"], false);
+    assert_eq!(app.status().unwrap()["mode"], "local");
+    let unavailable = app
+        .request(
+            "/api/submit",
+            json!({"taskId":"relu","code":"def relu(x): return x"}),
+        )
+        .await
+        .unwrap_err();
+    assert!(unavailable.to_string().contains("local evaluator"));
+    assert_eq!(
+        app.request("/api/submissions/relu", json!(null))
+            .await
+            .unwrap(),
+        json!([])
+    );
     assert!(app.request("/api/problems", json!(null)).await.is_ok());
     assert!(app
         .request("/api/solutions/relu", json!(null))
@@ -159,10 +174,6 @@ async fn learning_without_evaluator_and_invalid_submissions() {
             "/api/submit",
             json!({"taskId":"relu","code":"x","testIndices":[0]})
         )
-        .await
-        .is_err());
-    assert!(app
-        .configure("remote", "http://example.com", String::new())
         .await
         .is_err());
 }

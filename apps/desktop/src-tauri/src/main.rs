@@ -13,17 +13,6 @@ fn evaluator_status(app: State<'_, AppState>) -> Result<Value, String> {
     app.status().map_err(|e| e.to_string())
 }
 #[tauri::command]
-async fn configure_evaluator(
-    app: State<'_, AppState>,
-    mode: String,
-    url: String,
-    token: String,
-) -> Result<Value, String> {
-    app.configure(&mode, &url, token)
-        .await
-        .map_err(|e| e.to_string())
-}
-#[tauri::command]
 async fn install_evaluator(app: State<'_, AppState>, url: String) -> Result<Value, String> {
     app.install(&url).await.map_err(|e| e.to_string())
 }
@@ -162,7 +151,6 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             request,
             evaluator_status,
-            configure_evaluator,
             install_evaluator,
             import_evaluator,
             activate_evaluator,

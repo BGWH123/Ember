@@ -13,11 +13,19 @@ TASK = {
     "theory_en": "Momentum simulates the inertia of a heavy ball rolling down the loss landscape. It accelerates in directions of consistent gradient and reduces oscillations in directions with high curvature.",
     "theory_zh": "动量模拟重球在损失 landscape 上滚动的惯性。在梯度一致的方向上加速，在高曲率方向上减少震荡。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Nonzero velocity update",
+        "code": "p = torch.tensor([[1., -2.], [3., 4.]])\ng = torch.tensor([[0.5, -1.], [2., -0.5]])\nv = torch.tensor([[-0.5, 2.], [1., 0.]])\npn, vn = {fn}(p, g, v, 0.2, 0.8)\nexpected_v = 0.8 * v + g\nassert torch.allclose(vn, expected_v)\nassert torch.allclose(pn, p - 0.2 * expected_v)"
+    },
+    {
+        "name": "Two steps and zero momentum",
+        "code": "p = torch.tensor([2., -3.]); v = torch.zeros(2)\nfor g in [torch.tensor([1., 2.]), torch.tensor([-0.5, 1.])]:\n    old_p, old_v = p.clone(), v.clone()\n    p, v = {fn}(p, g, v, 0.1, 0.9)\n    assert torch.allclose(v, 0.9 * old_v + g)\n    assert torch.allclose(p, old_p - 0.1 * v)\npn, vn = {fn}(p, torch.ones(2), v, 0.1, 0.)\nassert torch.equal(vn, torch.ones(2))\nassert torch.allclose(pn, p - 0.1)"
+    },
+    {
+        "name": "Zero learning rate and input preservation",
+        "code": "p = torch.tensor([2., 4.]); g = torch.tensor([1., -1.]); v = torch.tensor([0.2, 0.3])\nsnapshots = [x.clone() for x in [p, g, v]]\npn, vn = {fn}(p, g, v, 0., 0.5)\nassert torch.equal(pn, p)\nassert torch.allclose(vn, 0.5 * v + g)\nfor x, before in zip([p, g, v], snapshots):\n    assert torch.equal(x, before)"
+    }
+],
     "solution": '''
 
 import torch

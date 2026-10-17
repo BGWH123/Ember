@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .enable_all()
         .build()?;
     let workloads: Value =
-        serde_json::from_slice(&std::fs::read(root.join("scripts/loadtest/workload.json"))?)?;
+        serde_json::from_slice(&std::fs::read(root.join("scripts/desktop/workload.json"))?)?;
     if mode == "evaluate" || mode == "fault" {
         app.use_development_evaluator(Launch {
             executable: std::env::var("EMBER_DEV_PYTHON")?.into(),
@@ -69,7 +69,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .into()],
             working_dir: root.clone(),
         })?;
-        // Cold start excluded from warm stress latency; measured separately by compare.py.
+        // Cold start is excluded from warm stress latency.
         let result = rt.block_on(app.request(
             "/api/submit",
             json!({"taskId":"relu","code":workloads[0]["code"]}),

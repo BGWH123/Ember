@@ -13,19 +13,19 @@ TASK = {
     "theory_en": "L2 regularization penalizes large weights by adding the sum of squared weights to the loss. It shrinks all weights uniformly toward zero but rarely makes them exactly zero.",
     "theory_zh": "L2 正则化通过惩罚权重的平方和来抑制大权重。它均匀地将所有权重向零收缩，但很少精确为零。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Signed multidimensional penalty",
+        "code": "w = torch.tensor([[-2., 0., 3.], [4., -1., 2.]], dtype=torch.float64)\nexpected = 0.3 * 0.5 * w.abs().pow(2).sum()\nactual = {fn}(w, 0.3)\nassert actual.ndim == 0\nassert torch.allclose(actual, expected, atol=1e-10)"
+    },
+    {
+        "name": "Zero coefficient and zero weights",
+        "code": "assert {fn}(torch.tensor([-3., 2.]), 0.).item() == 0.\nassert {fn}(torch.zeros(2, 3), 0.7).item() == 0."
+    },
+    {
+        "name": "Gradient and input preservation",
+        "code": "w = torch.tensor([-2., 0., 3.], dtype=torch.float64, requires_grad=True)\nbefore = w.detach().clone()\n{fn}(w, 0.4).backward()\nassert torch.equal(w.detach(), before)\nassert torch.allclose(w.grad, 0.4 * w.detach(), atol=1e-10)"
+    }
+],
     "solution": '''
 
 import torch

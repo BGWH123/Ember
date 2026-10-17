@@ -13,15 +13,19 @@ TASK = {
     "theory_en": "Tanh is zero-centered (output mean ≈ 0), which helps gradients flow better than sigmoid in hidden layers. It still suffers from vanishing gradient for large |x|.",
     "theory_zh": "Tanh 是零中心化的（输出均值≈0），比 Sigmoid 更适合隐藏层。但在 |x| 很大时仍有梯度消失问题。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Values across signs and dimensions",
+        "code": "x = torch.tensor([[-3., -0.2, 0.], [0.5, 2., 5.]], dtype=torch.float64)\nout = {fn}(x)\nassert out.shape == x.shape\nassert torch.allclose(out, torch.tanh(x), atol=1e-10)"
+    },
+    {
+        "name": "Large magnitudes remain finite",
+        "code": "x = torch.tensor([-1000., -100., 0., 100., 1000.])\nout = {fn}(x)\nassert torch.isfinite(out).all()\nassert torch.allclose(out, torch.tanh(x), atol=1e-6)"
+    },
+    {
+        "name": "Finite backward including extreme inputs",
+        "code": "x = torch.tensor([-1000., -2., 0., 2., 1000.], dtype=torch.float64, requires_grad=True)\n{fn}(x).sum().backward()\nexpected = torch.tanh(x.detach())\nassert torch.isfinite(x.grad).all()\nassert torch.allclose(x.grad, 1 - expected.square(), atol=1e-10)"
+    }
+],
     "solution": '''
 
 import torch

@@ -1,5 +1,0 @@
-# Optional: expose grading only on loopback for a direct-backend comparison.
-services:
-  grading:
-    ports:
-      - "127.0.0.1:8000:8000"

@@ -2,8 +2,7 @@ use crate::{catalog::Catalog, storage::Storage, Error, Result};
 #[cfg(any(debug_assertions, feature = "developer-tools"))]
 use ember_evaluator::local::Launch;
 use ember_evaluator::{
-    installer::ModuleManager, local::LocalEvaluator, remote::RemoteEvaluator, EvaluationRequest,
-    EvaluationResult, Evaluator,
+    installer::ModuleManager, local::LocalEvaluator, EvaluationRequest, EvaluationResult, Evaluator,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -82,24 +81,6 @@ impl Application {
         selection.local = Some(local);
         selection.mode = "development".into();
         Ok(())
-    }
-    pub async fn configure(&self, mode: &str, url: &str, token: String) -> Result<Value> {
-        let _guard = self.gate.try_lock().map_err(|_| {
-            Error::Busy("Wait for the current evaluation before switching provider".into())
-        })?;
-        self.shutdown_local().await;
-        match mode {
-            "local" => self.load_active()?,
-            "remote" => {
-                let remote = RemoteEvaluator::new(url, token, self.catalog.version.clone())?;
-                let mut selection = self.selection()?;
-                selection.provider = Some(Arc::new(remote));
-                selection.local = None;
-                selection.mode = "remote".into();
-            }
-            _ => return Err(Error::Invalid("Unknown evaluator mode".into())),
-        };
-        self.status()
     }
     pub fn status(&self) -> Result<Value> {
         let selection = self.selection()?;
@@ -204,7 +185,11 @@ impl Application {
             .gate
             .try_lock()
             .map_err(|_| Error::Busy("An evaluation is already running".into()))?;
-        let provider=self.selection()?.provider.clone().ok_or_else(||Error::Invalid("No evaluator installed. Open Settings to download a module or select a remote evaluator.".into()))?;
+        let provider = self.selection()?.provider.clone().ok_or_else(|| {
+            Error::Invalid(
+                "No local evaluator installed. Open Settings to install a local module.".into(),
+            )
+        })?;
         let (id, created) = self.storage.accept(
             &uuid::Uuid::new_v4().to_string(),
             &request.task_id,

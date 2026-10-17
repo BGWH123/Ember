@@ -39,6 +39,6 @@ jobs:
       - run: cargo build --release -p ember-core --features developer-tools
       - run: python -m venv .venv && .venv/bin/pip install -r modules/evaluator/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
       - run: .venv/bin/pip install pytest
-      - run: .venv/bin/python -m pytest modules/evaluator/test_protocol.py -q
+      - run: .venv/bin/python -m pytest modules/evaluator -q
       - run: npm --prefix apps/desktop exec -- playwright install --with-deps chromium
       - run: npm --prefix apps/desktop test

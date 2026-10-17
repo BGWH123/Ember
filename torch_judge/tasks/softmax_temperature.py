@@ -13,19 +13,19 @@ TASK = {
     "theory_en": "Temperature scaling controls the sharpness of a probability distribution. It is used in text generation (sampling diversity) and knowledge distillation (softening teacher labels).",
     "theory_zh": "温度缩放控制概率分布的尖锐程度。用于文本生成（控制采样多样性）和知识蒸馏（软化教师标签）。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Temperature and final dimension",
+        "code": "x = torch.tensor([[1., 3., -2.], [2., 1., 0.]], dtype=torch.float64)\nfor temperature in [0.25, 1., 4.]:\n    out = {fn}(x, temperature)\n    assert out.shape == x.shape\n    assert torch.allclose(out, torch.softmax(x / temperature, dim=-1), atol=1e-10)"
+    },
+    {
+        "name": "Large logits and shift invariance",
+        "code": "x = torch.tensor([[10000., 10001., 9999.], [-10000., -10000., -10000.]])\nout = {fn}(x, 0.5)\nassert torch.isfinite(out).all()\nassert torch.allclose(out.sum(-1), torch.ones(2), atol=1e-6)\nassert torch.allclose(out, {fn}(x - 10000., 0.5), atol=1e-6)"
+    },
+    {
+        "name": "Backward with nonconstant upstream gradient",
+        "code": "x = torch.tensor([0.2, -0.5, 1.], dtype=torch.float64, requires_grad=True)\nreference = x.detach().clone().requires_grad_()\nweights = torch.tensor([1., -2., 3.], dtype=torch.float64)\n({fn}(x, 0.7) * weights).sum().backward()\n(torch.softmax(reference / 0.7, dim=-1) * weights).sum().backward()\nassert torch.allclose(x.grad, reference.grad, atol=1e-10)"
+    }
+],
     "solution": '''
 
 import torch

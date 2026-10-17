@@ -12,7 +12,7 @@ subtitle: 按模块验证行为，并更新与改动对应的公开文档。
 | --- | --- | --- |
 | 界面与编辑器 | [源码开发](../../developer-guide/development/build-from-source.mdx) | UI构建、Playwright及必要的原生IPC验收 |
 | SQLite与进度 | [存储](../../developer-guide/knowledge-base/storage.md) | Rust事务、恢复和兼容回归 |
-| 本地/远程评测 | [评测协议](../../reference/evaluator/protocol.mdx) | Python协议、模块安装与运行时兼容 |
+| 本地评测 | [评测协议](../../reference/evaluator/protocol.mdx) | Python协议、模块安装与运行时兼容 |
 | 性能改动 | [压力测试](../../developer-guide/testing/performance.md) | 同负载A/B、尾延迟、拒绝和内存 |
 | 文档 | [本地预览](documentation/local-preview.mdx) | 导航、链接、MDX、实际页面 |
 

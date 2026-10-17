@@ -51,7 +51,7 @@ navigation:
           - page: 运行与提交
             slug: run-and-submit
             path: pages/desktop/evaluation/run-and-submit.mdx
-          - page: 连接在线评测器
+          - page: 线上评测预留接口
             slug: remote-evaluation
             path: pages/desktop/evaluation/remote-evaluation.mdx
       - section: 数据与维护

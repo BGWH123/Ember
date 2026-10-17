@@ -13,15 +13,15 @@ TASK = {
     "theory_en": "Leaky ReLU allows a small gradient for negative inputs, preventing neurons from dying. It is a simple and effective improvement over standard ReLU.",
     "theory_zh": "Leaky ReLU 允许负输入有小的梯度，防止神经元死亡。是对标准 ReLU 简单而有效的改进。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Default and custom negative slope",
+        "code": "x = torch.tensor([[-3., -0.5, 0.], [0.5, 2., 4.]])\nassert torch.allclose({fn}(x), F.leaky_relu(x, 0.01))\nassert torch.allclose({fn}(x, 0.2), F.leaky_relu(x, 0.2))\nassert torch.allclose({fn}(x, 0.), torch.relu(x))"
+    },
+    {
+        "name": "Gradient away from zero",
+        "code": "x = torch.tensor([-3., -1., 2., 4.], requires_grad=True)\nbefore = x.detach().clone()\n{fn}(x, 0.15).sum().backward()\nassert torch.allclose(x.grad, torch.tensor([0.15, 0.15, 1., 1.]))\nassert torch.equal(x.detach(), before)"
+    }
+],
     "solution": '''
 
 import torch

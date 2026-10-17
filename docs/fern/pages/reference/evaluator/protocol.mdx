@@ -1,10 +1,10 @@
 ---
 # SPDX-License-Identifier: MIT
 title: 评测协议
-subtitle: 本地NDJSON与远程HTTP共享的握手、请求、预算和结果。
+subtitle: 本地NDJSON的握手、请求、预算和结果。
 ---
 
-协议版本为1。两个传输共享评测数据结构；本地用带 `id` 的消息封装，远程评测用 `requestId` 与结果对象关联。业务进度由Rust保存，评测器不接收数据库连接。
+协议版本为1。本地用带 `id` 的消息封装评测数据。业务进度由Rust保存，评测器不接收数据库连接。
 
 ## 握手
 
@@ -16,7 +16,7 @@ subtitle: 本地NDJSON与远程HTTP共享的握手、请求、预算和结果。
 | `catalogVersion` | string | 必须匹配壳的catalog SHA-256 |
 | `engineVersion` | string | 报告评测引擎版本，不要求等于壳版本 |
 
-本地在会话启动时握手；远程适配器在每次评测前请求 `GET /v1/hello`。不兼容时停止评测，不能通过自动切换提供者绕过。
+本地在会话启动时握手。不兼容时停止评测，不会切换至其他提供者。
 
 ## 本地传输
 
@@ -62,7 +62,7 @@ subtitle: 本地NDJSON与远程HTTP共享的握手、请求、预算和结果。
 | `maxMemoryBytes` | integer | 1073741824 | 268435456–1073741824 |
 | `maxOutputBytes` | integer | 16000 | 1–16000 |
 
-执行器监测内存和执行时间，并限制输出。预算不是远程HTTP传输超时；本地评测及远程客户端的传输上限为60秒。
+执行器监测内存和执行时间，并限制输出。预算与本地协议请求的超时分别控制；本地请求的传输上限为60秒。
 
 ## 评测结果
 
@@ -82,15 +82,8 @@ subtitle: 本地NDJSON与远程HTTP共享的握手、请求、预算和结果。
 
 当前Python实现的逐测试详情含 `name`、`passed`、`error`、`execTimeMs`、`output`等信息；资源字段包括 `peak_rss_bytes`、`cpu_ms`、`output_truncated`，阶段信息使用实现定义的键。接口扩展时保留已支持字段，避免让UI假设缺失值为实测零值。
 
-## 远程传输
+## HTTP 预留接口
 
-| 请求 | 响应 |
-| --- | --- |
-| `GET /v1/hello` | `Hello`对象 |
-| `POST /v1/evaluate`，body为评测请求 | `{"requestId":"sample-1","result":{...}}` |
+线上评测尚不可用。HTTP 接口只保留函数位置，始终返回不可用，不发送请求，具体见[预留范围](../../desktop/evaluation/remote-evaluation.mdx)。本页只定义已实现的本地协议。
 
-参考HTTP服务要求 `Authorization: Bearer ...`。无效鉴权为401，请求超过2MiB为413，输入不合法为422，占用中的服务为429。客户端不跟随重定向，远程响应上限2MiB，并验证 `requestId`。
-
-HTTP错误是传输/服务错误，不是 `failed`判题结果；当前Rust应用会将提供者错误记为 `crashed`。应用层Busy是本地准入拒绝，不能等同于远程429结果自动重试。
-
-源码：[协议类型](https://github.com/BGWH123/Ember/blob/main/crates/ember-evaluator/src/lib.rs)、[Python适配器](https://github.com/BGWH123/Ember/blob/main/modules/evaluator/ember_evaluator/protocol.py)、[参考HTTP服务](https://github.com/BGWH123/Ember/blob/main/modules/evaluator/server.py)。
+源码：[协议类型](https://github.com/BGWH123/Ember/blob/main/crates/ember-evaluator/src/lib.rs)、[Python适配器](https://github.com/BGWH123/Ember/blob/main/modules/evaluator/ember_evaluator/protocol.py)。

@@ -13,15 +13,19 @@ TASK = {
     "theory_en": "KL divergence measures how much one probability distribution q diverges from a reference distribution p. It is non-negative and zero only when p = q. Widely used in VAE, diffusion models, and knowledge distillation.",
     "theory_zh": "KL 散度衡量概率分布 q 相对于参考分布 p 的差异。非负，且仅当 p=q 时为0。广泛用于 VAE、扩散模型和知识蒸馏。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Asymmetric KL direction",
+        "code": "p = torch.tensor([0.1, 0.3, 0.6], dtype=torch.float64)\nq = torch.tensor([0.5, 0.25, 0.25], dtype=torch.float64)\nexpected = (p * (p.log() - q.log())).sum()\nassert torch.allclose({fn}(p, q), expected, atol=1e-8)\nassert abs({fn}(p, q).item() - {fn}(q, p).item()) > 0.01"
+    },
+    {
+        "name": "Zeros and identical distributions",
+        "code": "p = torch.tensor([0., 0.4, 0.6], dtype=torch.float64)\nassert abs({fn}(p, p).item()) < 1e-10\nq = torch.tensor([0.3, 0., 0.7], dtype=torch.float64)\neps = 1e-5\nexpected = ((p + eps) * ((p + eps).log() - (q + eps).log())).sum()\nassert torch.isfinite({fn}(p, q, eps))\nassert torch.allclose({fn}(p, q, eps), expected, atol=1e-10)"
+    },
+    {
+        "name": "Gradient with respect to prediction",
+        "code": "p = torch.tensor([0.2, 0.8], dtype=torch.float64)\nq = torch.tensor([0.6, 0.4], dtype=torch.float64, requires_grad=True)\neps = 1e-6\n{fn}(p, q, eps).backward()\nassert torch.allclose(q.grad, -(p + eps) / (q.detach() + eps), atol=1e-9)"
+    }
+],
     "solution": '''
 
 import torch

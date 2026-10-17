@@ -1,36 +1,15 @@
 ---
 # SPDX-License-Identifier: MIT
-title: 连接在线评测器
-subtitle: 显式选择远程服务，并保留本机学习记录。
+title: 线上评测预留接口
+subtitle: 当前仅支持本地评测，线上功能尚不可用。
 ---
 
-在线模式把提交的源码发送到你指定的兼容服务。服务地址与令牌只在当前进程中保留；重新启动后需要重新配置。
+当前版本不提供线上评测，也没有远程地址、令牌或启用开关。执行代码请先[安装本地评测器](install-evaluator.mdx)。
 
-## 前置条件
+## 预留范围
 
-取得支持 [Ember 协议](../../reference/evaluator/protocol.mdx)的服务地址与 Bearer 令牌。远程连接要求 HTTPS；本机回环地址允许 HTTP，便于开发联调。
+Rust 评测模块仅保留一个 HTTP 接口位置，源码标注“TODO：线上评测预留功能”。接口始终返回不可用，不建立连接、不发送提交源码，也不接入桌面评测调用链。
 
-<Steps>
-  <Step title="配置地址与令牌">
-    打开设置中的“在线评测”，输入服务根地址和令牌。服务必须提供 `v1/hello` 与 `v1/evaluate`。
-  </Step>
-  <Step title="启用在线评测">
-    选择“启用在线评测”。此时只保存当前进程的服务选择；实际握手和兼容性检查在评测请求时发生。
-  </Step>
-  <Step title="验证一次运行">
-    返回 ReLU，运行一组样例。收到结果后，检查本地提交历史是否出现该次记录。返回设置并选择“使用本地评测”，可切回已安装的本地模块。
-  </Step>
-</Steps>
+Python 远程服务及其服务端依赖已删除，不提供启动服务的命令。AI 辅助和模块下载是独立功能，不属于线上评测。
 
-## 联调参考服务
-
-仓库提供一个回环 HTTP 适配器。开发者准备 Python 依赖后，在仓库根目录运行：
-
-```bash
-uv pip install --python .venv/bin/python -r modules/evaluator/requirements-server.txt --extra-index-url https://download.pytorch.org/whl/cpu
-EMBER_REMOTE_TOKEN=local-development-token .venv/bin/python -m uvicorn modules.evaluator.server:app --host 127.0.0.1 --port 8766
-```
-
-在设置中使用 `http://127.0.0.1:8766` 和同一个开发令牌。这个示例令牌只用于本机联调。参考服务验证令牌、消息大小和单任务并发，不提供公网多租户所需的完整隔离与调度。
-
-本地失败不会触发自动上传；只有显式启用在线模式的提交会进入远程评测链路。AI 辅助是独立的网络功能，不属于评测器切换。
+源码：[HTTP 预留接口](https://github.com/BGWH123/Ember/blob/main/crates/ember-evaluator/src/remote.rs)。

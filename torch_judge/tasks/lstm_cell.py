@@ -8,16 +8,20 @@ TASK = {
     "description_en": "Implement a single LSTM cell step. Given input x_t, previous hidden state h_{t-1}, and previous cell state c_{t-1}, compute: forget gate f = σ(W_f·[h,x] + b_f), input gate i = σ(W_i·[h,x] + b_i), candidate g = tanh(W_g·[h,x] + b_g), output gate o = σ(W_o·[h,x] + b_o). Then c_t = f*c_{t-1} + i*g, h_t = o*tanh(c_t).",
     "description_zh": "实现单个 LSTM 单元的前向步。给定输入 x_t、前一时刻隐状态 h_{t-1} 和细胞状态 c_{t-1}，计算：遗忘门 f = σ(W_f·[h,x] + b_f)，输入门 i = σ(W_i·[h,x] + b_i)，候选值 g = tanh(W_g·[h,x] + b_g)，输出门 o = σ(W_o·[h,x] + b_o)。然后 c_t = f*c_{t-1} + i*g，h_t = o*tanh(c_t)。",
     "function_name": "lstm_cell",
-    "hint": "Concatenate h and x along the last dimension. Use four separate linear projections, then apply sigmoid/tanh to the respective gates.",
-    "hint_zh": "沿最后一维拼接 h 和 x。使用四个独立的线性投影，然后对 respective 门应用 sigmoid/tanh。",
+    "hint": "Concatenate h and x along the last dimension. Use four separate linear projections, then apply sigmoid/tanh to the respective gates. Create the gate projections with nn.Linear; tests supply fixed weights to verify the recurrence independently of random initialization.",
+    "hint_zh": "沿最后一维拼接 h 和 x。使用四个独立的线性投影，然后对 respective 门应用 sigmoid/tanh。 使用 nn.Linear 创建门控投影；测试会提供固定权重，避免随机初始化影响递推公式的验证。",
     "theory_en": "LSTM uses gating mechanisms to control information flow, solving the vanishing gradient problem in vanilla RNNs. The cell state acts as a conveyor belt for long-term memory.",
     "theory_zh": "LSTM 使用门控机制控制信息流，解决了普通 RNN 的梯度消失问题。细胞状态充当长期记忆传送带。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Cell and output equations B2 I3 H4",
+        "code": "original_linear = nn.Linear\ndef fixed_linear(*args, **kwargs):\n    layer = original_linear(*args, **kwargs)\n    with torch.no_grad():\n        layer.weight.fill_(0.2)\n        if layer.bias is not None:\n            layer.bias.fill_(0.1)\n    return layer\n\nx = torch.linspace(-0.8, 0.7, 6).reshape(2, 3).requires_grad_()\nh = torch.linspace(-0.5, 0.9, 8).reshape(2, 4).requires_grad_()\nc = torch.linspace(0.2, 1.2, 8).reshape(2, 4).requires_grad_()\naffine = 0.2 * (h.sum(-1, keepdim=True) + x.sum(-1, keepdim=True)) + 0.1\ngate = torch.sigmoid(affine)\nexpected_c = gate * c + gate * torch.tanh(affine)\nexpected_h = gate * torch.tanh(expected_c)\nnn.Linear = fixed_linear\ntry:\n    out_h, out_c = {fn}(x, h, c, 3, 4)\nfinally:\n    nn.Linear = original_linear\nassert out_h.shape == out_c.shape == h.shape\nassert torch.allclose(out_h, expected_h, atol=1e-6)\nassert torch.allclose(out_c, expected_c, atol=1e-6)\nactual_grads = torch.autograd.grad((out_h + out_c).sum(), (x, h, c), retain_graph=True)\nexpected_grads = torch.autograd.grad((expected_h + expected_c).sum(), (x, h, c))\nfor actual, expected in zip(actual_grads, expected_grads):\n    assert torch.allclose(actual, expected, atol=1e-6)"
+    },
+    {
+        "name": "Cell and output equations B1 I2 H2",
+        "code": "original_linear = nn.Linear\ndef fixed_linear(*args, **kwargs):\n    layer = original_linear(*args, **kwargs)\n    with torch.no_grad():\n        layer.weight.fill_(0.2)\n        if layer.bias is not None:\n            layer.bias.fill_(0.1)\n    return layer\n\nx = torch.linspace(-0.8, 0.7, 2).reshape(1, 2).requires_grad_()\nh = torch.linspace(-0.5, 0.9, 2).reshape(1, 2).requires_grad_()\nc = torch.linspace(0.2, 1.2, 2).reshape(1, 2).requires_grad_()\naffine = 0.2 * (h.sum(-1, keepdim=True) + x.sum(-1, keepdim=True)) + 0.1\ngate = torch.sigmoid(affine)\nexpected_c = gate * c + gate * torch.tanh(affine)\nexpected_h = gate * torch.tanh(expected_c)\nnn.Linear = fixed_linear\ntry:\n    out_h, out_c = {fn}(x, h, c, 2, 2)\nfinally:\n    nn.Linear = original_linear\nassert out_h.shape == out_c.shape == h.shape\nassert torch.allclose(out_h, expected_h, atol=1e-6)\nassert torch.allclose(out_c, expected_c, atol=1e-6)\nactual_grads = torch.autograd.grad((out_h + out_c).sum(), (x, h, c), retain_graph=True)\nexpected_grads = torch.autograd.grad((expected_h + expected_c).sum(), (x, h, c))\nfor actual, expected in zip(actual_grads, expected_grads):\n    assert torch.allclose(actual, expected, atol=1e-6)"
+    }
+],
     "solution": '''
 
 import torch

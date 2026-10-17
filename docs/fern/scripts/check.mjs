@@ -59,7 +59,7 @@ const documents = new Map();
 for (const file of pages) {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*\.mdx?$/.test(file.split(sep).at(-1))) report(file, 'Use kebab-case filenames');
   if ((navigation.get(file) ?? 0) !== 1) report(file, 'Page must appear exactly once in index.yml');
-  const source = readFileSync(file, 'utf8');
+  const source = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
   const match = source.match(/^---\n([\s\S]*?)\n---\n/);
   if (!match) { report(file, 'Missing frontmatter'); continue; }
   const metadata = parse(match[1]);

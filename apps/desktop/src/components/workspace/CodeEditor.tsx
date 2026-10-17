@@ -6,6 +6,7 @@ import { useRef, useEffect } from 'react';
 import Editor, { loader, type OnMount } from '@monaco-editor/react';
 import { appleLight, appleDark } from '@/lib/monacoTheme';
 import { useTheme } from '@/context/ThemeContext';
+import { WaitingState } from '@/components/ui/WaitingState';
 
 self.MonacoEnvironment = { getWorker: () => new EditorWorker() };
 loader.config({ monaco });
@@ -35,6 +36,8 @@ export function CodeEditor({
     monaco.editor.defineTheme('apple-light', appleLight);
     monaco.editor.defineTheme('apple-dark', appleDark);
     monaco.editor.setTheme(theme === 'dark' ? 'apple-dark' : 'apple-light');
+    // Refresh cached glyph widths once the bundled font finishes loading.
+    void document.fonts.load('14px "Fira Code Variable"').then(() => monaco.editor.remeasureFonts());
   };
 
   useEffect(() => {
@@ -46,6 +49,7 @@ export function CodeEditor({
   return (
     <Editor
       height={height}
+      loading={<WaitingState compact label="Ember" />}
       language="python"
       value={value}
       onChange={(v) => onChange(v || '')}
@@ -54,7 +58,8 @@ export function CodeEditor({
         readOnly,
         fontSize: 14,
         lineHeight: 22,
-        fontFamily: "'Geist Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
+        fontFamily: "'Fira Code Variable', 'Noto Sans SC Variable', monospace",
+        fontLigatures: true,
         minimap: { enabled: false },
         scrollBeyondLastLine: false,
         padding: { top: 16, bottom: 16 },

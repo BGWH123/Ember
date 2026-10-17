@@ -28,7 +28,7 @@ def test_build_problem_catalog_includes_all_registered_tasks():
 
 def test_exported_problem_shape():
     problem = build_problem_catalog()["problems"][0]
-    assert set(problem) == {
+    assert {
         "id",
         "title",
         "titleZh",
@@ -39,7 +39,7 @@ def test_exported_problem_shape():
         "descriptionEn",
         "descriptionZh",
         "tests",
-    }
+    } <= set(problem)
 
 
 def test_build_problem_catalog_recovers_from_malformed_existing_json(tmp_path):

@@ -13,15 +13,22 @@ TASK = {
     "theory_en": "Sequence packing is essential for batched training of variable-length sequences (NLP, time series). Padding allows tensor operations while masks prevent attention to padded positions.",
     "theory_zh": "序列打包是变长序列（NLP、时间序列）批量训练的基础。填充使张量运算成为可能，掩码防止注意力关注填充位置。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Ragged sequences and valid zeros",
+        "code": "seqs = [torch.tensor([0, 4, 2]), torch.tensor([7]), torch.tensor([0, 8])]\npadded, mask = {fn}(seqs)\nassert torch.equal(padded, torch.tensor([[0, 4, 2], [7, 0, 0], [0, 8, 0]]))\nassert torch.equal(mask, torch.tensor([[1., 1., 1.], [1., 0., 0.], [1., 1., 0.]]))\nassert padded.dtype == seqs[0].dtype"
+    },
+    {
+        "name": "Empty member and all empty members",
+        "code": "padded, mask = {fn}([torch.tensor([]), torch.tensor([1., 2.])])\nassert torch.equal(padded, torch.tensor([[0., 0.], [1., 2.]]))\nassert torch.equal(mask, torch.tensor([[0., 0.], [1., 1.]]))\npadded, mask = {fn}([torch.tensor([]), torch.tensor([])])\nassert padded.shape == mask.shape == (2, 0)"
+    },
+    {
+        "name": "Preserves input and gradients",
+        "code": "a = torch.tensor([2., 3.], dtype=torch.float64, requires_grad=True)\nb = torch.tensor([-1.], dtype=torch.float64, requires_grad=True)\npadded, mask = {fn}([a, b])\nassert padded.dtype == torch.float64\npadded.sum().backward()\nassert torch.equal(a.grad, torch.ones_like(a))\nassert torch.equal(b.grad, torch.ones_like(b))\nassert torch.equal(a.detach(), torch.tensor([2., 3.], dtype=torch.float64))"
+    }
+],
     "solution": '''
 
 import torch
-from torch.nn.utils.rnn import pad_sequence
 
 def sequence_pack(sequences: list[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
     """

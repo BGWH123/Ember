@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Real download/install/upgrade/rollback + remote-provider integration exercise.
+"""Real download/install/upgrade/rollback integration exercise.
 Requires a self-contained module produced by package_evaluator.py.
 """
 from __future__ import annotations
@@ -8,20 +8,12 @@ import http.server
 import json
 import os
 from pathlib import Path
-import shutil
-import socket
 import subprocess
 import tempfile
 import threading
-import time
-import urllib.request
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 ROOT=Path(__file__).resolve().parents[2]
-
-def free_port():
-    with socket.socket() as sock:sock.bind(('127.0.0.1',0));return sock.getsockname()[1]
-
 
 def main():
     module=ROOT/'artifacts/desktop/module'
@@ -29,12 +21,11 @@ def main():
     server=http.server.ThreadingHTTPServer(('127.0.0.1',8765),functools.partial(http.server.SimpleHTTPRequestHandler,directory=str(module)))
     thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
     log=(ROOT/'artifacts/desktop/module-smoke.log').open('w')
-    remote=None
     try:
         with tempfile.TemporaryDirectory(prefix='ember-module-smoke-') as directory:
             env=os.environ.copy();env.pop('EMBER_DEV_PYTHON',None)
             env.update(EMBER_ROOT=str(ROOT),EMBER_DATA=directory,EMBER_EVALUATOR_PUBLIC_KEY=(module/'public-key.txt').read_text())
-            process=subprocess.Popen([str(ROOT/'target/release/ember-headless')],env=env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=log,text=True,start_new_session=True)
+            process=subprocess.Popen([str(ROOT / ('target/release/ember-headless.exe' if os.name == 'nt' else 'target/release/ember-headless'))],env=env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=log,text=True,start_new_session=True)
             try:
                 ready=json.loads(process.stdout.readline());assert not ready['status']['available']
                 def command(**body):
@@ -55,24 +46,14 @@ def main():
                 forged=json.loads((module/'upgrade.json').read_text());forged['payload']=forged['payload'].replace('0.2.0','0.3.0');(module/'forged.json').write_text(json.dumps(forged))
                 assert not command(command='install',url='http://127.0.0.1:8765/forged.json')['ok']
                 assert command(command='status')['body']['activeVersion']=='0.1.0'
-                remote_port=free_port();remote_env=os.environ.copy();remote_env['EMBER_REMOTE_TOKEN']='local-integration-token'
-                remote=subprocess.Popen([str(ROOT/'.venv/bin/python'),'-m','uvicorn','modules.evaluator.server:app','--host','127.0.0.1','--port',str(remote_port)],cwd=ROOT,env=remote_env,stdout=log,stderr=log,start_new_session=True)
-                for _ in range(100):
-                    try:
-                        request=urllib.request.Request(f'http://127.0.0.1:{remote_port}/v1/hello',headers={'Authorization':'Bearer local-integration-token'})
-                        with urllib.request.urlopen(request,timeout=1):break
-                    except OSError:time.sleep(.05)
-                reply=command(command='configure',mode='remote',url=f'http://127.0.0.1:{remote_port}',token='local-integration-token');assert reply['ok'],reply
+                # Verify the active local module still works after rollback.
                 result=command(path='/api/submit',payload={'taskId':'relu','code':code});assert result['body']['allPassed'],result
                 assert command(path='/api/progress')['body']['progress']['relu']['status']=='solved'
-                print(json.dumps({'download':True,'standaloneRuntime':True,'upgrade':True,'rollback':True,'forgeryRejected':True,'remoteEvaluation':True,'historyRetained':True}))
+                print(json.dumps({'download':True,'standaloneRuntime':True,'upgrade':True,'rollback':True,'forgeryRejected':True,'historyRetained':True}))
                 command(command='shutdown')
             finally:
                 process.stdin.close();process.wait(timeout=10)
     finally:
-        if remote:
-            import signal
-            os.killpg(remote.pid,signal.SIGTERM);remote.wait(timeout=10)
         server.shutdown();server.server_close();log.close()
 
 

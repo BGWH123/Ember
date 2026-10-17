@@ -43,4 +43,4 @@ Python 任务默认 CPU/执行预算为10000ms、内存上限1GiB、输出上限
 
 桌面壳每15秒检查一次空闲状态，最后一次评测结束60秒后可以回收本地会话，因此通常在60–75秒内释放 Python 进程树。回收不会删除学习记录。再次运行需要承担冷启动成本。
 
-远程服务的进程生命周期由服务提供者负责；本地空闲回收策略不适用于远程服务。源码见[LocalEvaluator](https://github.com/BGWH123/Ember/blob/main/crates/ember-evaluator/src/local.rs)。
+当前只使用本地评测器，不提供远程服务生命周期管理。源码见[LocalEvaluator](https://github.com/BGWH123/Ember/blob/main/crates/ember-evaluator/src/local.rs)。

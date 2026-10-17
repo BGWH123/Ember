@@ -1,11 +1,10 @@
+import { WaitingState } from '@/components/ui/WaitingState';
 import { appFetch } from '@/transport/client';
 
 import { useEffect, useState } from 'react';
 import { useParams } from '@/routing/navigation';
 import Link from '@/routing/Link';
 import { ArrowRight } from 'lucide-react';
-import { TopNav } from '@/components/layout/TopNav';
-import { Footer } from '@/components/layout/Footer';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useLocale } from '@/context/LocaleContext';
@@ -39,9 +38,7 @@ export default function PathDetailPage() {
 
   if (!path) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
-        <p className="text-sm text-text-3">{t('loading')}</p>
-      </div>
+      <WaitingState />
     );
   }
 
@@ -52,9 +49,9 @@ export default function PathDetailPage() {
   const currentStep = path.problems.find((p) => p.status === 'todo' || p.status === 'attempted');
 
   return (
-    <div className="min-h-screen bg-bg">
-      <TopNav />
-      <main className="max-w-[1280px] mx-auto px-7 pt-8 pb-20">
+    <div className="desktop-page bg-bg">
+
+      <main className="max-w-[1280px] mx-auto px-7 pt-6 pb-8">
         {/* Breadcrumbs */}
         <div className="mono text-xs text-text-3 flex items-center gap-1.5 mb-5">
           <Link href="/paths" className="hover:text-text transition-colors">{t('paths')}</Link>
@@ -193,7 +190,7 @@ export default function PathDetailPage() {
           })}
         </div>
       </main>
-      <Footer />
+
     </div>
   );
 }

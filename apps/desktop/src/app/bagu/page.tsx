@@ -1,8 +1,7 @@
+import { WaitingState } from '@/components/ui/WaitingState';
 import { appFetch } from '@/transport/client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { TopNav } from '@/components/layout/TopNav';
-import { Footer } from '@/components/layout/Footer';
 import {
   Search,
   BookOpen,
@@ -140,7 +139,7 @@ function Sidebar({
 }) {
   return (
     <aside
-      className="w-[280px] shrink-0 h-[calc(100vh-60px)] overflow-y-auto border-r hidden md:block"
+      className="w-[250px] shrink-0 h-[calc(100dvh-42px)] sticky top-0 overflow-y-auto border-r hidden md:block"
       style={{ borderColor: 'var(--line)', background: 'var(--bg-sunken)' }}
     >
       <div className="p-4">
@@ -487,22 +486,20 @@ export default function BaguPage() {
     });
   }, []);
 
-  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+  const scrollToTop = () => document.querySelector('[data-desktop-scroll]')?.scrollTo({ top: 0, behavior: 'smooth' });
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
-        <div className="text-text-2 text-sm">加载中...</div>
-      </div>
+      <WaitingState />
     );
   }
 
   const activeCh = chapters.find((c) => c.id === activeChapter);
 
   return (
-    <div className="min-h-screen bg-bg">
-      <TopNav />
-      <div className="flex" style={{ marginTop: 60 }}>
+    <div className="desktop-page bg-bg">
+
+      <div className="flex" >
         <Sidebar
           chapters={filteredChapters}
           categories={categories}
@@ -514,7 +511,7 @@ export default function BaguPage() {
           expandedChapters={expandedChapters}
           toggleChapter={toggleChapter}
         />
-        <main className="flex-1 min-h-[calc(100vh-60px)]">
+        <main className="flex-1 min-h-[calc(100dvh-40px)]">
           <div className="max-w-[800px] mx-auto px-6 py-6">
             {/* Header */}
             <div className="mb-6">
@@ -611,7 +608,7 @@ export default function BaguPage() {
           </div>
         </main>
       </div>
-      <Footer />
+
 
       {/* Back to top */}
       <button

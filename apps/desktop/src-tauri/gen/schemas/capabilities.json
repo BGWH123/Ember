@@ -1,1 +1,1 @@
-{"main":{"identifier":"main","description":"Local Ember window; all system access uses narrow Rust commands","local":true,"windows":["main"],"permissions":["core:default"]}}
+{"main":{"identifier":"main","description":"Local Ember window and its custom title bar","local":true,"windows":["main"],"permissions":["core:default","core:window:allow-minimize","core:window:allow-toggle-maximize","core:window:allow-close","core:window:allow-start-dragging"]}}

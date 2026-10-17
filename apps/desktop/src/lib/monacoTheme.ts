@@ -1,9 +1,3 @@
-// Monaco theme definitions. We type these against a minimal local structural
-// type instead of importing from `monaco-editor` directly — that package is only
-// a transitive peer of `@monaco-editor/react` and isn't installed as a top-level
-// dependency, so importing its types would break `tsc`/`next build`. The shape
-// below matches `editor.IStandaloneThemeData` closely enough for our usage and
-// is accepted by `monaco.editor.defineTheme` at runtime.
 interface MonacoThemeData {
   base: 'vs' | 'vs-dark' | 'hc-black' | 'hc-light';
   inherit: boolean;
@@ -26,15 +20,15 @@ export const appleLight: MonacoThemeData = {
     { token: 'delimiter', foreground: '6e6e73' },
   ],
   colors: {
-    'editor.background': '#fafafa',
-    'editor.foreground': '#1d1d1f',
-    'editor.lineHighlightBackground': '#f0f0f0',
-    'editor.selectionBackground': '#007aff22',
+    'editor.background': '#ffffff',
+    'editor.foreground': '#20292f',
+    'editor.lineHighlightBackground': '#f4f7f8',
+    'editor.selectionBackground': '#0f766e22',
     'editorLineNumber.foreground': '#c7c7cc',
     'editorLineNumber.activeForeground': '#6e6e73',
-    'editor.inactiveSelectionBackground': '#007aff11',
+    'editor.inactiveSelectionBackground': '#0f766e11',
     'editorIndentGuide.background': '#e5e5e5',
-    'editorCursor.foreground': '#007aff',
+    'editorCursor.foreground': '#0f766e',
   },
 };
 
@@ -53,14 +47,14 @@ export const appleDark: MonacoThemeData = {
     { token: 'delimiter', foreground: '8e8e93' },
   ],
   colors: {
-    'editor.background': '#1e1e1e',
+    'editor.background': '#151b20',
     'editor.foreground': '#e5e5e5',
-    'editor.lineHighlightBackground': '#2a2a2a',
-    'editor.selectionBackground': '#4ea1ff33',
+    'editor.lineHighlightBackground': '#1e2830',
+    'editor.selectionBackground': '#5ee0cc22',
     'editorLineNumber.foreground': '#555555',
     'editorLineNumber.activeForeground': '#8e8e93',
-    'editor.inactiveSelectionBackground': '#4ea1ff18',
+    'editor.inactiveSelectionBackground': '#5ee0cc11',
     'editorIndentGuide.background': '#333333',
-    'editorCursor.foreground': '#4ea1ff',
+    'editorCursor.foreground': '#5ee0cc',
   },
 };

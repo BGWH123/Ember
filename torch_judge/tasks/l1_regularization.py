@@ -13,19 +13,19 @@ TASK = {
     "theory_en": "L1 regularization adds the sum of absolute values of weights to the loss. It promotes sparsity (many weights become exactly zero).",
     "theory_zh": "L1 正则化将权重绝对值之和加入损失函数，促进稀疏性（许多权重精确为0）。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Signed multidimensional penalty",
+        "code": "w = torch.tensor([[-2., 0., 3.], [4., -1., 2.]], dtype=torch.float64)\nexpected = 0.3 * 1.0 * w.abs().pow(1).sum()\nactual = {fn}(w, 0.3)\nassert actual.ndim == 0\nassert torch.allclose(actual, expected, atol=1e-10)"
+    },
+    {
+        "name": "Zero coefficient and zero weights",
+        "code": "assert {fn}(torch.tensor([-3., 2.]), 0.).item() == 0.\nassert {fn}(torch.zeros(2, 3), 0.7).item() == 0."
+    },
+    {
+        "name": "Gradient and input preservation",
+        "code": "w = torch.tensor([-2., 0., 3.], dtype=torch.float64, requires_grad=True)\nbefore = w.detach().clone()\n{fn}(w, 0.4).backward()\nassert torch.equal(w.detach(), before)\nassert torch.allclose(w.grad, 0.4 * w.detach().sign(), atol=1e-10)"
+    }
+],
     "solution": '''
 
 import torch

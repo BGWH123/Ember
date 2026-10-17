@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).parent.parent
-OUTPUT = ROOT / "web" / "src" / "lib" / "problems.json"
+OUTPUT = ROOT / "content" / "catalog" / "problems.json"
 
 # Make torch_judge importable when the script is run directly.
 sys.path.insert(0, str(ROOT))
@@ -70,11 +70,27 @@ def _ordered_task_ids(existing_order: list[str]) -> list[str]:
 
 def build_problem_catalog(output_path: Path = OUTPUT) -> dict[str, list[dict[str, Any]]]:
     task_ids = _ordered_task_ids(_load_existing_order(output_path))
-    return {"problems": [_problem_entry(task_id, TASKS[task_id]) for task_id in task_ids]}
+    existing = {}
+    if output_path.exists():
+        try:
+            existing = {p['id']: p for p in json.loads(output_path.read_text(encoding='utf-8')).get('problems', [])}
+        except (json.JSONDecodeError, KeyError):
+            pass
+    # Keep authored theory, diagrams, and translations; refresh executable data.
+    problems = []
+    for task_id in task_ids:
+        problem = dict(existing.get(task_id, {}))
+        for key, value in _problem_entry(task_id, TASKS[task_id]).items():
+            problem.setdefault(key, value)
+        problem['functionName'] = TASKS[task_id]['function_name']
+        problem['tests'] = TASKS[task_id]['tests']
+        problems.append(problem)
+    return {"problems": problems}
 
 
 def export_problem_catalog(output_path: Path = OUTPUT) -> dict[str, list[dict[str, Any]]]:
     data = build_problem_catalog(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         json.dumps(data, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",

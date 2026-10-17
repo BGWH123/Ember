@@ -12,11 +12,7 @@
     "postinstall": "npm --prefix apps/desktop ci",
     "build:problems": "node scripts/run-python.js scripts/export_problems.py",
     "build:solutions": "node scripts/run-python.js scripts/build_solutions.py",
-    "predev": "node scripts/run-python.js --check-import torch_judge",
     "dev": "npm --prefix apps/desktop run tauri -- dev",
-    "dev:backend": "node scripts/run-python.js -m uvicorn grading_service.main:app --reload --reload-exclude .git --reload-exclude .venv --port 8000 --log-level info",
-    "dev:frontend": "pnpm --dir web run dev",
-    "dev:legacy": "concurrently --no-color --names \"backend,frontend\" \"pnpm run dev:backend\" \"pnpm run dev:frontend\"",
     "build:desktop": "npm --prefix apps/desktop run tauri -- build",
     "build:windows": "npm --prefix apps/desktop run tauri -- build --bundles msi,nsis",
     "build:macos": "npm --prefix apps/desktop run tauri -- build --bundles app,dmg",
@@ -26,9 +22,8 @@
     "build:ui": "npm --prefix apps/desktop run build",
     "docs:install": "npm --prefix docs ci",
     "docs:dev": "npm --prefix docs run dev",
-    "docs:check": "npm --prefix docs run check"
+    "docs:check": "npm --prefix docs run check",
+    "test:python": "node scripts/run-python.js -m pytest modules/evaluator scripts/test_build_solutions.py scripts/test_export_problems.py scripts/test_grading.py -q"
   },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
-  }
+  "devDependencies": {}
 }

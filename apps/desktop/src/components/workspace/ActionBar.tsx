@@ -1,5 +1,6 @@
 
-import { Play, Send, Loader2 } from 'lucide-react';
+import { Play, Send } from 'lucide-react';
+import { EmberActivity } from '@/components/ui/WaitingState';
 import { Button } from '@/components/ui/Button';
 import { useLocale } from '@/context/LocaleContext';
 
@@ -28,12 +29,12 @@ export function ActionBar({ onSubmit, onRun, isSubmitting, isRunning, attemptCou
       )}
       <div className="flex-1" />
       <Button variant="secondary" size="sm" onClick={onRun} disabled={busy}>
-        {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+        {isRunning ? <EmberActivity small /> : <Play className="w-3.5 h-3.5" />}
         {isRunning ? t('running') : t('run')}
         <span className="kbd">⌘↵</span>
       </Button>
       <Button variant="primary" size="sm" onClick={onSubmit} disabled={busy}>
-        {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+        {isSubmitting ? <EmberActivity small /> : <Send className="w-3.5 h-3.5" />}
         {isSubmitting ? t('judging') : t('submit')}
       </Button>
     </div>

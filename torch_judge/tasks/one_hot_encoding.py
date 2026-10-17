@@ -13,15 +13,19 @@ TASK = {
     "theory_en": "One-hot encoding converts categorical class indices into binary vectors. It is the standard input format for classification tasks and the target format for cross-entropy loss.",
     "theory_zh": "One-Hot 编码将类别索引转换为二元向量。是分类任务的标准输入格式，也是交叉熵损失的目标格式。",
     "tests": [
-        {
-            "name": "basic",
-            "code": "",
-        },
-        {
-            "name": "basic",
-            "code": "",
-        },
-    ],
+    {
+        "name": "Class positions including repeated indices",
+        "code": "idx = torch.tensor([0, 3, 1, 3, 0])\nout = {fn}(idx, 4)\nassert out.shape == (5, 4)\nassert torch.equal(out, F.one_hot(idx, 4).float())"
+    },
+    {
+        "name": "Single class and empty input",
+        "code": "assert torch.equal({fn}(torch.zeros(3, dtype=torch.long), 1), torch.ones(3, 1))\nassert {fn}(torch.tensor([], dtype=torch.long), 5).shape == (0, 5)"
+    },
+    {
+        "name": "Does not change indices",
+        "code": "idx = torch.tensor([2, 1, 0])\nbefore = idx.clone()\nout = {fn}(idx, 5)\nassert torch.equal(idx, before)\nassert torch.equal(out.sum(-1), torch.ones(3))\nassert torch.all((out == 0) | (out == 1))"
+    }
+],
     "solution": '''
 
 import torch

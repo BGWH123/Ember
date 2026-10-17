@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams, useRouter } from '@/routing/navigation';
 import Link from '@/routing/Link';
 import * as Tabs from '@radix-ui/react-tabs';
-import { Menu, ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
+import { Menu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SplitPane, VerticalSplitPane } from '@/components/ui/SplitPane';
 import { ProblemDrawer } from '@/components/layout/ProblemDrawer';
 import { FeedbackModal } from '@/components/workspace/FeedbackModal';
@@ -15,31 +15,17 @@ import { AIHelpTab } from '@/components/workspace/AIHelpTab';
 import { CodeEditor } from '@/components/workspace/CodeEditor';
 import { TestPanel } from '@/components/workspace/TestPanel';
 import { ActionBar } from '@/components/workspace/ActionBar';
+import { WaitingState } from '@/components/ui/WaitingState';
 import { useProblemStore } from '@/store/problemStore';
 import { useLocale } from '@/context/LocaleContext';
-import { useTheme } from '@/context/ThemeContext';
 import type { Problem, ProgressMap, SubmissionResult, LearningPath, LearningPathProblemSummary, SubmissionHistory } from '@/lib/types';
-
-function FlameGlyph() {
-  return (
-    <span
-      className="w-[22px] h-[22px] inline-flex items-center justify-center rounded-[6px] text-accent"
-      style={{ border: '1px solid var(--accent-line)', background: 'var(--accent-wash)' }}
-    >
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-        <path d="M6 1.25c.6 1.8.15 2.7-.75 3.6C4 6.2 3.25 7.2 3.25 8.5a2.75 2.75 0 1 0 5.5 0c0-1-.3-1.8-1-2.6.3 1.1-.15 1.8-.8 1.8-.5 0-.85-.4-.85-1C6.1 5.6 6.7 3.9 6 1.25Z" fill="currentColor" />
-      </svg>
-    </span>
-  );
-}
 
 export default function WorkspacePage() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathId = searchParams.get('path');
-  const { locale, setLocale, t } = useLocale();
-  const { theme, toggleTheme } = useTheme();
+  const { locale, t } = useLocale();
   const {
     currentCode, setCurrentCode,
     submissionResult, setSubmissionResult,
@@ -101,6 +87,7 @@ export default function WorkspacePage() {
   const handleRun = async () => {
     if (!problem || isRunning || isSubmitting) return;
     setIsRunning(true);
+    setBottomTab('testresults');
     setRunResult(null);
     try {
       const testIndices = problem.tests.slice(0, 2).map((_, i) => i);
@@ -124,6 +111,7 @@ export default function WorkspacePage() {
   const handleSubmit = async () => {
     if (!problem || isSubmitting || isRunning) return;
     setIsSubmitting(true);
+    setBottomTab('testresults');
     setSubmissionResult(null);
     try {
       const res = await appFetch('/api/submit', {
@@ -152,9 +140,7 @@ export default function WorkspacePage() {
   if (loadError) return <main className="p-8" role="alert">{loadError} · <Link href="/problems">返回题库</Link></main>;
   if (!problem) {
     return (
-      <div className="h-screen flex items-center justify-center bg-bg">
-        <p className="text-sm text-text-3">{t('loading')}</p>
-      </div>
+      <WaitingState />
     );
   }
 
@@ -236,25 +222,17 @@ export default function WorkspacePage() {
   );
 
   return (
-    <div className="h-screen flex flex-col bg-bg">
-      {/* Workspace topbar */}
-      <div
-        className="flex items-center px-5 h-[52px] gap-4 flex-shrink-0"
-        style={{ borderBottom: '1px solid var(--line)', background: 'var(--bg)' }}
-      >
-        <Link href="/" className="inline-flex items-center gap-2 font-semibold text-sm tracking-[-0.01em]">
-          <FlameGlyph />
-          Ember
-        </Link>
-
+    <div className="workspace-document bg-bg">
+      <div className="workspace-toolbar">
         {/* Breadcrumbs */}
-        <div className="mono text-xs text-text-3 flex items-center gap-1.5 pl-2 ml-2 h-5" style={{ borderLeft: '1px solid var(--line)' }}>
+        <div className="text-xs text-text-3 flex items-center gap-1.5 min-w-0">
           <Link href="/problems" className="text-text-2 hover:text-text transition-colors">{t('problems')}</Link>
           <span className="opacity-60">/</span>
           <span className="text-text font-medium">{problem ? (locale === 'zh' ? problem.titleZh : problem.title) : id}</span>
         </div>
 
         <button
+          aria-label={locale === 'zh' ? '打开题目列表' : 'Open problem list'}
           onClick={() => setDrawerOpen(true)}
           className="w-8 h-8 inline-flex items-center justify-center rounded-lg text-text-2 cursor-pointer hover:text-text hover:border-line-strong transition-[color,border-color] duration-150"
           style={{ border: '1px solid var(--line)', background: 'var(--bg-elev)' }}
@@ -315,21 +293,6 @@ export default function WorkspacePage() {
           </div>
         )}
 
-        <button
-          onClick={toggleTheme}
-          className="w-8 h-8 inline-flex items-center justify-center rounded-lg text-text-2 cursor-pointer hover:text-text hover:border-line-strong transition-[color,border-color] duration-150"
-          style={{ border: '1px solid var(--line)', background: 'var(--bg-elev)' }}
-        >
-          {theme === 'light' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-        </button>
-
-        <button
-          onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}
-          className="h-[30px] px-3 inline-flex items-center rounded-lg text-[13px] text-text-2 cursor-pointer hover:text-text hover:border-line-strong transition-[color,border-color] duration-150"
-          style={{ border: '1px solid var(--line)', background: 'var(--bg-elev)' }}
-        >
-          {locale === 'en' ? 'EN' : '中文'}
-        </button>
       </div>
 
       <div className="flex-1 overflow-hidden" style={{ background: 'var(--bg-sunken)' }}>

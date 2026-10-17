@@ -14,8 +14,6 @@ import {
   ArrowRight,
   type LucideIcon,
 } from 'lucide-react';
-import { TopNav } from '@/components/layout/TopNav';
-import { Footer } from '@/components/layout/Footer';
 import { cn } from '@/lib/utils';
 
 // ─── Types ───────────────────────────────────────────────────────────────
@@ -243,8 +241,8 @@ export default function CurriculumPage() {
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-bg">
-        <TopNav />
+      <div className="desktop-page bg-bg">
+
         <div className="flex items-center justify-center py-32">
           <p className="text-sm text-text-3">加载中…</p>
         </div>
@@ -253,9 +251,9 @@ export default function CurriculumPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg">
-      <TopNav />
-      <main className="mx-auto max-w-[1100px] px-7 pb-20 pt-10">
+    <div className="desktop-page bg-bg">
+
+      <main className="mx-auto max-w-[1100px] px-7 pb-8 pt-6">
         {/* Header */}
         <div className="mb-10 max-w-[820px] border-b pb-8" style={{ borderColor: 'var(--line)' }}>
           <div className="eyebrow mb-2.5">知识体系 · Curriculum</div>
@@ -317,7 +315,7 @@ export default function CurriculumPage() {
           })}
         </div>
       </main>
-      <Footer />
+
     </div>
   );
 }

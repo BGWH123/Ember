@@ -1,8 +1,9 @@
+import { EmberActivity } from '@/components/ui/WaitingState';
 import { appFetch } from '@/transport/client';
 
 import { useEffect, useRef, useState } from 'react';
 import * as Collapsible from '@radix-ui/react-collapsible';
-import { ChevronDown, Loader2, Settings2, Sparkles, ServerCog } from 'lucide-react';
+import { ChevronDown, Settings2, Sparkles, ServerCog } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useLocale } from '@/context/LocaleContext';
 import { MarkdownContent } from '@/components/workspace/MarkdownContent';
@@ -132,7 +133,7 @@ export function AIHelpTab({ problem }: AIHelpTabProps) {
         </label>
 
         <Button onClick={handleGenerate} disabled={aiHelpLoading} className="w-full">
-          {aiHelpLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+          {aiHelpLoading ? <EmberActivity small /> : <Sparkles className="w-3.5 h-3.5" />}
           {aiHelpLoading ? t('aiHelpGenerating') : t('aiHelpGenerate')}
         </Button>
 

@@ -1040,8 +1040,13 @@
     "cells": [
       {
         "type": "code",
-        "source": "import torch\nimport torch.nn as nn\n\ndef residual_connection(x: torch.Tensor, f_x: torch.Tensor) -> torch.Tensor:\n    \"\"\"\n    Residual connection: output = x + f(x)\n    If shapes differ, project x to match f(x) shape.\n    \"\"\"\n    # 检查输入和子层输出的形状是否一致\n    # Check if input and sublayer output shapes match\n    if x.shape == f_x.shape:\n        return x + f_x\n    else:\n        # 维度不匹配时，使用线性投影（这里用随机初始化演示）\n        # When dims mismatch, use linear projection (random init for demo)\n        in_features = x.shape[-1]\n        out_features = f_x.shape[-1]\n        proj = nn.Linear(in_features, out_features, bias=False)\n        with torch.no_grad():\n            # Initialize as identity-like for stability demonstration\n            nn.init.eye_(proj.weight[:min(in_features, out_features), :min(in_features, out_features)])\n        return proj(x) + f_x",
+        "source": "import torch\nimport torch.nn as nn\n\ndef residual_connection(x: torch.Tensor, f_x: torch.Tensor) -> torch.Tensor:\n    \"\"\"\n    Residual connection: output = x + f(x)\n    If shapes differ, project x to match f(x) shape.\n    \"\"\"\n    # 检查输入和子层输出的形状是否一致\n    # Check if input and sublayer output shapes match\n    if x.shape == f_x.shape:\n        return x + f_x\n    else:\n        # 维度不匹配时，使用线性投影（这里用随机初始化演示）\n        # When dims mismatch, use linear projection (random init for demo)\n        in_features = x.shape[-1]\n        out_features = f_x.shape[-1]\n        proj = nn.Linear(in_features, out_features, bias=False)\n        with torch.no_grad():\n            # Initialize as identity-like for stability demonstration\n            nn.init.eye_(proj.weight)\n        return proj(x) + f_x",
         "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "",
+        "role": "demo"
       }
     ]
   },
@@ -1110,8 +1115,13 @@
     "cells": [
       {
         "type": "code",
-        "source": "import torch\nfrom torch.nn.utils.rnn import pad_sequence\n\ndef sequence_pack(sequences: list[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:\n    \"\"\"\n    Pack variable-length sequences into a padded tensor.\n    Returns: (padded_tensor, mask)\n    padded_tensor: (batch_size, max_len)\n    mask: (batch_size, max_len), 1 for valid, 0 for padding.\n    \"\"\"\n    # 找到最大序列长度\n    # Find maximum sequence length\n    max_len = max(seq.shape[0] for seq in sequences)\n    batch_size = len(sequences)\n\n    # 创建填充张量和掩码\n    # Create padded tensor and mask\n    padded = torch.zeros(batch_size, max_len, dtype=sequences[0].dtype)\n    mask = torch.zeros(batch_size, max_len, dtype=torch.float32)\n\n    # 将每个序列复制到对应行，并标记有效位置\n    # Copy each sequence to its row and mark valid positions\n    for i, seq in enumerate(sequences):\n        length = seq.shape[0]\n        padded[i, :length] = seq\n        mask[i, :length] = 1.0\n\n    return padded, mask",
+        "source": "import torch\n\ndef sequence_pack(sequences: list[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:\n    \"\"\"\n    Pack variable-length sequences into a padded tensor.\n    Returns: (padded_tensor, mask)\n    padded_tensor: (batch_size, max_len)\n    mask: (batch_size, max_len), 1 for valid, 0 for padding.\n    \"\"\"\n    # 找到最大序列长度\n    # Find maximum sequence length\n    max_len = max(seq.shape[0] for seq in sequences)\n    batch_size = len(sequences)\n\n    # 创建填充张量和掩码\n    # Create padded tensor and mask\n    padded = torch.zeros(batch_size, max_len, dtype=sequences[0].dtype)\n    mask = torch.zeros(batch_size, max_len, dtype=torch.float32)\n\n    # 将每个序列复制到对应行，并标记有效位置\n    # Copy each sequence to its row and mark valid positions\n    for i, seq in enumerate(sequences):\n        length = seq.shape[0]\n        padded[i, :length] = seq\n        mask[i, :length] = 1.0\n\n    return padded, mask",
         "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "",
+        "role": "demo"
       }
     ]
   },
@@ -1128,8 +1138,13 @@
     "cells": [
       {
         "type": "code",
-        "source": "import torch\n\ndef sigmoid(x: torch.Tensor) -> torch.Tensor:\n    \"\"\"\n    Numerically stable sigmoid: σ(x) = 1 / (1 + exp(-x))\n    For x >= 0: compute as 1 / (1 + exp(-x))\n    For x < 0:  compute as exp(x) / (1 + exp(x)) to avoid overflow.\n    \"\"\"\n    # 数值稳定的实现：根据输入符号选择计算路径\n    # Numerically stable: choose computation path based on sign\n    return torch.where(\n        x >= 0,\n        1.0 / (1.0 + torch.exp(-x)),\n        torch.exp(x) / (1.0 + torch.exp(x))\n    )",
+        "source": "import torch\n\ndef sigmoid(x: torch.Tensor) -> torch.Tensor:\n    \"\"\"\n    Numerically stable sigmoid: σ(x) = 1 / (1 + exp(-x))\n    For x >= 0: compute as 1 / (1 + exp(-x))\n    For x < 0:  compute as exp(x) / (1 + exp(x)) to avoid overflow.\n    \"\"\"\n    # 数值稳定的实现：根据输入符号选择计算路径\n    # Numerically stable: choose computation path based on sign\n    positive = x >= 0\n    result = torch.empty_like(x)\n    result[positive] = 1.0 / (1.0 + torch.exp(-x[positive]))\n    exp_x = torch.exp(x[~positive])\n    result[~positive] = exp_x / (1.0 + exp_x)\n    return result",
         "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "",
+        "role": "demo"
       }
     ]
   },
@@ -1207,8 +1222,13 @@
     "cells": [
       {
         "type": "code",
-        "source": "import torch\nimport torch.nn as nn\n\nclass StochasticDepth(nn.Module):\n    \"\"\"\n    Stochastic Depth (DropPath): randomly drop residual branches during training.\n    output = x + b * f(x) where b ~ Bernoulli(1 - drop_prob)\n    \"\"\"\n    def __init__(self, drop_prob: float = 0.1):\n        super().__init__()\n        self.drop_prob = drop_prob\n        self.keep_prob = 1.0 - drop_prob\n\n    def forward(self, x: torch.Tensor, f_x: torch.Tensor) -> torch.Tensor:\n        if self.training:\n            if self.drop_prob == 0.0:\n                return x + f_x\n            # 训练时：以概率 drop_prob 丢弃整个分支\n            # Training: drop the entire branch with probability drop_prob\n            shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # (B, 1, 1, ...)\n            mask = torch.rand(shape, device=x.device) < self.keep_prob\n            # 对存活的分支做期望归一化：E[b] = keep_prob，所以除以 keep_prob\n            # Normalize by keep_prob for surviving branches\n            return x + f_x * mask / self.keep_prob\n        else:\n            # 推理时：取期望，输出 = x + (1-p) * f(x)\n            # Inference: expectation, output = x + (1-p) * f(x)\n            return x + self.keep_prob * f_x",
+        "source": "import torch\nimport torch.nn as nn\n\nclass StochasticDepth(nn.Module):\n    \"\"\"\n    Stochastic Depth (DropPath): randomly drop residual branches during training.\n    output = x + b * f(x) where b ~ Bernoulli(1 - drop_prob)\n    \"\"\"\n    def __init__(self, drop_prob: float = 0.1):\n        super().__init__()\n        self.drop_prob = drop_prob\n        self.keep_prob = 1.0 - drop_prob\n\n    def forward(self, x: torch.Tensor, f_x: torch.Tensor) -> torch.Tensor:\n        if self.training:\n            if self.drop_prob == 0.0:\n                return x + f_x\n            # 训练时：以概率 drop_prob 丢弃整个分支\n            # Training: drop the entire branch with probability drop_prob\n            shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # (B, 1, 1, ...)\n            mask = torch.rand(shape, device=x.device) < self.keep_prob\n            # 按题目约定保留未缩放的分支；推理时乘以存活概率取期望。\n            # Keep surviving branches unscaled; evaluation uses their expectation.\n            return x + f_x * mask\n        else:\n            # 推理时：取期望，输出 = x + (1-p) * f(x)\n            # Inference: expectation, output = x + (1-p) * f(x)\n            return x + self.keep_prob * f_x",
         "role": "solution"
+      },
+      {
+        "type": "code",
+        "source": "",
+        "role": "demo"
       }
     ]
   },
