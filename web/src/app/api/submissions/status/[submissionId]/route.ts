@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { GRADING_SERVICE_URL } from '@/lib/constants';
+import { proxyGrading } from '@/lib/grading-proxy';
 
-export async function GET(_request: Request, { params }: { params: Promise<{ submissionId: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ submissionId: string }> }) {
+  const started = performance.now();
   const { submissionId } = await params;
   const sessionToken = (await cookies()).get('session_token')?.value;
   if (!sessionToken) return NextResponse.json({ error: 'Session not found' }, { status: 401 });
-  const response = await fetch(`${GRADING_SERVICE_URL}/submissions/${submissionId}`, {
-    headers: { 'X-Session-Token': sessionToken }, cache: 'no-store',
-  });
-  return NextResponse.json(await response.json(), { status: response.status });
+  return proxyGrading(request, `/submissions/${encodeURIComponent(submissionId)}`, { started, sessionToken });
 }

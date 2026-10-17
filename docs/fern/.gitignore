@@ -1,0 +1,4 @@
+.fern/
+.next/
+node_modules/
+*.log

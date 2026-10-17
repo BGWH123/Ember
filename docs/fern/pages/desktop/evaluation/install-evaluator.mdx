@@ -1,0 +1,43 @@
+---
+# SPDX-License-Identifier: MIT
+title: 安装评测器
+subtitle: 下载或离线导入与当前桌面版本兼容的签名模块。
+---
+
+评测模块包含运行测试所需的 Python 和依赖。安装后，用户不需要再维护一套系统 Python。阅读题目与保存草稿不依赖模块。
+
+## 前置条件
+
+准备维护者提供的签名清单 URL，或一组匹配的 `manifest.json` 与 `evaluator.zip`。模块必须适用于本机平台、当前题库和协议；应用必须信任清单的签名公钥。开发版本的分发状态见[兼容性](../../reference/compatibility.md)。
+
+<Steps>
+  <Step title="打开设置">
+    进入“设置”的“评测器”区域，查看当前模式、可用状态、本地版本和目标平台。
+  </Step>
+  <Step title="安装模块">
+    <Tabs>
+      <Tab title="下载">
+        在“评测模块签名清单 URL”中填入维护者提供的 HTTPS 直链，选择“下载并启用评测模块”。下载器不跟随重定向。
+      </Tab>
+      <Tab title="离线导入">
+        展开“离线安装”，填写清单文件与 ZIP 文件的绝对路径，选择“安装离线模块”。两个文件必须来自同一份发布产物。
+      </Tab>
+    </Tabs>
+
+    等待签名、文件校验和兼容性检查完成。安装器还会启动候选模块进行握手，成功后才切换活动版本。
+  </Step>
+  <Step title="验证评测">
+    确认设置显示模块可用，再打开 ReLU 并运行代码：
+
+    ```python
+    def relu(x):
+        return x.clamp(min=0)
+    ```
+
+    出现测试结果后，安装完成。首次启动 Python/PyTorch 所需时间通常长于后续运行。
+  </Step>
+</Steps>
+
+## 安装失败
+
+出现签名、公钥或题库不兼容错误时，保留完整错误文本，按[排查问题](../operations/troubleshooting.md)处理。安装失败不会替换当前活动指针。需要制作自己的模块时，阅读[打包与签名](../../developer-guide/evaluator/package-and-release.mdx)。

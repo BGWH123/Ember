@@ -1,0 +1,60 @@
+---
+# SPDX-License-Identifier: MIT
+title: 准备桌面环境
+subtitle: 安装从源码运行 Tauri 桌面应用所需的依赖。
+---
+
+本页面向需要从源码启动 Ember 的用户。已有可信安装包时，直接安装对应平台的包，再配置[评测器](../evaluation/install-evaluator.mdx)。当前发行覆盖范围见[兼容性](../../reference/compatibility.md)。
+
+## 通用依赖
+
+安装 Node.js 22 或更新版本、npm、Git 和 Rust 工具链。Rust workspace 声明的最低版本为 1.85；首次构建会下载 Cargo 依赖。阅读题目无需 Python，开发源码评测器时另行准备 Python 环境。
+
+<Steps>
+  <Step title="检查工具链">
+    ```bash
+    node --version
+    npm --version
+    git --version
+    rustc --version
+    cargo --version
+    ```
+
+    任一命令不存在时，先完成对应工具的安装。
+  </Step>
+  <Step title="安装平台依赖">
+    <Tabs>
+      <Tab title="Ubuntu 24.04">
+        ```bash
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libdbus-1-dev
+        ```
+
+        本机验收使用这个平台的原生库。其他 Linux 发行版请按 [Tauri 依赖说明](https://v2.tauri.app/start/prerequisites/)安装对应包。
+      </Tab>
+      <Tab title="Windows">
+        按 [Tauri Windows 前置条件](https://v2.tauri.app/start/prerequisites/#windows)安装 Microsoft C++ Build Tools 与 WebView2，使用 MSVC Rust 工具链。仓库中的 Windows 配置尚未经过本项目真实机器验收。
+      </Tab>
+      <Tab title="macOS">
+        安装 Xcode Command Line Tools：
+
+        ```bash
+        xcode-select --install
+        ```
+
+        其余要求见 [Tauri macOS 前置条件](https://v2.tauri.app/start/prerequisites/#macos)。仓库中的 macOS 配置尚未经过本项目真实机器验收。
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="验证源码环境">
+    在 Ember 仓库根目录运行：
+
+    ```bash
+    npm install
+    npm run build:ui
+    cargo check -p ember-core -p ember-evaluator
+    ```
+
+    两个构建都完成后，按[快速开始](../getting-started/quickstart.mdx)启动原生窗口。核心检查不依赖 GTK，原生窗口构建仍需要上一步的平台库。
+  </Step>
+</Steps>

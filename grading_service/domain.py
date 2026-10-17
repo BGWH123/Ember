@@ -49,10 +49,12 @@ class JudgeResult:
     details: list[dict[str, Any]] = field(default_factory=list)
     error_code: str | None = None
     error: str | None = None
-    queue_wait_ms: int = 0
-    worker_startup_ms: int = 0
-    setup_ms: int = 0
-    user_code_ms: int = 0
-    test_execution_ms: int = 0
-    persist_ms: int = 0
-    total_ms: int = 0
+    queue_wait_ms: float = 0
+    worker_startup_ms: float = 0
+    setup_ms: float = 0
+    user_code_ms: float = 0
+    test_execution_ms: float = 0
+    persist_ms: float = 0
+    total_ms: float = 0
+    timings: dict[str, float] = field(default_factory=dict)
+    resources: dict[str, Any] = field(default_factory=dict)

@@ -1,3 +1,9 @@
+> 原生安装包：Windows 上运行 `npm run build:windows` 生成 MSI/EXE；Mac 上运行 `npm run build:macos` 生成 APP/DMG。通用架构与 CI 说明见[打包文档](docs/fern/pages/developer-guide/development/package-installers.mdx)。
+
+> [桌面版文档](docs/README.md)：本地启动、评测器模块、架构、协议参考与性能工具。运行 `npm run docs:install`、`npm run docs:dev` 可预览 Fern 文档站。
+
+> 桌面重构入口：`npm install` 后运行 `npm run dev`（需要 Rust 与 Tauri 2 平台开发依赖）。新界面位于 `apps/desktop/`，业务核心位于 `crates/`；阅读功能无需 Python。原版 Web 开发入口为 `npm run dev:legacy`，先在 `web/` 安装依赖。设计、迁移和性能记录位于本地 `wiki/`，该目录不提交。
+
 [English](./README.md) | [中文](./README_CN.md)
 
 <p align="center">

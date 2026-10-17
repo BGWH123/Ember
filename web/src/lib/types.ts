@@ -40,6 +40,10 @@ export interface SubmissionResult {
   error?: string;
   submissionId?: string;
   status?: 'queued' | 'running' | 'completed' | 'cancelled';
+  outcome?: 'passed' | 'failed' | 'timeout' | 'crashed' | 'cancelled';
+  errorCode?: string;
+  timings?: Record<string, number>;
+  resources?: Record<string, unknown>;
 }
 
 export interface ProblemProgress {
@@ -78,7 +82,7 @@ export interface LearningPathProblemSummary {
 }
 
 export interface SubmissionHistory {
-  id: number;
+  id: string;
   passed: boolean;
   execTimeMs: number | null;
   submittedAt: string;

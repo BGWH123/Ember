@@ -1,0 +1,134 @@
+tabs:
+  home:
+    display-name: 首页
+    icon: house
+    skip-slug: true
+  desktop:
+    display-name: 桌面使用
+    icon: laptop
+    slug: desktop
+  developer-guide:
+    display-name: 开发指南
+    icon: code
+    slug: developer-guide
+  reference:
+    display-name: 参考
+    icon: book
+    slug: reference
+  community:
+    display-name: 贡献
+    icon: users
+    slug: community
+
+navigation:
+  - tab: home
+    layout:
+      - page: Ember
+        path: pages/home/index.mdx
+  - tab: desktop
+    layout:
+      - section: 开始使用
+        slug: getting-started
+        contents:
+          - page: 简介
+            slug: introduction
+            path: pages/desktop/getting-started/introduction.md
+          - page: 快速开始
+            slug: quickstart
+            path: pages/desktop/getting-started/quickstart.mdx
+      - section: 安装
+        slug: installation
+        contents:
+          - page: 准备桌面环境
+            slug: install-desktop
+            path: pages/desktop/installation/install-desktop.mdx
+      - section: 代码评测
+        slug: evaluation
+        contents:
+          - page: 安装评测器
+            slug: install-evaluator
+            path: pages/desktop/evaluation/install-evaluator.mdx
+          - page: 运行与提交
+            slug: run-and-submit
+            path: pages/desktop/evaluation/run-and-submit.mdx
+          - page: 连接在线评测器
+            slug: remote-evaluation
+            path: pages/desktop/evaluation/remote-evaluation.mdx
+      - section: 数据与维护
+        slug: data
+        contents:
+          - page: 导入学习记录
+            slug: import-learning-records
+            path: pages/desktop/data/import-learning-records.mdx
+          - page: 更新与回退
+            slug: updates
+            path: pages/desktop/data/updates.mdx
+      - page: 排查问题
+        slug: troubleshooting
+        path: pages/desktop/operations/troubleshooting.md
+  - tab: developer-guide
+    layout:
+      - page: 从源码开发
+        slug: build-from-source
+        path: pages/developer-guide/development/build-from-source.mdx
+      - page: 打包桌面安装程序
+        slug: package-installers
+        path: pages/developer-guide/development/package-installers.mdx
+      - section: 工作原理
+        slug: knowledge-base
+        contents:
+          - page: 系统架构
+            slug: architecture
+            path: pages/developer-guide/knowledge-base/architecture.md
+          - page: 评测器生命周期
+            slug: evaluator-lifecycle
+            path: pages/developer-guide/knowledge-base/evaluator-lifecycle.md
+          - page: 学习数据存储
+            slug: storage
+            path: pages/developer-guide/knowledge-base/storage.md
+      - section: 评测器开发
+        slug: evaluator
+        contents:
+          - page: 打包与签名模块
+            slug: package-and-release
+            path: pages/developer-guide/evaluator/package-and-release.mdx
+      - section: 测试与性能
+        slug: testing
+        contents:
+          - page: 设计与运行压测
+            slug: performance
+            path: pages/developer-guide/testing/performance.md
+          - page: 采集 CPU 与堆样本
+            slug: profiling
+            path: pages/developer-guide/testing/profiling.mdx
+  - tab: reference
+    layout:
+      - page: 兼容性
+        slug: compatibility
+        path: pages/reference/compatibility.md
+      - page: 开发与发布配置
+        slug: configuration
+        path: pages/reference/configuration.md
+      - section: 评测器
+        slug: evaluator
+        contents:
+          - page: 评测协议
+            slug: protocol
+            path: pages/reference/evaluator/protocol.mdx
+          - page: 模块清单
+            slug: module-manifest
+            path: pages/reference/evaluator/module-manifest.md
+  - tab: community
+    layout:
+      - page: 参与贡献
+        slug: contributing
+        path: pages/community/contributing/overview.md
+      - section: 文档贡献
+        slug: documentation
+        contents:
+          - page: 本地预览与校验
+            slug: local-preview
+            path: pages/community/contributing/documentation/local-preview.mdx
+          - page: 文档写作规范
+            slug: style-guide
+            path: pages/community/contributing/documentation/style-guide.md

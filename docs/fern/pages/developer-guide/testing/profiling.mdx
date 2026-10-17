@@ -1,0 +1,76 @@
+---
+# SPDX-License-Identifier: MIT
+title: 采集 CPU 与堆样本
+subtitle: 用 Nsight Systems 和 gperftools 分别观察调度、CPU 与临时分配。
+---
+
+先运行[无采样压测](performance.md)确认退化，再对自己的独立测试进程采样。带 profiler 的延迟不作为最终发布性能。
+
+## 前置条件
+
+准备 Linux、`nsys`、gperftools 和 psutil。以下工具范围限于本测试进程树，不需要修改全局采样权限或系统 allocator。先运行 `nsys status --environment` 检查可用能力。
+
+<Steps>
+  <Step title="构建有符号程序">
+    ```bash
+    CARGO_PROFILE_RELEASE_STRIP=false CARGO_PROFILE_RELEASE_DEBUG=1 RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C force-frame-pointers=yes" cargo build --release --target-dir artifacts/desktop/stress/symbols -p ember-core --features developer-tools --bin ember-stress
+    ```
+
+    保留每次采样对应的二进制与 hash，不要用后来重编的程序解释旧地址。
+  </Step>
+  <Step title="准备隔离的 gperftools">
+    在 Ubuntu 24.04 上，将发行版包解压到驱动约定的工具目录：
+
+    ```bash
+    mkdir -p artifacts/desktop/stress/tools
+    cd artifacts/desktop/stress/tools
+    apt download libgoogle-perftools4t64 google-perftools libtcmalloc-minimal4t64
+    for archive in *.deb; do dpkg-deb -x "$archive" root; done
+    cd ../../../..
+    ```
+
+    其他发行版需按实际库位置调整驱动。不要把这些库配置成应用或系统的默认分配器。
+  </Step>
+  <Step title="选择一种采样">
+    <Tabs>
+      <Tab title="nsys">
+        ```bash
+        .venv/bin/python scripts/desktop/stress.py --binary artifacts/desktop/stress/symbols/release/ember-stress --profiler nsys --mode mixed --history 100000 --rate 500 --seconds 15 --output artifacts/desktop/stress/nsys-new
+        ```
+
+        驱动采集进程树 CPU、上下文切换和 OS runtime，输出 `timeline.nsys-rep`。
+      </Tab>
+      <Tab title="CPU">
+        ```bash
+        .venv/bin/python scripts/desktop/stress.py --binary artifacts/desktop/stress/symbols/release/ember-stress --profiler cpu --mode mixed --history 100000 --rate 500 --seconds 15 --output artifacts/desktop/stress/cpu-new
+        ```
+
+        仅向测试程序传入 `libprofiler` 与 `CPUPROFILE`，默认100Hz采样，不向 GNU time 包装器注入。
+      </Tab>
+      <Tab title="Heap">
+        ```bash
+        .venv/bin/python scripts/desktop/stress.py --binary artifacts/desktop/stress/symbols/release/ember-stress --profiler heap --mode catalog --history 0 --rate 50 --seconds 15 --output artifacts/desktop/stress/heap-new
+        ```
+
+        堆分析会切换为tcmalloc并增加开销。降低到达率，去掉历史夹具，避免夹具分配淹没目录请求。不要与普通release的RSS直接比较。
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="导出并复核">
+    以CPU采样为例：
+
+    ```bash
+    .venv/bin/python scripts/desktop/profile_report.py --binary artifacts/desktop/stress/symbols/release/ember-stress --directory artifacts/desktop/stress/cpu-new
+    ```
+
+    对nsys或heap目录运行同一命令，会分别导出OSRT表或累计/存活分配报告。修复后，回到普通release重跑相同负载。
+  </Step>
+</Steps>
+
+## 解释样本
+
+CPU调用栈的累计占比包含子调用，不能相加。OSRT futex耗时包含空闲等待，不能直接解释为业务锁消耗的CPU。heap累计分配不是当前存活量，当前存活量也不是进程RSS。
+
+本机 `perf_event_paranoid=2` 时，nsys用户态采样与调度可用，内核IP/backtrace不可用；保留这个限制，不修改权限来补齐报告。当前评测环境是CPU版PyTorch，不能从这些数据推断CUDA kernel性能。
+
+gperftools变量会被子进程继承，因此这里的CPU和heap定位采用不启动Python的mixed/catalog场景。工具选项依据[Nsight Systems](https://docs.nvidia.com/nsight-systems/UserGuide/)和[gperftools](https://gperftools.github.io/gperftools/)。

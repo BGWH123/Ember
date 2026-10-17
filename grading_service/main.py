@@ -8,11 +8,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from fastapi import FastAPI, Header, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, Header, HTTPException, Query
+from pydantic import BaseModel, Field, StrictInt
 
-from .database import initialize, resolve_local_session
+from .database import SessionExpired, initialize, keep_open, resolve_local_session
 from .service import AdmissionError, SubmissionService
+from .timing import TimingMiddleware, configure_logging, handler_started, measure
 from torch_judge.tasks import get_task
 
 service = SubmissionService()
@@ -20,21 +21,26 @@ service = SubmissionService()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    configure_logging()
     initialize()
-    service.start()
-    yield
-    service.stop()
+    with keep_open():
+        service.start()
+        try:
+            yield
+        finally:
+            service.stop()
 
 
 app = FastAPI(title="Ember Grading Service", lifespan=lifespan)
+app.add_middleware(TimingMiddleware)
 
 
 class SubmissionRequest(BaseModel):
     taskId: str
     code: str = Field(max_length=64_000)
     mode: str = "submit"
-    idempotencyKey: str | None = None
-    testIndices: list[int] | None = None
+    idempotencyKey: str | None = Field(default=None, min_length=1, max_length=128)
+    testIndices: list[StrictInt] | None = None
 
 
 class UserRequest(BaseModel):
@@ -42,19 +48,33 @@ class UserRequest(BaseModel):
 
 
 def context(session_token: str | None) -> tuple[str, str]:
+    handler_started()
+    _require_session_token(session_token)
+    try:
+        with measure("session_ms"):
+            return resolve_local_session(session_token)
+    except SessionExpired as exc:
+        raise HTTPException(401, "Session expired") from exc
+
+
+def _require_session_token(session_token: str | None) -> None:
     if not session_token:
         raise HTTPException(401, "A session token is required")
-    return resolve_local_session(session_token)
+    if len(session_token) > 256:
+        raise HTTPException(422, "Session token is too long")
 
 
 def create(request: SubmissionRequest, session_token: str | None) -> dict:
+    handler_started()
     if get_task(request.taskId) is None:
         raise HTTPException(404, f"Task '{request.taskId}' not found")
-    tenant_id, user_id = context(session_token)
+    _require_session_token(session_token)
     try:
-        return service.create(tenant_id, user_id, request.taskId, request.code, request.mode, request.idempotencyKey or str(uuid.uuid4()), request.testIndices)
+        return service.create_for_session(session_token, request.taskId, request.code, request.mode, request.idempotencyKey or str(uuid.uuid4()), request.testIndices)
     except AdmissionError as exc:
         raise HTTPException(exc.status, {"code": exc.code, "message": exc.message}) from exc
+    except SessionExpired as exc:
+        raise HTTPException(401, "Session expired") from exc
 
 
 @app.post("/submissions", status_code=202)
@@ -64,8 +84,8 @@ def create_submission(request: SubmissionRequest, x_session_token: str | None = 
 
 @app.get("/submissions/{submission_id}")
 def get_submission(submission_id: str, x_session_token: str | None = Header(default=None)) -> dict:
-    tenant_id, _ = context(x_session_token)
-    result = service.get(tenant_id, submission_id)
+    tenant_id, user_id = context(x_session_token)
+    result = service.get(tenant_id, submission_id, user_id)
     if result is None: raise HTTPException(404, "Submission not found")
     return result
 
@@ -83,7 +103,7 @@ def run(request: SubmissionRequest, x_session_token: str | None = Header(default
 
 @app.post("/users")
 def user(request: UserRequest) -> dict:
-    _, user_id = resolve_local_session(request.sessionToken)
+    _, user_id = context(request.sessionToken)
     return {"userId": user_id}
 
 
@@ -100,7 +120,7 @@ def legacy_progress(_user_id: str, x_session_token: str | None = Header(default=
 
 
 @app.get("/submissions/history/{task_id}")
-def history(task_id: str, limit: int = 20, offset: int = 0, x_session_token: str | None = Header(default=None)) -> list[dict]:
+def history(task_id: str, limit: int = Query(default=20, ge=1, le=100), offset: int = Query(default=0, ge=0), x_session_token: str | None = Header(default=None)) -> list[dict]:
     tenant_id, user_id = context(x_session_token)
     return service.history(tenant_id, user_id, task_id, limit, offset)
 
@@ -120,4 +140,8 @@ def get_solution(task_id: str) -> dict[str, str]:
 
 
 @app.get("/health")
-def health() -> dict[str, str]: return {"status": "ok"}
+def health() -> dict[str, str]:
+    handler_started()
+    if not service.healthy:
+        raise HTTPException(503, "Judge scheduler is unavailable")
+    return {"status": "ok"}

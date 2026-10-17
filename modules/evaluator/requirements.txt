@@ -1,0 +1,4 @@
+# Pin the release environment used to build evaluator modules.
+numpy==2.4.6
+psutil==7.2.2
+torch==2.14.1

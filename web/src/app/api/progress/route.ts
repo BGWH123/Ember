@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { GRADING_SERVICE_URL } from '@/lib/constants';
+import { proxyGrading } from '@/lib/grading-proxy';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const started = performance.now();
   const sessionToken = (await cookies()).get('session_token')?.value;
   if (!sessionToken) return NextResponse.json({ progress: {} });
-  const response = await fetch(`${GRADING_SERVICE_URL}/progress`, { headers: { 'X-Session-Token': sessionToken }, cache: 'no-store' });
-  return NextResponse.json({ progress: response.ok ? await response.json() : {} });
+  return proxyGrading(request, '/progress', { started, sessionToken, transform: body => ({ progress: body }) });
 }

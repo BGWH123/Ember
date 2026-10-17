@@ -1,0 +1,22 @@
+[
+  {
+    "taskId": "relu",
+    "weight": 40,
+    "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\nimport numpy as np\n\ndef relu(x):\n    return x.clamp(min=0)\n"
+  },
+  {
+    "taskId": "cross_entropy",
+    "weight": 25,
+    "code": "import torch\n\ndef cross_entropy_loss(logits, targets):\n    return (logits.logsumexp(dim=-1) - logits[torch.arange(logits.shape[0]), targets]).mean()\n"
+  },
+  {
+    "taskId": "layernorm",
+    "weight": 20,
+    "code": "import torch\n\ndef my_layer_norm(x, gamma, beta, eps=1e-5):\n    mean = x.mean(dim=-1, keepdim=True)\n    var = x.var(dim=-1, keepdim=True, unbiased=False)\n    return gamma * (x - mean) / torch.sqrt(var + eps) + beta\n"
+  },
+  {
+    "taskId": "attention",
+    "weight": 15,
+    "code": "import torch\nimport math\n\ndef scaled_dot_product_attention(Q, K, V):\n    scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(K.size(-1))\n    return torch.matmul(torch.softmax(scores, dim=-1), V)\n"
+  }
+]

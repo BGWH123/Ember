@@ -1,0 +1,73 @@
+---
+# SPDX-License-Identifier: MIT
+title: 从源码开发
+subtitle: 分别验证 Rust 核心、桌面界面和可选 Python 评测器。
+---
+
+仓库把桌面应用、业务核心和评测模块分开构建。修改题库或学习记录时，可以先验证 Rust；修改界面时，再启动原生窗口。
+
+## 前置条件
+
+完成[桌面环境](../../desktop/installation/install-desktop.mdx)。以下命令从仓库根目录运行。Python 只用于执行评测、导出题库和相关测试。
+
+<Steps>
+  <Step title="安装前端依赖">
+    ```bash
+    npm install
+    ```
+  </Step>
+  <Step title="检查 Rust 核心">
+    ```bash
+    cargo fmt --all --check
+    cargo clippy -p ember-core -p ember-evaluator --all-targets --features developer-tools -- -D warnings
+    cargo test -p ember-core -p ember-evaluator
+    ```
+
+    workspace 默认成员不包含 GUI。核心开发不需要链接 GTK 或 WebKit。
+  </Step>
+  <Step title="构建界面并启动桌面">
+    ```bash
+    npm run build:ui
+    npm --prefix apps/desktop run tauri -- dev
+    ```
+
+    浏览器中直接打开 Vite 页面不会提供 Tauri IPC。验证完整功能时，使用启动后的原生窗口。
+  </Step>
+</Steps>
+
+## 使用源码评测器
+
+在 Linux 或 macOS 上准备开发虚拟环境：
+
+```bash
+uv venv --python 3.11 .venv
+uv pip install --python .venv/bin/python -r modules/evaluator/requirements-server.txt --extra-index-url https://download.pytorch.org/whl/cpu
+uv pip install --python .venv/bin/python pytest httpx httpx2
+EMBER_DEV_PYTHON="$PWD/.venv/bin/python" npm --prefix apps/desktop run tauri -- dev
+```
+
+`EMBER_DEV_PYTHON` 指向解释器的绝对路径，桌面端只在 debug 构建读取它。Windows 的解释器路径为 `.venv/Scripts/python.exe`，按终端语法设置同名环境变量。正式模块使用[独立打包流程](../evaluator/package-and-release.mdx)。
+
+## 更新题库
+
+执行测试来自 `torch_judge/tasks`，桌面展示资产位于 `content/catalog`。修改任务后同步导出：
+
+```bash
+.venv/bin/python scripts/desktop/export_catalog.py
+```
+
+导出器保留展示字段，并同步函数名与测试；打包器再次检查测试的语法树是否一致。壳与模块需要基于同一份题库重新构建，不能只修改 hash。
+
+## 验证评测链路
+
+```bash
+.venv/bin/python -m pytest modules/evaluator/test_protocol.py grading_service/test_grading_service.py -q
+cargo build --release -p ember-core --features developer-tools
+npm --prefix apps/desktop test
+```
+
+前端测试需要 Playwright Chromium；首次运行前执行 `npm --prefix apps/desktop exec -- playwright install chromium`。原生 Linux 检查可运行 `bash scripts/desktop/check-native.sh`；该脚本使用 Docker 中的 GTK/WebKit 工具链。目录职责见[系统架构](../knowledge-base/architecture.md)。
+
+## 生成安装包
+
+Windows的MSI/EXE与macOS的DMG构建命令、产物目录及手动CI见[打包桌面安装程序](package-installers.mdx)。评测器仍按独立模块分发。

@@ -1,0 +1,38 @@
+---
+# SPDX-License-Identifier: MIT
+title: Ember
+subtitle: 在本地编写 PyTorch 模块，查看测试结果并保存学习进度。
+layout: page
+hide-page-actions: true
+---
+
+Ember 把编码练习、参考答案和学习路线放在一个桌面应用中。界面由 Tauri 2 承载，Rust 核心管理题库与学习记录；安装独立评测器后，可以在本机运行 Python/PyTorch 测试。
+
+<CardGroup cols={2}>
+  <Card title="开始使用" icon="rocket" href="../desktop/getting-started/quickstart.mdx">
+    启动桌面应用，打开第一道题并保存草稿。
+  </Card>
+  <Card title="运行代码" icon="play" href="../desktop/evaluation/install-evaluator.mdx">
+    安装评测模块，选择样例运行或完整提交。
+  </Card>
+  <Card title="参与开发" icon="code" href="../developer-guide/development/build-from-source.mdx">
+    分别构建界面、Rust 核心与评测器。
+  </Card>
+  <Card title="查阅协议" icon="book" href="../reference/evaluator/protocol.mdx">
+    核对握手、资源预算与结果字段。
+  </Card>
+</CardGroup>
+
+## 选择阅读入口
+
+| 你的目标 | 从这里开始 |
+| --- | --- |
+| 准备运行环境 | [桌面环境](../desktop/installation/install-desktop.mdx) |
+| 从旧版迁移 | [导入学习记录](../desktop/data/import-learning-records.mdx) |
+| 开发独立评测器 | [系统架构](../developer-guide/knowledge-base/architecture.md)和[模块打包](../developer-guide/evaluator/package-and-release.mdx) |
+| 重现性能实验 | [压力测试](../developer-guide/testing/performance.md) |
+| 修改本站 | [本地预览与校验](../community/contributing/documentation/local-preview.mdx) |
+
+## 当前版本
+
+本站对应桌面重构的开发版本。Linux 桌面与 CPU 评测模块已做本机验收；Windows、macOS 与正式更新渠道的状态见[兼容性](../reference/compatibility.md)。源码构建、模块签名和发布所需配置均在文档中列出，不提供尚未上线的下载地址。

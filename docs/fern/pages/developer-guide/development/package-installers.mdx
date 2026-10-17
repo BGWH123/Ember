@@ -1,0 +1,86 @@
+---
+# SPDX-License-Identifier: MIT
+title: 打包桌面安装程序
+subtitle: 在Windows生成MSI与EXE安装程序，在macOS生成APP与DMG。
+---
+
+仓库使用Tauri 2打包桌面应用。`npm run build:desktop`构建当前平台支持的安装包；专用命令固定格式，适合本地构建和CI。评测器继续作为独立下载模块，不打进桌面安装包。
+
+## 前置条件
+
+在对应系统准备[平台开发依赖](../../desktop/installation/install-desktop.mdx)、Node.js与Rust。Windows安装Visual Studio C++ Build Tools和WebView2；macOS安装Xcode Command Line Tools。MSI在Windows构建，DMG在Mac构建，本仓库不提供从Linux交叉打包两者的流程。
+
+<Steps>
+  <Step title="安装桌面依赖">
+    在仓库根目录执行：
+
+    ```bash
+    npm --prefix apps/desktop ci
+    ```
+  </Step>
+  <Step title="选择目标格式">
+    <Tabs>
+      <Tab title="Windows">
+        ```bash
+        npm run build:windows
+        ```
+
+        同时生成WiX MSI和NSIS `-setup.exe`安装程序。后者包含安装与卸载流程，不是单独复制的业务可执行文件。
+      </Tab>
+      <Tab title="Mac当前架构">
+        ```bash
+        npm run build:macos
+        ```
+
+        生成当前Rust目标架构的`.app`和`.dmg`。用户打开DMG后，把Ember拖到Applications安装。
+      </Tab>
+      <Tab title="Mac通用包">
+        ```bash
+        rustup target add aarch64-apple-darwin x86_64-apple-darwin
+        npm run build:macos:universal
+        ```
+
+        Tauri分别构建两个架构并合并为Universal应用，覆盖Apple Silicon与Intel。仍须在Mac运行这个流程。
+      </Tab>
+    </Tabs>
+
+    命令会先构建Vite界面，再编译Rust并生成安装包，不需要另外运行`build:ui`。
+  </Step>
+  <Step title="检查产物并安装验证">
+    默认使用仓库根目录的Cargo workspace输出：
+
+    | 产物 | 默认目录 |
+    | --- | --- |
+    | Windows MSI | `target/release/bundle/msi/` |
+    | Windows安装EXE | `target/release/bundle/nsis/` |
+    | Mac APP | `target/release/bundle/macos/` |
+    | Mac DMG | `target/release/bundle/dmg/` |
+    | Mac Universal DMG | `target/universal-apple-darwin/release/bundle/dmg/` |
+
+    指定`--target`或`CARGO_TARGET_DIR`后，输出目录相应变化。安装后检查窗口、离线编辑器、草稿与评测模块安装；只生成文件不能代替安装验收。
+  </Step>
+</Steps>
+
+## 在CI构建
+
+手动触发仓库Actions中的“Build desktop installers”。它使用Windows和macOS runner构建Windows x64安装包与Mac Universal DMG，并上传Actions artifacts，不创建GitHub Release或对外发布。
+
+如果安装包需要信任评测模块，在仓库Actions变量中设置`EMBER_EVALUATOR_PUBLIC_KEY`为64位十六进制公钥。省略时仍可构建和阅读题库，但不能安装签名评测模块。密钥来源见[模块打包](../evaluator/package-and-release.mdx)。本工作流不包含操作系统发行证书，也不构建Python模块。
+
+## 正式签名与自动更新
+
+安装包格式、操作系统代码签名和自动更新签名是不同配置。面向外部分发时，配置[Windows代码签名](https://v2.tauri.app/distribute/sign/windows/)或[macOS签名与公证](https://v2.tauri.app/distribute/sign/macos/)。这些证书不等于模块Ed25519密钥或Tauri updater密钥。
+
+配置好[更新参数](../../reference/configuration.md)后，使用带updater产物的入口；下面分别在目标系统执行：
+
+```bash
+npm run build:desktop:release -- --bundles msi,nsis
+```
+
+```bash
+npm run build:desktop:release -- --bundles app,dmg --target universal-apple-darwin
+```
+
+正式发行还需真实Windows/Mac安装验收。当前本机已验收Linux release包；Windows/Mac命令和手动CI入口已提供，尚未在真实目标系统完成构建与安装验证。
+
+格式与工具链依据[Tauri Windows安装程序](https://v2.tauri.app/distribute/windows-installer/)、[DMG](https://v2.tauri.app/distribute/dmg/)和[macOS应用包](https://v2.tauri.app/distribute/macos-application-bundle/)。

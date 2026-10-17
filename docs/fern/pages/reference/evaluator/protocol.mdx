@@ -1,0 +1,96 @@
+---
+# SPDX-License-Identifier: MIT
+title: 评测协议
+subtitle: 本地NDJSON与远程HTTP共享的握手、请求、预算和结果。
+---
+
+协议版本为1。两个传输共享评测数据结构；本地用带 `id` 的消息封装，远程评测用 `requestId` 与结果对象关联。业务进度由Rust保存，评测器不接收数据库连接。
+
+## 握手
+
+`Hello`包含以下字段：
+
+| 字段 | 类型 | 校验 |
+| --- | --- | --- |
+| `protocolVersion` | integer | 必须为1 |
+| `catalogVersion` | string | 必须匹配壳的catalog SHA-256 |
+| `engineVersion` | string | 报告评测引擎版本，不要求等于壳版本 |
+
+本地在会话启动时握手；远程适配器在每次评测前请求 `GET /v1/hello`。不兼容时停止评测，不能通过自动切换提供者绕过。
+
+## 本地传输
+
+协议进程从stdin读取一行JSON，向stdout写回一行JSON。诊断写stderr，用户输出由worker捕获。单条消息上限为2097152字节。
+
+<Tabs>
+  <Tab title="握手请求">
+    ```json
+    {"id":"hello","method":"hello","params":null}
+    ```
+  </Tab>
+  <Tab title="握手响应">
+    ```json
+    {"id":"hello","result":{"protocolVersion":1,"catalogVersion":"<catalog-sha256>","engineVersion":"0.1.0"}}
+    ```
+  </Tab>
+  <Tab title="评测请求">
+    ```json
+    {"id":"sample-1","method":"evaluate","params":{"requestId":"sample-1","taskId":"relu","code":"def relu(x): return x.clamp(min=0)","testIndices":[0]}}
+    ```
+  </Tab>
+</Tabs>
+
+`id`必须是最多128字符的字符串。Rust验证响应id与请求一致；协议错误封装为 `{"id":"sample-1","error":{"code":"evaluation_error","message":"..."}}`，与成功的 `result`封装区分。Python还可能返回 `response_limit` 错误码。
+
+## 评测请求
+
+| 字段 | 类型 | 默认/约束 |
+| --- | --- | --- |
+| `requestId` | string | 请求关联ID，Rust生成 |
+| `taskId` | string | 当前题库中存在的任务ID |
+| `code` | string | UTF-8源码，非空且不超过64000字节 |
+| `testIndices` | integer[]或null | 省略/null执行全部测试；数组非空、索引有效且不重复 |
+| `resourceBudget` | object | 可省略；采用默认预算 |
+
+桌面完整提交不允许指定部分测试；样例默认只选第0项。这是应用层语义，不能仅凭评测器执行了一个子集就标记完整提交通过。
+
+### 资源预算
+
+| 字段 | 类型 | 默认值 | Python适配器允许范围 |
+| --- | --- | ---: | --- |
+| `maxCpuMs` | integer | 10000 | 100–10000 |
+| `maxMemoryBytes` | integer | 1073741824 | 268435456–1073741824 |
+| `maxOutputBytes` | integer | 16000 | 1–16000 |
+
+执行器监测内存和执行时间，并限制输出。预算不是远程HTTP传输超时；本地评测及远程客户端的传输上限为60秒。
+
+## 评测结果
+
+| 字段 | 类型 | 语义 |
+| --- | --- | --- |
+| `outcome` | string | `passed`、`failed`、`timeout`、`crashed`或`cancelled` |
+| `passed` | unsigned integer | 通过测试数，不超过total |
+| `total` | unsigned integer | 结果中的测试总数 |
+| `results` | object[] | 逐测试详情，Rust缺失时默认空数组 |
+| `totalTimeMs` | number | 非负、有限的总耗时 |
+| `error` | string或null | 错误文本 |
+| `errorCode` | string或null | 可用于诊断的错误类别 |
+| `timings` | object或null | 阶段耗时；Rust缺失时默认null |
+| `resources` | object或null | CPU、执行进程峰值RSS等；缺失时默认null |
+
+`passed`结果必须满足 `total > 0`且 `passed == total`。Rust还检查通过结果的测试数与本次请求一致。`cancelled`是可接受的协议结果值，不代表当前UI提供取消按钮。
+
+当前Python实现的逐测试详情含 `name`、`passed`、`error`、`execTimeMs`、`output`等信息；资源字段包括 `peak_rss_bytes`、`cpu_ms`、`output_truncated`，阶段信息使用实现定义的键。接口扩展时保留已支持字段，避免让UI假设缺失值为实测零值。
+
+## 远程传输
+
+| 请求 | 响应 |
+| --- | --- |
+| `GET /v1/hello` | `Hello`对象 |
+| `POST /v1/evaluate`，body为评测请求 | `{"requestId":"sample-1","result":{...}}` |
+
+参考HTTP服务要求 `Authorization: Bearer ...`。无效鉴权为401，请求超过2MiB为413，输入不合法为422，占用中的服务为429。客户端不跟随重定向，远程响应上限2MiB，并验证 `requestId`。
+
+HTTP错误是传输/服务错误，不是 `failed`判题结果；当前Rust应用会将提供者错误记为 `crashed`。应用层Busy是本地准入拒绝，不能等同于远程429结果自动重试。
+
+源码：[协议类型](https://github.com/BGWH123/Ember/blob/main/crates/ember-evaluator/src/lib.rs)、[Python适配器](https://github.com/BGWH123/Ember/blob/main/modules/evaluator/ember_evaluator/protocol.py)、[参考HTTP服务](https://github.com/BGWH123/Ember/blob/main/modules/evaluator/server.py)。

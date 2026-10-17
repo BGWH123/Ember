@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://schema.buildwithfern.dev/docs-yml.json
+title: Ember 文档
+translations:
+  - lang: zh-CN
+    default: true
+# Local preview configuration. Replace both the organization and instance with
+# an owned Fern organization before publishing; this is not a live Ember URL.
+instances:
+  - url: ember-local.docs.buildwithfern.com
+versions:
+  - display-name: dev
+    path: ./index.yml
+landing-page:
+  page: Ember
+  path: ./pages/home/index.mdx
+  slug: /
+navbar-links:
+  - type: github
+    value: https://github.com/BGWH123/Ember
+layout:
+  searchbar-placement: header
+  tabs-placement: header
+  page-width: 1320px
+  sidebar-width: 264px
+  content-width: 864px
+  hide-feedback: true
+colors:
+  accentPrimary:
+    light: '#9a3412'
+    dark: '#fb923c'
+  background:
+    light: '#ffffff'
+    dark: '#111111'
+logo:
+  light: ./assets/ember.svg
+  dark: ./assets/ember.svg
+  height: 28
+  right-text: Ember
+favicon: ./assets/ember.svg
+theme:
+  page-actions: toolbar
+  footer-nav: minimal
+css:
+  - ./main.css

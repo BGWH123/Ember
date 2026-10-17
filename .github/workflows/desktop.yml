@@ -1,0 +1,44 @@
+name: Desktop validation
+on:
+  push:
+    paths: ['apps/desktop/**', 'crates/**', 'modules/evaluator/**', 'scripts/desktop/**', 'Cargo.*', 'content/**', '.github/workflows/desktop.yml']
+  pull_request:
+    paths: ['apps/desktop/**', 'crates/**', 'modules/evaluator/**', 'scripts/desktop/**', 'Cargo.*', 'content/**', '.github/workflows/desktop.yml']
+  workflow_dispatch:
+jobs:
+  core:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --all --check
+      - run: cargo clippy -p ember-core -p ember-evaluator --all-targets --features developer-tools -- -D warnings
+      - run: cargo test -p ember-core -p ember-evaluator
+  desktop-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: sudo apt-get update && sudo apt-get install -y pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libdbus-1-dev
+      - run: npm --prefix apps/desktop ci
+      - run: npm --prefix apps/desktop run build
+      - run: cargo build -p ember-desktop --locked --features custom-protocol
+      - run: cargo build --release -p ember-core --features developer-tools
+      - run: python -m venv .venv && .venv/bin/pip install -r modules/evaluator/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: .venv/bin/pip install pytest
+      - run: .venv/bin/python -m pytest modules/evaluator/test_protocol.py -q
+      - run: npm --prefix apps/desktop exec -- playwright install --with-deps chromium
+      - run: npm --prefix apps/desktop test

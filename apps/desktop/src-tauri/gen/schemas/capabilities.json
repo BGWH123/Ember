@@ -1,0 +1,1 @@
+{"main":{"identifier":"main","description":"Local Ember window; all system access uses narrow Rust commands","local":true,"windows":["main"],"permissions":["core:default"]}}

@@ -56,14 +56,15 @@ export default function WorkspacePage() {
   const [feedbackResult, setFeedbackResult] = useState<SubmissionResult | null>(null);
 
   const waitForSubmission = async (submissionId: string): Promise<SubmissionResult> => {
-    for (let attempt = 0; attempt < 120; attempt += 1) {
-      const response = await fetch(`/api/submissions/status/${submissionId}`, { cache: 'no-store' });
+    const started = performance.now();
+    while (performance.now() - started < 300_000) {
+      const response = await fetch(`/api/submissions/status/${submissionId}`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Submission lookup failed');
+      if (!response.ok) throw new Error(data.detail?.message || data.message || data.error || t('networkError'));
       if (data.status === 'completed' || data.status === 'cancelled') return data as SubmissionResult;
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      await new Promise((resolve) => setTimeout(resolve, performance.now() - started < 5000 ? 250 : 1000));
     }
-    throw new Error('Evaluation is taking longer than expected; check submission history shortly.');
+    throw new Error(t('evaluationPending'));
   };
 
   useEffect(() => {
@@ -83,7 +84,7 @@ export default function WorkspacePage() {
       .then((r) => r.json())
       .then((d) => setProgress(d.progress || {}));
     fetch(`/api/submissions/${id}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error('History unavailable'); return r.json(); })
       .then((d: SubmissionHistory[]) => setSubmissionHistory(d))
       .catch(() => {});
     if (pathId) {
@@ -96,7 +97,7 @@ export default function WorkspacePage() {
   }, [id, pathId, setCurrentCode, setSubmissionResult, resetTestPanel, resetAiHelp, setSubmissionHistory]);
 
   const handleRun = async () => {
-    if (!problem || isRunning) return;
+    if (!problem || isRunning || isSubmitting) return;
     setIsRunning(true);
     setRunResult(null);
     try {
@@ -107,19 +108,19 @@ export default function WorkspacePage() {
         body: JSON.stringify({ taskId: id, code: currentCode, testIndices }),
       });
       const accepted = await res.json();
-      if (!res.ok || !accepted.submission_id) throw new Error(accepted.message || 'Unable to queue evaluation');
+      if (!res.ok || !accepted.submission_id) throw new Error(accepted.detail?.message || accepted.message || t('networkError'));
       const data = await waitForSubmission(accepted.submission_id);
       setRunResult(data);
       setBottomTab('testresults');
-    } catch {
-      setRunResult({ passed: 0, total: 0, allPassed: false, results: [], totalTimeMs: 0, error: t('networkError') });
+    } catch (error) {
+      setRunResult({ passed: 0, total: 0, allPassed: false, results: [], totalTimeMs: 0, error: error instanceof Error ? error.message : t('networkError') });
     } finally {
       setIsRunning(false);
     }
   };
 
   const handleSubmit = async () => {
-    if (!problem || isSubmitting) return;
+    if (!problem || isSubmitting || isRunning) return;
     setIsSubmitting(true);
     setSubmissionResult(null);
     try {
@@ -129,16 +130,16 @@ export default function WorkspacePage() {
         body: JSON.stringify({ taskId: id, code: currentCode }),
       });
       const accepted = await res.json();
-      if (!res.ok || !accepted.submission_id) throw new Error(accepted.message || 'Unable to queue evaluation');
+      if (!res.ok || !accepted.submission_id) throw new Error(accepted.detail?.message || accepted.message || t('networkError'));
       const data = await waitForSubmission(accepted.submission_id);
       setSubmissionResult(data);
       setRunResult(data);
       setBottomTab('testresults');
       setFeedbackResult(data);
       fetch('/api/progress').then((r) => r.json()).then((d) => setProgress(d.progress || {}));
-      fetch(`/api/submissions/${id}`).then((r) => r.json()).then((d: SubmissionHistory[]) => setSubmissionHistory(d)).catch(() => {});
-    } catch {
-      const err = { passed: 0, total: 0, allPassed: false, results: [], totalTimeMs: 0, error: t('networkError') };
+      fetch(`/api/submissions/${id}`).then((r) => { if (!r.ok) throw new Error('History unavailable'); return r.json(); }).then((d: SubmissionHistory[]) => setSubmissionHistory(d)).catch(() => {});
+    } catch (error) {
+      const err = { passed: 0, total: 0, allPassed: false, results: [], totalTimeMs: 0, error: error instanceof Error ? error.message : t('networkError') };
       setSubmissionResult(err);
       setRunResult(err);
     } finally {

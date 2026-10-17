@@ -23,4 +23,5 @@ ENV DB_PATH=/app/data/pyre.db
 
 EXPOSE 8000
 
-CMD ["uvicorn", "grading_service.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Module entry avoids replaying the uvicorn console script in forkserver children.
+CMD ["python", "-m", "uvicorn", "grading_service.main:app", "--host", "0.0.0.0", "--port", "8000"]

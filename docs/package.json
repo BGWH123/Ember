@@ -1,0 +1,18 @@
+{
+  "name": "@ember/docs",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Ember documentation built with Fern",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "fern docs dev --port 4310",
+    "check": "node fern/scripts/check.mjs && fern check && fern docs md check",
+    "check:content": "node fern/scripts/check.mjs"
+  },
+  "devDependencies": {
+    "fern-api": "5.162.0",
+    "yaml": "2.9.1"
+  }
+}

@@ -1,0 +1,55 @@
+---
+# SPDX-License-Identifier: MIT
+title: 本地预览与校验
+subtitle: 安装锁定的Fern工具链，检查页面并运行真实预览。
+---
+
+文档源位于 `docs/fern`，使用独立的npm包。文档依赖不会进入桌面应用打包；预览不需要Rust、Python或GTK。
+
+## 前置条件
+
+准备Node.js 22或更新版本、npm和当前仓库。以下命令从仓库根目录运行。
+
+<Steps>
+  <Step title="安装锁定依赖">
+    ```bash
+    npm run docs:install
+    ```
+
+    依赖版本由 `docs/package-lock.json`固定，`fern.config.json`中的 `version: "*"`使用本地安装的CLI，不表示跟随最新npm版本。
+  </Step>
+  <Step title="检查内容与配置">
+    ```bash
+    npm run docs:check
+    ```
+
+    依次检查命名、导航、标题、链接与代码围栏，再运行Fern配置检查和原生MDX检查。CI运行同一命令。
+  </Step>
+  <Step title="启动预览">
+    ```bash
+    npm run docs:dev
+    ```
+
+    打开 `http://localhost:4310`。首次启动需要下载Fern预览运行时；修改正文或导航后检查重载结果。
+  </Step>
+  <Step title="核对实际页面">
+    检查首页卡片、桌面教程的Steps/Tabs、架构Mermaid和协议表格。用窄屏查看导航与代码块，确认链接指向本站页面。结束后在终端按Ctrl+C关闭预览。
+  </Step>
+</Steps>
+
+## 修改页面
+
+页面位于 `pages`，模板位于 `templates`。新增正文文件后，在 `index.yml`登记导航；图标和图像放在 `assets`。参考[写作规范](style-guide.md)选择页面类型和链接格式。
+
+## 发布配置
+
+当前 `ember-local`组织名与 `ember-local.docs.buildwithfern.com`实例只是本地预览标识，不是已部署的Ember站点。正式发布前，维护者需要在Fern中拥有组织，替换 `fern.config.json`的组织及 `docs.yml`的实例地址，并完成Fern认证。
+
+完成认证且确认目标实例后，在 `docs`目录执行 `npx fern generate --docs`。这条命令会发布内容；本地预览和CI校验都不会执行它。账户、域名与发布渠道配置见[Fern发布文档](https://buildwithfern.com/learn/cli-api-reference/cli-reference/docs-commands)。
+
+
+## 预览常见问题
+
+如果在运行中新增目录后出现 `EISDIR: illegal operation on a directory, read`，停止预览再重新启动。当前CLI的文件监听在本次创建目录时出现过这个问题；重启后配置和正文正常加载。
+
+未登录Fern时，`fern check`会跳过与线上已发布路径的重定向比较并显示warning。本地配置、页面语法和项目链接检查仍执行；新站首次配置不需要为这条提示登录或发布。已有线上站点的迁移应在发布前完成认证后的重定向检查。

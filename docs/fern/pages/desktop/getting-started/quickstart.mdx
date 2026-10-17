@@ -1,0 +1,48 @@
+---
+# SPDX-License-Identifier: MIT
+title: 快速开始
+subtitle: 从源码启动桌面应用，打开 ReLU 题目并保存草稿。
+---
+
+完成本页后，你会看到 Ember 桌面窗口，并能重新打开刚才编辑的代码。这个流程不安装评测器。
+
+## 前置条件
+
+准备 Git、Node.js 和 Rust，并完成[平台开发依赖](../installation/install-desktop.mdx)。下面的命令从检出源码开始；已有工作区时，直接在仓库根目录安装依赖。
+
+<Steps>
+  <Step title="检出源码">
+    ```bash
+    git clone https://github.com/BGWH123/Ember.git
+    cd Ember
+    ```
+  </Step>
+  <Step title="安装前端依赖">
+    ```bash
+    npm install
+    ```
+
+    根目录的安装脚本会安装 `apps/desktop` 的锁定依赖。
+  </Step>
+  <Step title="启动桌面窗口">
+    ```bash
+    npm --prefix apps/desktop run tauri -- dev
+    ```
+
+    等待 Rust 构建结束。出现 Ember 窗口后，打开题库并选择 ReLU。
+  </Step>
+  <Step title="验证草稿保存">
+    在编辑器中加入下面的代码，等待至少一秒，再切换到另一道题并返回 ReLU：
+
+    ```python
+    def relu(x):
+        return x.clamp(min=0)
+    ```
+
+    编辑内容仍在，表示草稿已经保存。
+  </Step>
+</Steps>
+
+## 运行测试
+
+继续[安装评测器](../evaluation/install-evaluator.mdx)，再完成[运行与提交](../evaluation/run-and-submit.mdx)。如果窗口没有出现，按[排查问题](../operations/troubleshooting.md)检查构建错误。

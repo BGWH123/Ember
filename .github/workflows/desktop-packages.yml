@@ -1,0 +1,53 @@
+name: Build desktop installers
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            command: build:windows
+            artifact: ember-windows-x64
+          - os: macos-latest
+            command: build:macos:universal
+            artifact: ember-macos-universal
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - name: Install desktop dependencies
+        run: npm --prefix apps/desktop ci
+      - name: Install both macOS Rust targets
+        if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - name: Build platform installers
+        shell: bash
+        env:
+          MODULE_PUBLIC_KEY: ${{ vars.EMBER_EVALUATOR_PUBLIC_KEY }}
+          PACKAGE_COMMAND: ${{ matrix.command }}
+        run: |
+          if [ -n "$MODULE_PUBLIC_KEY" ]; then
+            if [[ ! "$MODULE_PUBLIC_KEY" =~ ^[a-fA-F0-9]{64}$ ]]; then
+              echo 'EMBER_EVALUATOR_PUBLIC_KEY must be a 64-character hex public key'
+              exit 1
+            fi
+            export EMBER_EVALUATOR_PUBLIC_KEY="$MODULE_PUBLIC_KEY"
+          fi
+          npm run "$PACKAGE_COMMAND" -- --ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          if-no-files-found: error
+          path: |
+            target/**/release/bundle/msi/*.msi
+            target/**/release/bundle/nsis/*.exe
+            target/**/release/bundle/dmg/*.dmg

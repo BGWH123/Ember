@@ -1,0 +1,364 @@
+{
+  "meta": {
+    "title": "AI 工程师知识体系",
+    "subtitle": "从数学基础到大模型系统设计的完整学习地图",
+    "description": "面向 AI 算法工程师与大模型工程师的系统化知识树。按由浅入深的七个阶段组织,每个模块都关联到本站的动手编程题、热题解析与八股专题。标注「动手」的模块已有可运行的编程练习;标注「专题」的已有理论问答;标注「规划中」的为后续扩展方向。",
+    "version": 1,
+    "legend": [
+      { "key": "hands-on", "label": "动手", "desc": "含可运行、可评测的编程题" },
+      { "key": "theory", "label": "专题", "desc": "含理论问答 / 热题解析" },
+      { "key": "planned", "label": "规划中", "desc": "结构已规划,内容持续补充" }
+    ]
+  },
+  "stages": [
+    {
+      "id": "foundations",
+      "order": 1,
+      "title": "第一阶段 · 数学与编程基础",
+      "subtitle": "Mathematical & Programming Foundations",
+      "icon": "Sigma",
+      "summary": "线性代数、概率统计、微积分与最优化是理解一切机器学习算法的语言。先打牢张量运算与梯度的直觉,再进入模型。",
+      "modules": [
+        {
+          "id": "linear-algebra",
+          "title": "线性代数与张量运算",
+          "status": "hands-on",
+          "blurb": "向量、矩阵、广播、爱因斯坦求和、相似度——深度学习的计算原语。",
+          "problems": ["broadcasting", "einsum_ops", "linear", "cosine_similarity", "one_hot_encoding"],
+          "hotCategories": [],
+          "baguChapters": []
+        },
+        {
+          "id": "probability-stats",
+          "title": "概率论与统计",
+          "status": "theory",
+          "blurb": "随机变量、期望方差、最大似然、贝叶斯、KL 散度——损失函数的理论根基。",
+          "problems": ["kl_divergence", "cross_entropy"],
+          "hotCategories": ["math"],
+          "baguChapters": []
+        },
+        {
+          "id": "calculus-optim",
+          "title": "微积分与最优化",
+          "status": "theory",
+          "blurb": "梯度、链式法则、凸性、梯度下降及其变体——模型如何学习。",
+          "problems": ["linear_regression", "sgd_momentum", "adam", "cosine_lr", "gradient_clipping"],
+          "hotCategories": ["math"],
+          "baguChapters": []
+        },
+        {
+          "id": "info-theory",
+          "title": "信息论基础",
+          "status": "planned",
+          "blurb": "熵、交叉熵、互信息、编码——量化「信息」与「不确定性」。",
+          "problems": ["cross_entropy", "kl_divergence"],
+          "hotCategories": ["math"],
+          "baguChapters": []
+        }
+      ]
+    },
+    {
+      "id": "classic-ml",
+      "order": 2,
+      "title": "第二阶段 · 经典机器学习",
+      "subtitle": "Classical Machine Learning",
+      "icon": "ScatterChart",
+      "summary": "在进入深度学习前,理解监督/无监督学习范式、偏差方差权衡、评估指标与树模型,这些在面试与实际特征工程中依然高频。",
+      "modules": [
+        {
+          "id": "ml-paradigms",
+          "title": "学习范式与泛化",
+          "status": "theory",
+          "blurb": "监督/无监督/自监督、过拟合与欠拟合、偏差方差权衡、正则化。",
+          "problems": ["linear_regression", "l1_regularization", "l2_regularization", "dropout"],
+          "hotCategories": ["ml"],
+          "baguChapters": []
+        },
+        {
+          "id": "ml-eval",
+          "title": "模型评估与指标",
+          "status": "theory",
+          "blurb": "准确率/精确率/召回率/F1/AUC、交叉验证、类别不平衡处理。",
+          "problems": [],
+          "hotCategories": ["ml"],
+          "baguChapters": []
+        },
+        {
+          "id": "ml-models",
+          "title": "经典模型与集成",
+          "status": "theory",
+          "blurb": "线性/逻辑回归、SVM、决策树、随机森林、GBDT/XGBoost、聚类。",
+          "problems": ["linear_regression"],
+          "hotCategories": ["ml"],
+          "baguChapters": []
+        }
+      ]
+    },
+    {
+      "id": "deep-learning",
+      "order": 3,
+      "title": "第三阶段 · 深度学习基础",
+      "subtitle": "Deep Learning Foundations",
+      "icon": "Brain",
+      "summary": "构建神经网络的基本积木:激活函数、归一化、正则化、初始化、残差连接,以及卷积与循环网络。每个组件都从零实现。",
+      "modules": [
+        {
+          "id": "building-blocks",
+          "title": "网络基本组件",
+          "status": "hands-on",
+          "blurb": "线性层、MLP、残差连接、权重初始化——前向与反向的基本单元。",
+          "problems": ["linear", "mlp", "residual_connection", "weight_init"],
+          "hotCategories": ["dl"],
+          "baguChapters": []
+        },
+        {
+          "id": "activations",
+          "title": "激活函数",
+          "status": "hands-on",
+          "blurb": "ReLU、LeakyReLU、Sigmoid、Tanh、GELU、SwiGLU、Softmax。",
+          "problems": ["relu", "leaky_relu", "sigmoid", "tanh", "gelu", "swiglu", "softmax"],
+          "hotCategories": ["dl"],
+          "baguChapters": []
+        },
+        {
+          "id": "normalization",
+          "title": "归一化",
+          "status": "hands-on",
+          "blurb": "BatchNorm、LayerNorm、RMSNorm、adaLN-Zero——稳定训练的关键。",
+          "problems": ["batchnorm", "layernorm", "rmsnorm", "adaln_zero"],
+          "hotCategories": ["dl"],
+          "baguChapters": []
+        },
+        {
+          "id": "regularization",
+          "title": "正则化与训练稳定",
+          "status": "hands-on",
+          "blurb": "Dropout、L1/L2、标签平滑、随机深度、LayerScale。",
+          "problems": ["dropout", "l1_regularization", "l2_regularization", "label_smoothing", "stochastic_depth", "layerscale"],
+          "hotCategories": ["dl"],
+          "baguChapters": []
+        },
+        {
+          "id": "cnn-rnn",
+          "title": "卷积与循环网络",
+          "status": "hands-on",
+          "blurb": "Conv2d、深度可分离卷积、池化、LSTM/GRU——CV 与序列建模基石。",
+          "problems": ["conv2d", "depthwise_conv", "max_pool2d", "lstm_cell", "gru_cell"],
+          "hotCategories": ["dl"],
+          "baguChapters": []
+        },
+        {
+          "id": "losses",
+          "title": "损失函数",
+          "status": "hands-on",
+          "blurb": "交叉熵、BCE、MSE、Focal、对比损失——优化目标的设计。",
+          "problems": ["cross_entropy", "binary_cross_entropy", "mse_loss", "focal_loss", "contrastive_loss"],
+          "hotCategories": ["dl", "math"],
+          "baguChapters": []
+        }
+      ]
+    },
+    {
+      "id": "transformer",
+      "order": 4,
+      "title": "第四阶段 · Transformer 与注意力",
+      "subtitle": "Transformers & Attention",
+      "icon": "Layers",
+      "summary": "现代 AI 的核心架构。从缩放点积注意力到多头、因果、GQA、Flash、MLA,再到位置编码与完整的 Transformer/ViT Block。",
+      "modules": [
+        {
+          "id": "attention-core",
+          "title": "注意力机制核心",
+          "status": "hands-on",
+          "blurb": "缩放点积、多头、因果、交叉注意力、注意力掩码。",
+          "problems": ["attention", "mha", "causal_attention", "cross_attention", "attention_mask", "softmax_temperature"],
+          "hotCategories": ["transformer"],
+          "baguChapters": ["大模型_LLMs_基础面"]
+        },
+        {
+          "id": "attention-efficient",
+          "title": "高效与前沿注意力",
+          "status": "hands-on",
+          "blurb": "Flash、滑动窗口、线性、GQA、差分注意力、MLA、环形注意力。",
+          "problems": ["flash_attention", "sliding_window", "linear_attention", "gqa", "diff_attention", "mla", "ring_attention"],
+          "hotCategories": ["transformer"],
+          "baguChapters": ["大模型_LLMs_进阶面"]
+        },
+        {
+          "id": "position-encoding",
+          "title": "位置编码与嵌入",
+          "status": "hands-on",
+          "blurb": "Embedding、正弦位置编码、RoPE、ALiBi、NTK-aware RoPE。",
+          "problems": ["embedding", "sinusoidal_pe", "rope", "alibi", "ntk_rope"],
+          "hotCategories": ["transformer"],
+          "baguChapters": ["大模型_LLMs_进阶面"]
+        },
+        {
+          "id": "transformer-blocks",
+          "title": "完整 Transformer 模块",
+          "status": "hands-on",
+          "blurb": "GPT-2 Block、编码器/解码器、ViT Patch 与 Block、分词(BPE)。",
+          "problems": ["gpt2_block", "transformer_encoder", "transformer_decoder", "vit_patch", "vit_block", "bpe"],
+          "hotCategories": ["transformer"],
+          "baguChapters": ["大模型_LLMs_基础面"]
+        }
+      ]
+    },
+    {
+      "id": "llm",
+      "order": 5,
+      "title": "第五阶段 · 大模型与前沿架构",
+      "subtitle": "Large Language Models",
+      "icon": "Sparkles",
+      "summary": "理解 LLM 的预训练目标、Scaling Law、MoE 稀疏架构、多模态与扩散模型,以及驱动最新模型的前沿机制。",
+      "modules": [
+        {
+          "id": "llm-fundamentals",
+          "title": "LLM 基础与训练目标",
+          "status": "theory",
+          "blurb": "自回归语言建模、架构选型、Scaling Law/Chinchilla、涌现能力、幻觉。",
+          "problems": ["multi_token_prediction"],
+          "hotCategories": ["llm"],
+          "baguChapters": ["大模型_LLMs_基础面", "大模型_LLMs_进阶面"]
+        },
+        {
+          "id": "moe",
+          "title": "混合专家(MoE)",
+          "status": "hands-on",
+          "blurb": "MoE 路由、负载均衡、带噪声 Top-k 门控——解耦参数量与计算量。",
+          "problems": ["moe", "moe_load_balance", "noisy_topk_gating"],
+          "hotCategories": ["llm"],
+          "baguChapters": ["大模型_LLMs_进阶面"]
+        },
+        {
+          "id": "ssm",
+          "title": "状态空间模型",
+          "status": "hands-on",
+          "blurb": "Mamba SSM——挑战 Transformer 的线性复杂度长序列架构。",
+          "problems": ["mamba_ssm"],
+          "hotCategories": ["transformer"],
+          "baguChapters": []
+        },
+        {
+          "id": "multimodal",
+          "title": "多模态",
+          "status": "hands-on",
+          "blurb": "CLIP 对比学习、图文对齐、多模态 LLM 的连接范式。",
+          "problems": ["clip_model"],
+          "hotCategories": ["llm"],
+          "baguChapters": []
+        },
+        {
+          "id": "diffusion",
+          "title": "扩散与流模型",
+          "status": "hands-on",
+          "blurb": "噪声调度、DDIM 采样、流匹配、adaLN-Zero——生成模型核心。",
+          "problems": ["noise_schedule", "ddim_step", "flow_matching", "adaln_zero"],
+          "hotCategories": ["llm"],
+          "baguChapters": []
+        }
+      ]
+    },
+    {
+      "id": "training-infra",
+      "order": 6,
+      "title": "第六阶段 · 训练、微调与推理优化",
+      "subtitle": "Training, Fine-tuning & Inference",
+      "icon": "Cpu",
+      "summary": "工程落地的核心:混合精度与显存优化、分布式并行、参数高效微调,以及 KV Cache、量化、投机解码、服务化推理。",
+      "modules": [
+        {
+          "id": "efficient-training",
+          "title": "高效训练与显存优化",
+          "status": "hands-on",
+          "blurb": "混合精度、梯度累积、激活检查点——单卡也能训大模型。",
+          "problems": ["mixed_precision", "gradient_accumulation", "activation_checkpointing", "gradient_clipping"],
+          "hotCategories": ["train"],
+          "baguChapters": ["大模型_LLMs_显存问题面"]
+        },
+        {
+          "id": "distributed",
+          "title": "分布式训练",
+          "status": "hands-on",
+          "blurb": "数据/张量/流水线并行、FSDP/ZeRO——扩展到多卡多机。",
+          "problems": ["tensor_parallel", "fsdp_step"],
+          "hotCategories": ["train"],
+          "baguChapters": ["大模型_LLMs_分布式训练面"]
+        },
+        {
+          "id": "finetuning",
+          "title": "微调与参数高效方法",
+          "status": "hands-on",
+          "blurb": "LoRA、QLoRA、INT8 量化——低成本适配预训练模型。",
+          "problems": ["lora", "qlora", "int8_quantization"],
+          "hotCategories": ["train"],
+          "baguChapters": ["大模型_LLMs_微调面", "大模型_LLMs_增量预训练篇"]
+        },
+        {
+          "id": "inference-opt",
+          "title": "推理与解码优化",
+          "status": "hands-on",
+          "blurb": "KV Cache、PagedAttention、投机解码、采样策略、Beam Search。",
+          "problems": ["kv_cache", "paged_attention", "speculative_decoding", "topk_sampling", "beam_search"],
+          "hotCategories": ["infer"],
+          "baguChapters": ["大模型_LLMs_推理面"]
+        },
+        {
+          "id": "cuda-systems",
+          "title": "CUDA 与系统设计",
+          "status": "planned",
+          "blurb": "GPU 架构、算子融合、内存层级、推理服务化与吞吐/延迟权衡。",
+          "problems": [],
+          "hotCategories": ["infer"],
+          "baguChapters": []
+        }
+      ]
+    },
+    {
+      "id": "alignment-apps",
+      "order": 7,
+      "title": "第七阶段 · 对齐、RAG 与 Agent",
+      "subtitle": "Alignment, RAG & Agents",
+      "icon": "Target",
+      "summary": "让模型有用且可靠:RLHF/PPO/DPO 对齐、奖励建模,以及检索增强生成(RAG)与自主 Agent 系统的工程实践。",
+      "modules": [
+        {
+          "id": "alignment",
+          "title": "对齐与 RLHF",
+          "status": "hands-on",
+          "blurb": "奖励模型、PPO、DPO、GRPO、GAE、MCTS——从偏好到策略优化。",
+          "problems": ["reward_model", "ppo_loss", "dpo_loss", "grpo_loss", "gae", "mcts_search"],
+          "hotCategories": ["align"],
+          "baguChapters": ["大模型_LLMs_强化学习___PPO_面"]
+        },
+        {
+          "id": "rag",
+          "title": "检索增强生成(RAG)",
+          "status": "theory",
+          "blurb": "切块、嵌入、向量检索(HNSW/IVF)、重排、混合检索——给模型外部知识。",
+          "problems": ["cosine_similarity"],
+          "hotCategories": ["rag-agent"],
+          "baguChapters": ["大模型_LLMs_langchain面"]
+        },
+        {
+          "id": "agent",
+          "title": "Agent 与工具使用",
+          "status": "theory",
+          "blurb": "ReAct、function calling、规划与记忆、多智能体协作。",
+          "problems": [],
+          "hotCategories": ["rag-agent"],
+          "baguChapters": ["大模型_LLMs_agent_面"]
+        },
+        {
+          "id": "distill",
+          "title": "知识蒸馏与压缩",
+          "status": "theory",
+          "blurb": "软标签蒸馏、自蒸馏、模型压缩——大模型能力向小模型迁移。",
+          "problems": ["kl_divergence"],
+          "hotCategories": ["train"],
+          "baguChapters": ["大模型_LLMs_蒸馏篇"]
+        }
+      ]
+    }
+  ]
+}

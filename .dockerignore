@@ -18,3 +18,10 @@ web/.env.local
 notebooks/
 docs/
 .worktrees/
+
+# Desktop build artifacts and local design evidence
+apps/desktop/node_modules
+apps/desktop/dist
+target
+artifacts
+wiki

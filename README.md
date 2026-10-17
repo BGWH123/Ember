@@ -1,3 +1,9 @@
+> Native installers: run `npm run build:windows` on Windows for MSI/NSIS EXE, or `npm run build:macos` on macOS for APP/DMG. See the [packaging guide](docs/fern/pages/developer-guide/development/package-installers.mdx) for Universal builds and CI.
+
+> [Desktop documentation](docs/README.md): local setup, evaluator modules, architecture, protocol reference, and performance tools. Preview with `npm run docs:install` then `npm run docs:dev`.
+
+> Desktop development: run `npm install`, then `npm run dev` (requires Rust and the Tauri 2 platform prerequisites). The desktop UI is in `apps/desktop/`, with Rust business logic in `crates/`; browsing needs no Python. The legacy web entry is `npm run dev:legacy` after installing dependencies in `web/`. Local architecture, migration and performance records live in the Git-ignored `wiki/` directory.
+
 [English](./README.md) | [中文](./README_CN.md)
 
 <p align="center">

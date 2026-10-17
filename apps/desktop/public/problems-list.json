@@ -1,0 +1,711 @@
+{
+  "problems": [
+    {
+      "id": "activation_checkpointing",
+      "title": "Activation Checkpointing",
+      "titleZh": "激活检查点",
+      "difficulty": "Medium",
+      "category": "高效训练"
+    },
+    {
+      "id": "adaln_zero",
+      "title": "Adaptive LayerNorm Zero (adaLN-Zero)",
+      "titleZh": "自适应层归一化 Zero",
+      "difficulty": "Medium",
+      "category": "归一化"
+    },
+    {
+      "id": "adam",
+      "title": "Adam Optimizer",
+      "titleZh": "Adam 优化器",
+      "difficulty": "Medium",
+      "category": "优化器与学习率"
+    },
+    {
+      "id": "alibi",
+      "title": "ALiBi Attention",
+      "titleZh": "ALiBi 注意力",
+      "difficulty": "Medium",
+      "category": "注意力机制"
+    },
+    {
+      "id": "attention",
+      "title": "Softmax Attention",
+      "titleZh": "Softmax 注意力",
+      "difficulty": "Easy",
+      "category": "注意力机制"
+    },
+    {
+      "id": "attention_mask",
+      "title": "Attention Mask (Padding)",
+      "titleZh": "注意力掩码（Padding Mask）",
+      "difficulty": "Medium",
+      "category": "注意力机制"
+    },
+    {
+      "id": "batchnorm",
+      "title": "Implement BatchNorm",
+      "titleZh": "实现 BatchNorm",
+      "difficulty": "Medium",
+      "category": "归一化"
+    },
+    {
+      "id": "beam_search",
+      "title": "Beam Search Decoding",
+      "titleZh": "束搜索解码",
+      "difficulty": "Medium",
+      "category": "采样与解码"
+    },
+    {
+      "id": "binary_cross_entropy",
+      "title": "Binary Cross-Entropy Loss",
+      "titleZh": "二元交叉熵损失",
+      "difficulty": "Easy",
+      "category": "损失函数"
+    },
+    {
+      "id": "bpe",
+      "title": "Byte-Pair Encoding (BPE)",
+      "titleZh": "字节对编码（BPE）",
+      "difficulty": "Hard",
+      "category": "分词"
+    },
+    {
+      "id": "broadcasting",
+      "title": "PyTorch Broadcasting Mechanics",
+      "titleZh": "PyTorch 广播机制",
+      "difficulty": "Easy",
+      "category": "基础网络组件"
+    },
+    {
+      "id": "causal_attention",
+      "title": "Causal Self-Attention",
+      "titleZh": "因果自注意力",
+      "difficulty": "Medium",
+      "category": "注意力机制"
+    },
+    {
+      "id": "clip_model",
+      "title": "CLIP Model (Image-Text Contrastive Learning)",
+      "titleZh": "CLIP 模型（图文对比学习）",
+      "difficulty": "Hard",
+      "category": "多模态"
+    },
+    {
+      "id": "contrastive_loss",
+      "title": "Contrastive Loss (InfoNCE)",
+      "titleZh": "对比损失（InfoNCE）",
+      "difficulty": "Medium",
+      "category": "损失函数"
+    },
+    {
+      "id": "conv2d",
+      "title": "2D Convolution",
+      "titleZh": "二维卷积",
+      "difficulty": "Medium",
+      "category": "基础网络组件"
+    },
+    {
+      "id": "cosine_lr",
+      "title": "Cosine LR Scheduler with Warmup",
+      "titleZh": "余弦学习率调度（含预热）",
+      "difficulty": "Medium",
+      "category": "优化器与学习率"
+    },
+    {
+      "id": "cosine_similarity",
+      "title": "Cosine Similarity",
+      "titleZh": "余弦相似度",
+      "difficulty": "Easy",
+      "category": "基础网络组件"
+    },
+    {
+      "id": "cross_attention",
+      "title": "Multi-Head Cross-Attention",
+      "titleZh": "多头交叉注意力",
+      "difficulty": "Medium",
+      "category": "注意力机制"
+    },
+    {
+      "id": "cross_entropy",
+      "title": "Cross-Entropy Loss",
+      "titleZh": "交叉熵损失",
+      "difficulty": "Easy",
+      "category": "损失函数"
+    },
+    {
+      "id": "ddim_step",
+      "title": "DDIM Sampling Step",
+      "titleZh": "DDIM 采样步骤",
+      "difficulty": "Medium",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "depthwise_conv",
+      "title": "Depthwise Separable Convolution",
+      "titleZh": "深度可分离卷积",
+      "difficulty": "Medium",
+      "category": "基础网络组件"
+    },
+    {
+      "id": "diff_attention",
+      "title": "Differential Attention",
+      "titleZh": "差分注意力",
+      "difficulty": "Hard",
+      "category": "注意力机制"
+    },
+    {
+      "id": "dpo_loss",
+      "title": "DPO (Direct Preference Optimization) Loss",
+      "titleZh": "DPO 损失",
+      "difficulty": "Medium",
+      "category": "损失函数"
+    },
+    {
+      "id": "dropout",
+      "title": "Implement Dropout",
+      "titleZh": "实现 Dropout",
+      "difficulty": "Easy",
+      "category": "正则化"
+    },
+    {
+      "id": "einsum_ops",
+      "title": "PyTorch Einsum Operations",
+      "titleZh": "PyTorch Einsum 操作",
+      "difficulty": "Medium",
+      "category": "基础网络组件"
+    },
+    {
+      "id": "embedding",
+      "title": "Embedding Layer",
+      "titleZh": "Embedding 层",
+      "difficulty": "Easy",
+      "category": "位置编码与嵌入"
+    },
+    {
+      "id": "flash_attention",
+      "title": "Flash Attention (Tiled)",
+      "titleZh": "Flash Attention（分块）",
+      "difficulty": "Hard",
+      "category": "注意力机制"
+    },
+    {
+      "id": "flow_matching",
+      "title": "Flow Matching Loss",
+      "titleZh": "流匹配损失",
+      "difficulty": "Easy",
+      "category": "损失函数"
+    },
+    {
+      "id": "focal_loss",
+      "title": "Focal Loss",
+      "titleZh": "Focal Loss",
+      "difficulty": "Medium",
+      "category": "损失函数"
+    },
+    {
+      "id": "fsdp_step",
+      "title": "FSDP Training Step",
+      "titleZh": "FSDP 训练步骤",
+      "difficulty": "Hard",
+      "category": "高效训练"
+    },
+    {
+      "id": "gae",
+      "title": "Graph Autoencoder (GAE)",
+      "titleZh": "图自编码器（GAE）",
+      "difficulty": "Hard",
+      "category": "损失函数"
+    },
+    {
+      "id": "gat_layer",
+      "title": "GAT Layer (Graph Attention)",
+      "titleZh": "GAT 层（图注意力）",
+      "difficulty": "Medium",
+      "category": "图神经网络"
+    },
+    {
+      "id": "gcn_layer",
+      "title": "GCN Layer (Graph Convolution)",
+      "titleZh": "GCN 层（图卷积）",
+      "difficulty": "Easy",
+      "category": "图神经网络"
+    },
+    {
+      "id": "gelu",
+      "title": "GELU Activation",
+      "titleZh": "GELU 激活函数",
+      "difficulty": "Easy",
+      "category": "激活函数"
+    },
+    {
+      "id": "gin_layer",
+      "title": "GIN Layer (Graph Isomorphism Network)",
+      "titleZh": "GIN 层（图同构网络）",
+      "difficulty": "Medium",
+      "category": "图神经网络"
+    },
+    {
+      "id": "gpt2_block",
+      "title": "GPT-2 Transformer Block",
+      "titleZh": "GPT-2 Transformer Block",
+      "difficulty": "Hard",
+      "category": "Transformer组件"
+    },
+    {
+      "id": "gqa",
+      "title": "Grouped Query Attention",
+      "titleZh": "分组查询注意力（GQA）",
+      "difficulty": "Hard",
+      "category": "注意力机制"
+    },
+    {
+      "id": "gradient_accumulation",
+      "title": "Gradient Accumulation",
+      "titleZh": "梯度累积",
+      "difficulty": "Easy",
+      "category": "优化器与学习率"
+    },
+    {
+      "id": "gradient_clipping",
+      "title": "Gradient Norm Clipping",
+      "titleZh": "梯度范数裁剪",
+      "difficulty": "Easy",
+      "category": "优化器与学习率"
+    },
+    {
+      "id": "graph_readout",
+      "title": "Graph Readout (Graph-Level Pooling)",
+      "titleZh": "图读出（图级池化）",
+      "difficulty": "Easy",
+      "category": "图神经网络"
+    },
+    {
+      "id": "graphsage_layer",
+      "title": "GraphSAGE Layer",
+      "titleZh": "GraphSAGE 层",
+      "difficulty": "Hard",
+      "category": "图神经网络"
+    },
+    {
+      "id": "grpo_loss",
+      "title": "GRPO (Group Relative Policy Optimization) Loss",
+      "titleZh": "GRPO 损失",
+      "difficulty": "Hard",
+      "category": "损失函数"
+    },
+    {
+      "id": "gru_cell",
+      "title": "GRU Cell",
+      "titleZh": "GRU 单元",
+      "difficulty": "Medium",
+      "category": "基础网络组件"
+    },
+    {
+      "id": "int8_quantization",
+      "title": "INT8 Quantized Linear",
+      "titleZh": "INT8 量化线性层",
+      "difficulty": "Hard",
+      "category": "量化"
+    },
+    {
+      "id": "kl_divergence",
+      "title": "KL Divergence",
+      "titleZh": "KL 散度",
+      "difficulty": "Medium",
+      "category": "损失函数"
+    },
+    {
+      "id": "kv_cache",
+      "title": "KV Cache Attention",
+      "titleZh": "KV Cache 注意力",
+      "difficulty": "Hard",
+      "category": "推理优化"
+    },
+    {
+      "id": "l1_regularization",
+      "title": "L1 Regularization (Lasso)",
+      "titleZh": "L1 正则化（Lasso）",
+      "difficulty": "Easy",
+      "category": "正则化"
+    },
+    {
+      "id": "l2_regularization",
+      "title": "L2 Regularization (Weight Decay)",
+      "titleZh": "L2 正则化（Weight Decay）",
+      "difficulty": "Easy",
+      "category": "正则化"
+    },
+    {
+      "id": "label_smoothing",
+      "title": "Label Smoothing Loss",
+      "titleZh": "标签平滑损失",
+      "difficulty": "Easy",
+      "category": "正则化"
+    },
+    {
+      "id": "layernorm",
+      "title": "Implement LayerNorm",
+      "titleZh": "实现 LayerNorm",
+      "difficulty": "Medium",
+      "category": "归一化"
+    },
+    {
+      "id": "layerscale",
+      "title": "LayerScale",
+      "titleZh": "LayerScale",
+      "difficulty": "Medium",
+      "category": "训练技巧"
+    },
+    {
+      "id": "leaky_relu",
+      "title": "Leaky ReLU",
+      "titleZh": "Leaky ReLU",
+      "difficulty": "Easy",
+      "category": "激活函数"
+    },
+    {
+      "id": "linear",
+      "title": "Simple Linear Layer",
+      "titleZh": "简单线性层",
+      "difficulty": "Medium",
+      "category": "基础网络组件"
+    },
+    {
+      "id": "linear_attention",
+      "title": "Linear Self-Attention",
+      "titleZh": "线性自注意力",
+      "difficulty": "Hard",
+      "category": "注意力机制"
+    },
+    {
+      "id": "linear_regression",
+      "title": "Linear Regression",
+      "titleZh": "线性回归",
+      "difficulty": "Medium",
+      "category": "基础网络组件"
+    },
+    {
+      "id": "link_prediction",
+      "title": "Link Prediction",
+      "titleZh": "链接预测",
+      "difficulty": "Hard",
+      "category": "图神经网络"
+    },
+    {
+      "id": "lora",
+      "title": "LoRA (Low-Rank Adaptation)",
+      "titleZh": "LoRA（低秩适配）",
+      "difficulty": "Medium",
+      "category": "参数高效微调"
+    },
+    {
+      "id": "lstm_cell",
+      "title": "LSTM Cell",
+      "titleZh": "LSTM 单元",
+      "difficulty": "Medium",
+      "category": "基础网络组件"
+    },
+    {
+      "id": "mamba_ssm",
+      "title": "Mamba SSM Step",
+      "titleZh": "Mamba SSM 步骤",
+      "difficulty": "Hard",
+      "category": "状态空间模型"
+    },
+    {
+      "id": "max_pool2d",
+      "title": "Max Pooling 2D",
+      "titleZh": "二维最大池化",
+      "difficulty": "Easy",
+      "category": "基础网络组件"
+    },
+    {
+      "id": "mcts_search",
+      "title": "MCTS for Reasoning",
+      "titleZh": "推理蒙特卡洛树搜索",
+      "difficulty": "Hard",
+      "category": "采样与解码"
+    },
+    {
+      "id": "mha",
+      "title": "Multi-Head Attention",
+      "titleZh": "多头注意力",
+      "difficulty": "Hard",
+      "category": "注意力机制"
+    },
+    {
+      "id": "mixed_precision",
+      "title": "Mixed Precision Training Step",
+      "titleZh": "混合精度训练步骤",
+      "difficulty": "Medium",
+      "category": "高效训练"
+    },
+    {
+      "id": "mla",
+      "title": "Multi-Head Latent Attention (MLA)",
+      "titleZh": "多头潜在注意力（MLA）",
+      "difficulty": "Hard",
+      "category": "注意力机制"
+    },
+    {
+      "id": "mlp",
+      "title": "SwiGLU MLP",
+      "titleZh": "SwiGLU MLP",
+      "difficulty": "Medium",
+      "category": "Transformer组件"
+    },
+    {
+      "id": "moe",
+      "title": "Mixture of Experts (MoE)",
+      "titleZh": "混合专家（MoE）",
+      "difficulty": "Hard",
+      "category": "混合专家模型"
+    },
+    {
+      "id": "moe_load_balance",
+      "title": "MoE Load Balancing Loss",
+      "titleZh": "MoE 负载均衡损失",
+      "difficulty": "Medium",
+      "category": "混合专家模型"
+    },
+    {
+      "id": "mpnn_layer",
+      "title": "MPNN Layer (Message Passing)",
+      "titleZh": "MPNN 层（消息传递）",
+      "difficulty": "Medium",
+      "category": "图神经网络"
+    },
+    {
+      "id": "mse_loss",
+      "title": "Mean Squared Error (MSE)",
+      "titleZh": "均方误差损失（MSE）",
+      "difficulty": "Easy",
+      "category": "损失函数"
+    },
+    {
+      "id": "multi_token_prediction",
+      "title": "Multi-Token Prediction Loss",
+      "titleZh": "多 Token 预测",
+      "difficulty": "Medium",
+      "category": "训练技巧"
+    },
+    {
+      "id": "noise_schedule",
+      "title": "Diffusion Noise Schedules",
+      "titleZh": "扩散噪声调度",
+      "difficulty": "Easy",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "noisy_topk_gating",
+      "title": "Noisy Top-K Gating (MoE)",
+      "titleZh": "噪声 Top-K 门控（MoE）",
+      "difficulty": "Hard",
+      "category": "混合专家模型"
+    },
+    {
+      "id": "ntk_rope",
+      "title": "NTK-aware RoPE Scaling",
+      "titleZh": "NTK-aware RoPE 缩放",
+      "difficulty": "Easy",
+      "category": "位置编码与嵌入"
+    },
+    {
+      "id": "one_hot_encoding",
+      "title": "One-Hot Encoding",
+      "titleZh": "One-Hot 编码",
+      "difficulty": "Easy",
+      "category": "基础网络组件"
+    },
+    {
+      "id": "paged_attention",
+      "title": "Paged Attention",
+      "titleZh": "分页注意力",
+      "difficulty": "Hard",
+      "category": "推理优化"
+    },
+    {
+      "id": "ppo_loss",
+      "title": "PPO (Proximal Policy Optimization) Clipped Loss",
+      "titleZh": "PPO 损失",
+      "difficulty": "Medium",
+      "category": "损失函数"
+    },
+    {
+      "id": "qlora",
+      "title": "QLoRA",
+      "titleZh": "QLoRA",
+      "difficulty": "Hard",
+      "category": "量化"
+    },
+    {
+      "id": "relu",
+      "title": "Implement ReLU",
+      "titleZh": "实现 ReLU",
+      "difficulty": "Easy",
+      "category": "激活函数"
+    },
+    {
+      "id": "residual_connection",
+      "title": "Residual Connection",
+      "titleZh": "残差连接（Residual Connection）",
+      "difficulty": "Easy",
+      "category": "基础网络组件"
+    },
+    {
+      "id": "reward_model",
+      "title": "Bradley-Terry Reward Model Loss",
+      "titleZh": "Bradley-Terry 奖励模型",
+      "difficulty": "Medium",
+      "category": "强化学习"
+    },
+    {
+      "id": "ring_attention",
+      "title": "Ring Attention",
+      "titleZh": "环形注意力",
+      "difficulty": "Hard",
+      "category": "注意力机制"
+    },
+    {
+      "id": "rmsnorm",
+      "title": "Implement RMSNorm",
+      "titleZh": "实现 RMSNorm",
+      "difficulty": "Medium",
+      "category": "归一化"
+    },
+    {
+      "id": "rope",
+      "title": "Rotary Position Embedding (RoPE)",
+      "titleZh": "旋转位置编码（RoPE）",
+      "difficulty": "Medium",
+      "category": "注意力机制"
+    },
+    {
+      "id": "sequence_pack",
+      "title": "Sequence Packing",
+      "titleZh": "序列打包",
+      "difficulty": "Easy",
+      "category": "基础网络组件"
+    },
+    {
+      "id": "sgd_momentum",
+      "title": "SGD with Momentum",
+      "titleZh": "带动量的 SGD",
+      "difficulty": "Easy",
+      "category": "优化器与学习率"
+    },
+    {
+      "id": "sigmoid",
+      "title": "Sigmoid Activation",
+      "titleZh": "Sigmoid 激活函数",
+      "difficulty": "Easy",
+      "category": "激活函数"
+    },
+    {
+      "id": "sinusoidal_pe",
+      "title": "Sinusoidal Position Encoding",
+      "titleZh": "正弦位置编码",
+      "difficulty": "Easy",
+      "category": "位置编码与嵌入"
+    },
+    {
+      "id": "sliding_window",
+      "title": "Sliding Window Attention",
+      "titleZh": "滑动窗口注意力",
+      "difficulty": "Medium",
+      "category": "注意力机制"
+    },
+    {
+      "id": "softmax",
+      "title": "Implement Softmax",
+      "titleZh": "实现 Softmax",
+      "difficulty": "Easy",
+      "category": "激活函数"
+    },
+    {
+      "id": "softmax_temperature",
+      "title": "Softmax with Temperature",
+      "titleZh": "带温度的 Softmax",
+      "difficulty": "Easy",
+      "category": "采样与解码"
+    },
+    {
+      "id": "speculative_decoding",
+      "title": "Speculative Decoding",
+      "titleZh": "推测解码",
+      "difficulty": "Hard",
+      "category": "采样与解码"
+    },
+    {
+      "id": "stochastic_depth",
+      "title": "Stochastic Depth (DropPath)",
+      "titleZh": "随机深度（DropPath）",
+      "difficulty": "Medium",
+      "category": "正则化"
+    },
+    {
+      "id": "swiglu",
+      "title": "SwiGLU Activation",
+      "titleZh": "SwiGLU 激活函数",
+      "difficulty": "Medium",
+      "category": "激活函数"
+    },
+    {
+      "id": "tanh",
+      "title": "Tanh Activation",
+      "titleZh": "Tanh 激活函数",
+      "difficulty": "Easy",
+      "category": "激活函数"
+    },
+    {
+      "id": "tensor_parallel",
+      "title": "Tensor Parallel MLP",
+      "titleZh": "张量并行 MLP",
+      "difficulty": "Hard",
+      "category": "高效训练"
+    },
+    {
+      "id": "topk_sampling",
+      "title": "Top-k / Top-p Sampling",
+      "titleZh": "Top-k / Top-p 采样",
+      "difficulty": "Medium",
+      "category": "采样与解码"
+    },
+    {
+      "id": "transformer_decoder",
+      "title": "Transformer Decoder with Cross-Attention",
+      "titleZh": "带交叉注意力的 Transformer 解码器",
+      "difficulty": "Hard",
+      "category": "Transformer组件"
+    },
+    {
+      "id": "transformer_encoder",
+      "title": "Complete Transformer Encoder",
+      "titleZh": "完整 Transformer 编码器",
+      "difficulty": "Hard",
+      "category": "Transformer组件"
+    },
+    {
+      "id": "vit_block",
+      "title": "ViT Transformer Block",
+      "titleZh": "ViT Transformer Block",
+      "difficulty": "Hard",
+      "category": "Transformer组件"
+    },
+    {
+      "id": "vit_patch",
+      "title": "ViT Patch Embedding",
+      "titleZh": "ViT Patch Embedding",
+      "difficulty": "Medium",
+      "category": "Transformer组件"
+    },
+    {
+      "id": "weight_init",
+      "title": "Kaiming Initialization",
+      "titleZh": "Kaiming 初始化",
+      "difficulty": "Easy",
+      "category": "基础网络组件"
+    }
+  ]
+}

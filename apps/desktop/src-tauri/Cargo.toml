@@ -1,0 +1,22 @@
+[package]
+name = "ember-desktop"
+description = "AI systems coding practice with optional local or remote evaluation"
+authors = ["kiren"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+ember-core = { path = "../../../crates/ember-core" }
+ember-evaluator = { path = "../../../crates/ember-evaluator" }
+tauri = { version = "2", features = [] }
+tauri-plugin-updater = "2"
+serde_json.workspace = true
+tokio.workspace = true
+
+[features]
+# Tauri CLI enables this for packaged builds; raw cargo dev builds use devUrl.
+custom-protocol = ["tauri/custom-protocol"]

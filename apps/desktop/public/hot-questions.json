@@ -1,0 +1,570 @@
+{
+  "meta": {
+    "title": "AI 高频面试热题 50",
+    "description": "覆盖数学基础、机器学习、深度学习、Transformer、大模型、训练与推理、RAG/Agent、对齐等主流 AI 算法/大模型岗位的高频考点。答案力求准确、系统,并尽量标注权威出处。",
+    "version": 1
+  },
+  "categories": [
+    { "id": "math", "name": "数学与概率统计", "order": 1 },
+    { "id": "ml", "name": "经典机器学习", "order": 2 },
+    { "id": "dl", "name": "深度学习基础", "order": 3 },
+    { "id": "transformer", "name": "Transformer 与注意力", "order": 4 },
+    { "id": "llm", "name": "大模型 LLM", "order": 5 },
+    { "id": "train", "name": "训练与微调", "order": 6 },
+    { "id": "infer", "name": "推理与部署优化", "order": 7 },
+    { "id": "rag-agent", "name": "RAG 与 Agent", "order": 8 },
+    { "id": "align", "name": "对齐与 RLHF", "order": 9 }
+  ],
+  "questions": [
+    {
+      "id": "q01",
+      "category": "math",
+      "difficulty": "Medium",
+      "tags": ["梯度", "反向传播"],
+      "question": "为什么深度网络训练依赖梯度下降?反向传播本质上在算什么?",
+      "answer": "梯度下降通过沿损失函数负梯度方向迭代更新参数 `θ ← θ - η·∇L(θ)`,逐步逼近(局部)极小值。深度网络的损失对参数高度非凸且参数量巨大,解析求解不可行,因此用一阶迭代法。\n\n**反向传播(backpropagation)本质是链式法则的高效实现**:把网络看成复合函数,前向计算各层输出并缓存中间激活,反向时从输出端的损失梯度出发,逐层用链式法则把梯度乘回去,复用中间结果,使得计算全部参数梯度的代价与一次前向传播同阶 `O(网络规模)`,而非对每个参数单独数值求导。\n\n**要点**:\n- 反向传播只负责“算梯度”,优化器(SGD/Adam)负责“用梯度更新”\n- 需要缓存前向激活,这是显存占用的主要来源之一(对应激活检查点优化)\n- 梯度消失/爆炸来自链式连乘,催生了残差连接、归一化、合适的初始化",
+      "references": [
+        { "label": "Rumelhart, Hinton & Williams (1986) — Learning representations by back-propagating errors", "url": "https://www.nature.com/articles/323533a0" }
+      ]
+    },
+    {
+      "id": "q02",
+      "category": "math",
+      "difficulty": "Medium",
+      "tags": ["概率", "MLE", "交叉熵"],
+      "question": "最大似然估计(MLE)和交叉熵损失是什么关系?",
+      "answer": "二者在分类任务下**本质等价**。\n\n最大似然要最大化训练数据在模型下的对数似然 `Σ log p(y_i | x_i; θ)`。取负号后变成最小化 `-Σ log p(y_i | x_i)`,这正是**交叉熵损失**的形式。\n\n对于单样本、真实分布为 one-hot 的分类问题,交叉熵 `H(p, q) = -Σ p(k) log q(k)` 只剩下真实类别那一项 `-log q(真实类)`,即负对数似然(NLL)。\n\n**延伸**:\n- 交叉熵 = 熵 + KL 散度,最小化交叉熵等价于最小化预测分布与真实分布的 KL 散度\n- 回归任务里,假设高斯噪声下的 MLE 等价于最小化 MSE;拉普拉斯噪声对应 MAE\n- 这解释了为什么分类几乎总用交叉熵而非 MSE:交叉熵配 softmax 的梯度形式更好,不会在饱和区梯度消失",
+      "references": []
+    },
+    {
+      "id": "q03",
+      "category": "math",
+      "difficulty": "Easy",
+      "tags": ["偏差方差", "过拟合"],
+      "question": "解释偏差-方差权衡(bias-variance tradeoff),它如何指导模型选择?",
+      "answer": "泛化误差可分解为三部分:**偏差² + 方差 + 不可约噪声**。\n\n- **偏差(bias)**:模型假设太简单、无法拟合真实规律带来的系统性误差。高偏差 = 欠拟合。\n- **方差(variance)**:模型对训练集的微小变化过度敏感。高方差 = 过拟合。\n- **噪声**:数据本身的随机性,无法消除。\n\n**权衡**:增加模型容量(更深更宽)通常降低偏差但提高方差;正则化、增大数据量、集成则降低方差。\n\n**指导意义**:\n- 训练误差低但验证误差高 → 高方差 → 加正则化/数据增强/早停/简化模型\n- 训练误差和验证误差都高 → 高偏差 → 加大模型/特征工程/训练更久\n\n注意:在深度学习的“双下降(double descent)”现象中,过参数化模型反而可能同时低偏差低方差,经典权衡曲线需要修正。",
+      "references": [
+        { "label": "Belkin et al. (2019) — Reconciling modern ML practice and the bias-variance trade-off", "url": "https://www.pnas.org/doi/10.1073/pnas.1903070116" }
+      ]
+    },
+    {
+      "id": "q04",
+      "category": "math",
+      "difficulty": "Medium",
+      "tags": ["最优化", "Adam", "学习率"],
+      "question": "Adam 优化器相比 SGD 做了什么改进?为什么大模型常用 AdamW?",
+      "answer": "**SGD(带动量)** 用一阶动量平滑梯度方向。**Adam** 在此基础上引入逐参数自适应学习率:\n\n- 维护一阶矩 `m`(梯度的指数滑动均值)和二阶矩 `v`(梯度平方的滑动均值)\n- 更新量约为 `m̂ / (√v̂ + ε)`,梯度大的参数步长被自动缩小,稀疏/小梯度参数步长放大\n- 带偏差校正,缓解训练初期估计偏小的问题\n\n**AdamW** 的关键修正:原始 Adam 把 L2 正则项混进梯度,经过自适应缩放后,权重衰减强度被扭曲。AdamW 把**权重衰减从梯度中解耦**,直接作用在参数上 `θ ← θ - η·λ·θ`,使正则化行为正确且稳定。\n\n大模型几乎都用 AdamW,因为它收敛快、对学习率不敏感、正则化正确。代价是要存 `m`、`v` 两份与参数等大的状态,显存约为参数的 2 倍(对应优化器状态分片 ZeRO 的动机)。",
+      "references": [
+        { "label": "Kingma & Ba (2015) — Adam", "url": "https://arxiv.org/abs/1412.6980" },
+        { "label": "Loshchilov & Hutter (2019) — Decoupled Weight Decay Regularization (AdamW)", "url": "https://arxiv.org/abs/1711.05101" }
+      ]
+    },
+    {
+      "id": "q05",
+      "category": "math",
+      "difficulty": "Hard",
+      "tags": ["KL散度", "信息论"],
+      "question": "KL 散度是什么?为什么它不对称?在哪些 AI 场景里出现?",
+      "answer": "KL 散度衡量用分布 q 近似真实分布 p 时损失的信息量:`KL(p‖q) = Σ p(x) log(p(x)/q(x)) ≥ 0`,当且仅当 p=q 时为 0。\n\n**为什么不对称**:它是 p 下对数比值的期望,`KL(p‖q) ≠ KL(q‖p)`,所以不是距离(不满足对称性和三角不等式)。两个方向意义不同:\n- **前向 `KL(p‖q)`(矩匹配)**:q 必须覆盖 p 的所有高概率区域,否则惩罚极大 → q 偏向“摊平”覆盖。最大似然就是在最小化它。\n- **反向 `KL(q‖p)`(模式寻找)**:q 倾向集中在 p 的某个主峰 → 变分推断常用,可能丢失模式。\n\n**AI 场景**:\n- 交叉熵优化本质是最小化前向 KL\n- 变分自编码器(VAE)的 ELBO 含 KL 正则项\n- 知识蒸馏用 KL 让学生匹配教师的软标签\n- RLHF/PPO 用 KL 惩罚约束策略不要偏离参考模型太远",
+      "references": []
+    },
+    {
+      "id": "q06",
+      "category": "ml",
+      "difficulty": "Easy",
+      "tags": ["过拟合", "正则化"],
+      "question": "有哪些常用的防止过拟合的手段?分别从什么角度起作用?",
+      "answer": "**数据角度**:\n- 增大数据量、数据增强(图像翻转/裁剪、文本回译等)——让模型见到更多变化\n\n**模型角度**:\n- 减小模型容量、参数共享\n- L1/L2 正则(权重衰减)——惩罚大权重,L1 还能稀疏化做特征选择\n\n**训练角度**:\n- Dropout——训练时随机置零神经元,等价于训练大量子网络的集成\n- 早停(early stopping)——验证误差回升即停止\n- 标签平滑——软化 one-hot 标签,防止过度自信\n- Batch/Layer Norm——平滑损失面,间接正则\n\n**集成角度**:\n- Bagging/随机森林降方差、模型平均\n\n面试中建议先问场景:数据少优先增强+正则+早停;模型大优先 dropout+权重衰减+标签平滑。",
+      "references": []
+    },
+    {
+      "id": "q07",
+      "category": "ml",
+      "difficulty": "Medium",
+      "tags": ["评估指标", "类别不平衡"],
+      "question": "准确率、精确率、召回率、F1、AUC 各自适用什么场景?类别不平衡时怎么选?",
+      "answer": "- **准确率 Accuracy** = 预测对的比例。类别均衡时直观;**不平衡时具有误导性**(99% 负样本时全猜负也有 99%)。\n- **精确率 Precision** = TP/(TP+FP),预测为正里有多少真的正。关注“别误报”,如垃圾邮件、推荐。\n- **召回率 Recall** = TP/(TP+FN),真正例里抓到多少。关注“别漏报”,如疾病筛查、风控。\n- **F1** = 精确率与召回率的调和平均,二者都重要且需单一指标时用。\n- **AUC-ROC** = 模型对正负样本排序能力,阈值无关;但**极端不平衡时 AUC 偏乐观**,此时更推荐 **PR-AUC(AUC-PR)**。\n\n**不平衡场景策略**:看重少数类 → 用 PR 曲线、F1、召回;配合重采样(过采样 SMOTE/欠采样)、类别加权损失、Focal Loss。永远不要只看准确率。",
+      "references": []
+    },
+    {
+      "id": "q08",
+      "category": "ml",
+      "difficulty": "Medium",
+      "tags": ["树模型", "GBDT"],
+      "question": "随机森林和 GBDT/XGBoost 的核心区别是什么?各自优劣?",
+      "answer": "两者都是树集成,但集成思路相反:\n\n**随机森林(Bagging)**:\n- 并行训练多棵独立的深树,通过样本自助采样 + 特征随机抽样制造差异,最后投票/平均\n- 主要**降方差**,不易过拟合,抗噪、可并行、调参简单\n- 单棵树偏差不降,整体精度通常略逊于精调的 boosting\n\n**GBDT / XGBoost(Boosting)**:\n- 串行训练浅树,每棵树拟合前面所有树的**残差(负梯度)**,逐步**降偏差**\n- 精度高,工业界表格数据王者;XGBoost 还加了二阶梯度、正则项、缺失值处理、并行分裂查找\n- 串行较慢、对噪声和超参更敏感、易过拟合需早停\n\n**选择**:表格/结构化数据中等规模、追求精度 → XGBoost/LightGBM;追求稳健少调参或强基线 → 随机森林。",
+      "references": [
+        { "label": "Chen & Guestrin (2016) — XGBoost", "url": "https://arxiv.org/abs/1603.02754" }
+      ]
+    },
+    {
+      "id": "q09",
+      "category": "ml",
+      "difficulty": "Easy",
+      "tags": ["生成判别"],
+      "question": "生成式模型和判别式模型有什么区别?各举例。",
+      "answer": "区别在于建模的目标分布:\n\n- **判别式模型**直接建模条件概率 `p(y|x)` 或决策边界,只关心“给定输入怎么分类/预测”。例:逻辑回归、SVM、CRF、绝大多数判别式神经网络分类器。\n- **生成式模型**建模联合分布 `p(x, y)` 或数据分布 `p(x)`,可用贝叶斯反推 `p(y|x)`,也能**生成新样本**。例:朴素贝叶斯、隐马尔可夫、高斯混合、VAE、扩散模型、GPT(语言建模 `p(x)`)。\n\n**权衡**:\n- 判别式通常分类精度更高、需要数据更少(只学边界)\n- 生成式能处理缺失数据、做异常检测、生成样本,小样本下有时更稳\n\n注意:大语言模型是生成式(自回归建模文本分布),但通过 in-context/微调也能做判别任务。",
+      "references": []
+    },
+    {
+      "id": "q10",
+      "category": "ml",
+      "difficulty": "Medium",
+      "tags": ["特征", "归一化"],
+      "question": "为什么很多模型需要特征标准化?哪些模型对尺度不敏感?",
+      "answer": "**需要标准化的原因**:\n- 基于距离的模型(KNN、K-means、SVM-RBF)中,大尺度特征会主导距离计算\n- 梯度下降类模型中,不同尺度特征导致损失面呈狭长椭圆,收敛慢、易震荡\n- 正则化(L1/L2)对所有权重一视同仁,特征尺度不一致会让惩罚不公平\n\n**常用方法**:\n- 标准化 Z-score `(x-μ)/σ` —— 最通用\n- 归一化 Min-Max 到 [0,1] —— 需要有界输入(如图像像素)\n- Log 变换 —— 处理长尾分布\n\n**对尺度不敏感的模型**:决策树、随机森林、GBDT/XGBoost —— 因为它们基于特征的**排序/阈值分裂**,单调变换不改变分裂结果。\n\n**注意**:标准化的统计量(μ、σ)必须只在训练集上计算,再应用到验证/测试集,否则数据泄漏。",
+      "references": []
+    },
+    {
+      "id": "q11",
+      "category": "dl",
+      "difficulty": "Easy",
+      "tags": ["激活函数"],
+      "question": "ReLU、GELU、SwiGLU 各自的特点?现代大模型为何偏好 GELU/SwiGLU?",
+      "answer": "- **ReLU** `max(0,x)`:计算极简、缓解梯度消失,但负区间梯度为 0,可能“死亡神经元”。\n- **GELU** `x·Φ(x)`(Φ 为标准正态 CDF):平滑、处处可导,负值附近软门控而非硬截断。BERT、GPT、ViT 默认激活。\n- **SwiGLU**:门控线性单元的 Swish 变体 `(xW)⊗ swish(xV)`,用两个线性投影做逐元素门控,表达力更强。LLaMA、PaLM 等的 FFN 用它替代 ReLU/GELU。\n\n**为何偏好 GELU/SwiGLU**:\n- 平滑激活让优化更稳定,小负值仍保留梯度\n- SwiGLU 在同等计算预算下经验上提升困惑度(Noam Shazeer 的 GLU Variants 实验)\n- 代价:SwiGLU 多一个投影矩阵,通常把 FFN 隐层维度调小(如 ×2/3 × 4)以保持参数量。",
+      "references": [
+        { "label": "Hendrycks & Gimpel (2016) — GELU", "url": "https://arxiv.org/abs/1606.08415" },
+        { "label": "Shazeer (2020) — GLU Variants Improve Transformer", "url": "https://arxiv.org/abs/2002.05202" }
+      ]
+    },
+    {
+      "id": "q12",
+      "category": "dl",
+      "difficulty": "Medium",
+      "tags": ["归一化", "BatchNorm", "LayerNorm"],
+      "question": "BatchNorm 和 LayerNorm 的区别?为什么 Transformer 用 LayerNorm 而不是 BatchNorm?",
+      "answer": "区别在于**沿哪个维度统计均值方差**:\n- **BatchNorm**:对每个特征通道,在 batch 维度上统计。依赖 batch 内其他样本,训练/推理行为不同(推理用滑动平均)。\n- **LayerNorm**:对每个样本,在特征维度上统计。**与 batch 无关**,单样本也能算。\n\n**Transformer 用 LayerNorm 的原因**:\n- 序列长度可变、batch 内样本长度不一,BatchNorm 的跨样本统计在变长序列上不稳定\n- 自回归推理时 batch 可能为 1 或逐 token 生成,BatchNorm 的 batch 统计失效\n- LayerNorm 对每个 token 独立归一,训练推理一致,适合序列建模\n\n**延伸**:现代 LLM 多用 **RMSNorm**(只用均方根缩放、去掉均值中心化和偏置),更省算力且效果相当;以及 **Pre-LN**(归一化放在残差子层之前)比 Post-LN 训练更稳定。",
+      "references": [
+        { "label": "Ba, Kiros & Hinton (2016) — Layer Normalization", "url": "https://arxiv.org/abs/1607.06450" },
+        { "label": "Zhang & Sennrich (2019) — RMSNorm", "url": "https://arxiv.org/abs/1910.07467" }
+      ]
+    },
+    {
+      "id": "q13",
+      "category": "dl",
+      "difficulty": "Medium",
+      "tags": ["残差连接", "梯度"],
+      "question": "残差连接(residual connection)解决了什么问题?为什么有效?",
+      "answer": "残差连接把子层输出改为 `y = x + F(x)`,即学习相对于输入的“残差”而非完整映射。\n\n**解决的问题**:深网络的**退化(degradation)**——层数加深后训练误差反而上升,不是过拟合而是难优化。\n\n**为何有效**:\n- **梯度高速公路**:反向传播时 `∂y/∂x = 1 + ∂F/∂x`,那个常数 1 让梯度可以直接跨层回传,缓解梯度消失\n- **恒等映射易学**:若某层多余,网络只需让 `F(x)→0` 即可退化为恒等,比从头学恒等容易\n- 让损失面更平滑(Li et al. 可视化),优化更稳定\n\n残差是 ResNet、Transformer 等所有现代深层架构的基石。配合归一化(Pre-LN)能训练上百层乃至更深的网络。",
+      "references": [
+        { "label": "He et al. (2015) — Deep Residual Learning (ResNet)", "url": "https://arxiv.org/abs/1512.03385" }
+      ]
+    },
+    {
+      "id": "q14",
+      "category": "dl",
+      "difficulty": "Medium",
+      "tags": ["梯度消失", "梯度爆炸"],
+      "question": "梯度消失和梯度爆炸的成因是什么?有哪些缓解手段?",
+      "answer": "**成因**:反向传播是逐层雅可比矩阵的连乘。若各层梯度因子持续 <1 则指数衰减(消失),持续 >1 则指数增长(爆炸)。深网络、饱和激活(sigmoid/tanh)、不当初始化都会触发。\n\n**梯度消失缓解**:\n- 非饱和激活(ReLU/GELU)\n- 残差连接提供梯度直通路径\n- 归一化层(BN/LN)稳定每层分布\n- 合理初始化(Xavier/Kaiming,使前向方差稳定)\n- LSTM/GRU 的门控(针对 RNN)\n\n**梯度爆炸缓解**:\n- **梯度裁剪(gradient clipping)**:按范数缩放,LLM 训练几乎必用\n- 更小学习率、权重衰减\n- 归一化\n\n面试加分:能指出“梯度消失主要靠结构(残差+归一化+激活)解决,梯度爆炸主要靠裁剪兜底”。",
+      "references": []
+    },
+    {
+      "id": "q15",
+      "category": "dl",
+      "difficulty": "Easy",
+      "tags": ["初始化"],
+      "question": "为什么权重初始化很重要?Xavier 和 Kaiming 初始化的区别?",
+      "answer": "初始化决定了前向激活和反向梯度的初始方差。全零初始化会让神经元对称、无法区分;过大导致激活饱和/爆炸,过小导致信号衰减。好的初始化让**每层输入输出方差大致相等**,保证信号稳定传播。\n\n- **Xavier/Glorot**:针对 **tanh/sigmoid** 等对称激活,方差取 `2/(fan_in + fan_out)`,同时兼顾前向和反向。\n- **Kaiming/He**:针对 **ReLU 系**激活。ReLU 把一半输入置零,有效方差减半,因此用 `2/fan_in` 来补偿。\n\n**经验**:用 ReLU/GELU 就选 Kaiming,用 tanh 选 Xavier。现代大模型还会按层数缩放初始化(如 GPT-2 把残差分支权重乘 `1/√N`)以稳定深层训练。",
+      "references": [
+        { "label": "Glorot & Bengio (2010) — Xavier init", "url": "https://proceedings.mlr.press/v9/glorot10a.html" },
+        { "label": "He et al. (2015) — Kaiming init", "url": "https://arxiv.org/abs/1502.01852" }
+      ]
+    },
+    {
+      "id": "q16",
+      "category": "dl",
+      "difficulty": "Hard",
+      "tags": ["Dropout", "训练推理一致性"],
+      "question": "Dropout 在训练和推理时分别怎么做?为什么需要 scaling?",
+      "answer": "**训练时**:以概率 p 随机将神经元输出置零,相当于每个 batch 训练一个不同的子网络,起到集成 + 防共适应的正则作用。\n\n**推理时**:不丢弃任何神经元(要用完整网络的确定性输出)。\n\n**为什么需要 scaling**:训练时只有 `(1-p)` 比例的神经元激活,期望输出被缩小了。为保持训练与推理时**期望一致**,需要缩放:\n- **Inverted dropout(主流)**:训练时把保留的激活除以 `(1-p)` 放大,推理时啥都不做。PyTorch `nn.Dropout` 即此实现。\n- 旧式做法:训练不缩放,推理时把权重乘 `(1-p)`。\n\n**注意**:\n- Dropout 一般用于全连接层;CNN 用 DropBlock/SpatialDropout 更合适\n- 大模型预训练常把 dropout 设很小或为 0(数据足够,不需要强正则),微调阶段才可能调大。",
+      "references": [
+        { "label": "Srivastava et al. (2014) — Dropout", "url": "https://jmlr.org/papers/v15/srivastava14a.html" }
+      ]
+    },
+    {
+      "id": "q17",
+      "category": "transformer",
+      "difficulty": "Medium",
+      "tags": ["注意力", "缩放点积"],
+      "question": "Scaled Dot-Product Attention 的公式是什么?为什么要除以 √d_k?",
+      "answer": "公式:`Attention(Q,K,V) = softmax(QKᵀ / √d_k) · V`。\n\n直觉:用 query 和每个 key 的点积衡量相关性,softmax 归一化成权重,对 value 加权求和。\n\n**为什么除以 √d_k**:当维度 d_k 较大时,假设 Q、K 各分量独立、均值 0 方差 1,则点积 `q·k` 的方差为 d_k,数值随维度增大而变大。点积过大会把 softmax 推向饱和区——输出接近 one-hot,**梯度极小**,训练困难。除以标准差 √d_k 把点积方差拉回约 1,使 softmax 处于梯度良好的区域。\n\n**面试加分**:\n- 这是论文 Attention Is All You Need 明确给出的理由\n- softmax 的温度效应:除以更大的数 = 更高温度 = 更平滑的注意力分布\n- 与之相关:推理时调 temperature 也是同样的缩放思想。",
+      "references": [
+        { "label": "Vaswani et al. (2017) — Attention Is All You Need", "url": "https://arxiv.org/abs/1706.03762" }
+      ]
+    },
+    {
+      "id": "q18",
+      "category": "transformer",
+      "difficulty": "Medium",
+      "tags": ["多头注意力"],
+      "question": "为什么要用多头注意力(Multi-Head Attention)而不是单个大注意力?",
+      "answer": "多头注意力把 Q/K/V 投影到 h 个低维子空间,各自独立做注意力,再拼接投影回来。\n\n**好处**:\n- **多子空间表征**:不同头可关注不同类型的关系(语法、指代、位置、长短依赖),类似 CNN 的多个卷积核。单个注意力只能学一种加权模式。\n- **表达力 vs 成本**:h 个 d/h 维的头总计算量与一个 d 维注意力相当,但表达更丰富。\n- **稳定性**:多头平均降低单一注意力分布的方差。\n\n**实践注意**:\n- 头数 h 要能整除模型维度 d_model\n- 研究(Voita et al. 2019)发现部分头冗余,可剪枝\n- 推理优化催生了 **MQA/GQA**:多个 query 头共享一组 K/V 头,大幅减小 KV cache,几乎不掉点,是当前 LLM 主流(LLaMA-2/3、Mistral)。",
+      "references": [
+        { "label": "Vaswani et al. (2017) — Attention Is All You Need", "url": "https://arxiv.org/abs/1706.03762" },
+        { "label": "Ainslie et al. (2023) — GQA", "url": "https://arxiv.org/abs/2305.13245" }
+      ]
+    },
+    {
+      "id": "q19",
+      "category": "transformer",
+      "difficulty": "Hard",
+      "tags": ["位置编码", "RoPE"],
+      "question": "Transformer 为什么需要位置编码?RoPE 相比绝对位置编码好在哪?",
+      "answer": "自注意力对输入是**置换不变**的——打乱 token 顺序,输出集合不变。但语言有顺序,所以必须显式注入位置信息。\n\n**绝对位置编码**(正弦/可学习):给每个位置加一个固定/可学习向量。缺点:外推到训练未见过的更长序列时效果差,且建模的是绝对位置而非相对距离。\n\n**RoPE(旋转位置编码)** 的优势:\n- 把位置信息编码为对 Q、K 向量按位置**旋转一个角度**,使得注意力点积只依赖**相对位置差** `(m-n)`,天然建模相对距离\n- 不增加参数、不改变维度\n- 外推性更好,且催生了 NTK-aware、YaRN 等长上下文扩展技术(调整旋转基频即可扩展窗口)\n- 被 LLaMA、Qwen、GLM、Mistral 等主流模型广泛采用\n\n**对比 ALiBi**:ALiBi 用线性距离偏置加到注意力分数上,也建模相对位置且外推好,但 RoPE 在多数评测上更优,生态更广。",
+      "references": [
+        { "label": "Su et al. (2021) — RoFormer (RoPE)", "url": "https://arxiv.org/abs/2104.09864" }
+      ]
+    },
+    {
+      "id": "q20",
+      "category": "transformer",
+      "difficulty": "Hard",
+      "tags": ["FlashAttention", "显存"],
+      "question": "标准注意力的瓶颈是什么?FlashAttention 如何加速?",
+      "answer": "标准注意力要显式构造 `N×N` 的注意力矩阵(N 为序列长度),**显存和读写是 O(N²)**。瓶颈不在计算(FLOPs),而在 GPU **HBM 显存带宽**——反复读写这个大矩阵。\n\n**FlashAttention 的核心思想**:\n- **分块(tiling)**:把 Q/K/V 切成小块,在 GPU 高速 SRAM 里逐块计算,**从不把完整 N×N 矩阵写回 HBM**\n- **在线 softmax(online softmax)**:用 running max 和 running sum 增量地、数值稳定地合并各块结果,无需先得到整行再归一化\n- **重计算**:反向传播时不存注意力矩阵,而是重算,省显存\n\n**效果**:IO 复杂度从 O(N²) 降到接近 O(N),显存随 N 线性增长,实测 2-4 倍加速且**数值精确**(非近似)。这是长上下文训练的关键使能技术。FlashAttention-2/3 进一步优化了并行度和对新硬件的利用。",
+      "references": [
+        { "label": "Dao et al. (2022) — FlashAttention", "url": "https://arxiv.org/abs/2205.14135" }
+      ]
+    },
+    {
+      "id": "q21",
+      "category": "transformer",
+      "difficulty": "Medium",
+      "tags": ["编码器解码器", "架构"],
+      "question": "Encoder-only、Decoder-only、Encoder-Decoder 三种架构的区别和适用场景?",
+      "answer": "区别在于**注意力掩码**和训练目标:\n\n- **Encoder-only(如 BERT)**:双向注意力,每个 token 能看到全文。用掩码语言建模(MLM)训练。擅长**理解类任务**(分类、抽取、检索),不能直接自回归生成。\n- **Decoder-only(如 GPT/LLaMA)**:因果(单向)注意力,只能看左侧。用 next-token prediction 训练。预训练与下游生成完全一致,零样本/涌现能力强,是当前**主流 LLM 架构**。\n- **Encoder-Decoder(如 T5/BART)**:编码器双向理解输入,解码器因果生成输出,中间用交叉注意力连接。擅长**序列到序列**任务(翻译、摘要)。\n\n**为什么 2023 年后几乎都用 Decoder-only**:训练范式统一、scaling 效率高、零样本能力强、KV cache 推理高效,且能用 prompt 统一所有任务。",
+      "references": [
+        { "label": "Raffel et al. (2020) — T5", "url": "https://arxiv.org/abs/1910.10683" }
+      ]
+    },
+    {
+      "id": "q22",
+      "category": "transformer",
+      "difficulty": "Medium",
+      "tags": ["复杂度", "长序列"],
+      "question": "Transformer 的计算复杂度是多少?有哪些降低长序列复杂度的方向?",
+      "answer": "对序列长度 N、维度 d:自注意力是 **O(N²·d)**(N×N 注意力矩阵),FFN 是 O(N·d²)。短序列时 FFN 主导,**长序列时 N² 注意力主导**,成为瓶颈。\n\n**降低 N² 的方向**:\n1. **稀疏注意力**:只算局部窗口/部分位置。如 Longformer(滑动窗口+全局)、BigBird、Sliding Window(Mistral)。\n2. **线性注意力**:用核函数近似 softmax,把复杂度降到 O(N)。如 Performer、Linear Attention,但精度常有损。\n3. **IO 优化(精确)**:FlashAttention 不降低 FLOPs 但降显存/IO,让长序列可行。\n4. **状态空间模型 SSM**:Mamba 等用选择性扫描达到 O(N) 且建模长依赖,挑战 Transformer。\n5. **检索/分块**:把长文档分块检索(RAG)规避超长上下文。\n\n实践中长上下文方案常是“FlashAttention + RoPE 外推(YaRN) + 稀疏/分块”的组合。",
+      "references": [
+        { "label": "Beltagy et al. (2020) — Longformer", "url": "https://arxiv.org/abs/2004.05150" },
+        { "label": "Gu & Dao (2023) — Mamba", "url": "https://arxiv.org/abs/2312.00752" }
+      ]
+    },
+    {
+      "id": "q23",
+      "category": "llm",
+      "difficulty": "Medium",
+      "tags": ["预训练", "目标"],
+      "question": "大语言模型的预训练目标是什么?为什么 next-token prediction 这么强大?",
+      "answer": "Decoder-only LLM 的预训练目标是**自回归语言建模**:最大化 `Σ log p(x_t | x_<t)`,即根据前文预测下一个 token。\n\n**为什么强大**:\n- **自监督、数据无限**:任何文本都是天然标注,可在万亿级 token 上训练\n- **任务统一**:翻译、问答、推理、写代码都能表述成“续写”,预训练与下游一致\n- **压缩即理解**:要准确预测下一个词,模型被迫学习语法、事实、常识乃至推理。next-token prediction 本质是对世界的有损压缩(信息论视角)\n- **涌现能力**:规模足够大后,出现小模型没有的能力(few-shot、思维链),由 Scaling Law 部分预测\n\n**局限**:目标只追求似然,不直接对齐人类偏好(需 RLHF/DPO 后训练);存在幻觉、曝光偏差(训练见真值、推理见自己生成)等问题。",
+      "references": [
+        { "label": "Radford et al. (2019) — GPT-2", "url": "https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf" },
+        { "label": "Kaplan et al. (2020) — Scaling Laws", "url": "https://arxiv.org/abs/2001.08361" }
+      ]
+    },
+    {
+      "id": "q24",
+      "category": "llm",
+      "difficulty": "Medium",
+      "tags": ["Scaling Law", "Chinchilla"],
+      "question": "什么是 Scaling Law?Chinchilla 给出的关键结论是什么?",
+      "answer": "**Scaling Law(缩放定律)** 指模型性能(测试损失)随**参数量 N、数据量 D、计算量 C** 的增长呈可预测的幂律下降。Kaplan et al. (2020) 首次系统刻画,可据此预测大模型表现、指导资源分配。\n\n**Chinchilla(Hoffmann et al. 2022)的关键修正**:\n- 在给定计算预算下,此前的模型(如 GPT-3 175B)**参数太大、训练数据太少**,是“训练不足”的\n- 最优配比是**参数量与数据量大致同比例增长**,经验法则约为**每个参数配 ~20 个训练 token**\n- 同等算力下,Chinchilla(70B,1.4T token)优于更大的 Gopher(280B)\n\n**影响**:之后的模型(LLaMA 系列)倾向“小参数 + 海量数据 + 训练更久”,在推理成本和效果间取得更好平衡。后续工作还指出为了推理经济性,可以训练得比 Chinchilla 最优更“过量”。",
+      "references": [
+        { "label": "Hoffmann et al. (2022) — Chinchilla", "url": "https://arxiv.org/abs/2203.15556" }
+      ]
+    },
+    {
+      "id": "q25",
+      "category": "llm",
+      "difficulty": "Hard",
+      "tags": ["MoE", "稀疏"],
+      "question": "Mixture-of-Experts(MoE)是什么?解决了什么问题?有什么挑战?",
+      "answer": "MoE 用多个并行的“专家”FFN 替换稠密 FFN,由一个**门控网络(router)**为每个 token 只选择 Top-k 个专家(通常 k=1 或 2)激活。\n\n**解决的问题——解耦参数量与计算量**:总参数可以极大(增强容量/知识),但每个 token 只激活一小部分,**计算量(FLOPs)基本不变**。Mixtral 8×7B 总参 47B,推理只激活约 13B。\n\n**挑战**:\n- **负载均衡**:router 可能偏爱少数专家,导致其他专家欠训练。需加**辅助负载均衡损失**鼓励均匀分配\n- **显存**:所有专家都要常驻显存,显存需求按总参数算\n- **训练不稳定 / 通信开销**:专家分布在多卡需 all-to-all 通信(expert parallelism)\n- **路由不可导**:Top-k 选择是离散的,靠 router 的连续权重传梯度\n\n代表:Switch Transformer、GShard、Mixtral、DeepSeek-MoE、近年多数前沿大模型。",
+      "references": [
+        { "label": "Fedus et al. (2021) — Switch Transformer", "url": "https://arxiv.org/abs/2101.03961" },
+        { "label": "Jiang et al. (2024) — Mixtral of Experts", "url": "https://arxiv.org/abs/2401.04088" }
+      ]
+    },
+    {
+      "id": "q26",
+      "category": "llm",
+      "difficulty": "Medium",
+      "tags": ["幻觉", "可靠性"],
+      "question": "大模型为什么会产生幻觉(hallucination)?有哪些缓解方法?",
+      "answer": "**成因**:\n- 训练目标是最大化似然/流畅度,而非真实性——模型学的是“什么样的词序列像真的”,不保证事实正确\n- 参数化知识有限、过时、被压缩有损,遇到知识盲区仍会“自信地编”\n- 解码时的随机采样、长程一致性弱、对长尾事实记忆不准\n- 训练数据本身含噪声/矛盾;RLHF 可能鼓励“听起来确定”的回答\n\n**缓解方法**:\n- **RAG**:检索外部知识注入上下文,让回答有据可依(最有效的工程手段之一)\n- **降低温度 / 约束解码**,要求引用来源\n- **后训练对齐**:用事实性偏好数据做 DPO/RLHF,训练拒答能力\n- **提示工程**:思维链、让模型自检、要求“不知道就说不知道”\n- **事后校验**:用检索/工具/第二个模型核查(self-consistency、事实核查)\n\n面试要点:幻觉无法根除(本质来自概率生成),工程上靠 RAG + 对齐 + 校验组合压制。",
+      "references": [
+        { "label": "Ji et al. (2023) — Survey of Hallucination in NLG", "url": "https://arxiv.org/abs/2202.03629" }
+      ]
+    },
+    {
+      "id": "q27",
+      "category": "llm",
+      "difficulty": "Medium",
+      "tags": ["上下文窗口", "长文本"],
+      "question": "如何扩展大模型的上下文窗口长度?有哪些主流技术?",
+      "answer": "训练时窗口固定,直接外推到更长会因位置编码超出分布而崩溃。主流扩展技术:\n\n- **位置插值 PI(Position Interpolation)**:把超长位置线性压缩回训练范围,少量微调即可扩展。\n- **NTK-aware / Dynamic NTK**:不均匀缩放 RoPE 的不同频率分量,高频少缩、低频多缩,几乎免微调外推。\n- **YaRN**:结合 NTK 与注意力温度修正,以很少的训练 token 高效扩展(被许多开源长上下文模型采用)。\n- **架构层面**:滑动窗口注意力(Mistral)、稀疏注意力、SSM(Mamba)处理超长序列。\n- **工程层面**:FlashAttention 让长序列显存可行;RAG/分块检索规避真·超长上下文。\n\n**评估警示**:能“接收”长上下文不等于能“用好”——要看 Needle-in-a-Haystack、RULER 等长上下文检索/推理评测,警惕“中间遗忘(lost in the middle)”现象。",
+      "references": [
+        { "label": "Peng et al. (2023) — YaRN", "url": "https://arxiv.org/abs/2309.00071" },
+        { "label": "Liu et al. (2023) — Lost in the Middle", "url": "https://arxiv.org/abs/2307.03172" }
+      ]
+    },
+    {
+      "id": "q28",
+      "category": "llm",
+      "difficulty": "Easy",
+      "tags": ["分词", "tokenizer"],
+      "question": "什么是 BPE 分词?为什么大模型用 subword 而不是字或词?",
+      "answer": "**BPE(Byte-Pair Encoding)** 从字符开始,统计语料中最频繁相邻的符号对,反复合并成新 token,直到达到目标词表大小。得到的是介于字符和单词之间的**子词(subword)**单位。\n\n**为什么用子词**:\n- **字级**:词表小但序列太长、语义稀疏,模型难学\n- **词级**:序列短但词表爆炸、有大量未登录词(OOV),无法处理新词/拼写错误\n- **子词(折中)**:常见词保留为整体,罕见词拆成有意义的片段(如 `unhappiness → un + happ + iness`),**几乎无 OOV**,词表可控,跨语言通用\n\n**实践细节**:\n- GPT 系用 **byte-level BPE**,直接在字节上操作,任何 Unicode 都能编码,彻底消除 OOV\n- 还有 WordPiece(BERT)、Unigram/SentencePiece(T5、LLaMA)\n- 分词影响数字、代码、多语言表现,是模型能力的隐形地基。",
+      "references": [
+        { "label": "Sennrich et al. (2016) — BPE for NMT", "url": "https://arxiv.org/abs/1508.07909" }
+      ]
+    },
+    {
+      "id": "q29",
+      "category": "llm",
+      "difficulty": "Hard",
+      "tags": ["涌现能力", "思维链"],
+      "question": "什么是涌现能力(emergent abilities)?思维链(CoT)为什么有效?",
+      "answer": "**涌现能力**指某些能力在模型规模小于某阈值时几乎为零,超过阈值后**突然出现并快速提升**(如多步算术、少样本学习、指令遵循)。Wei et al. (2022) 提出。注意:后续有研究(Schaeffer 2023)指出部分“涌现”可能是评测指标非线性(如严格 exact-match)造成的错觉,换连续指标会平滑——这是面试加分点。\n\n**思维链(Chain-of-Thought)** 让模型在给出答案前先生成中间推理步骤。\n\n**为什么有效**:\n- **拆解计算**:把多步问题分解,每步只需一小步推理,降低单步难度\n- **更多计算预算**:生成更多中间 token = 给模型更多“思考”的前向计算\n- **可利用训练中见过的推理模式**:大模型在预训练中见过大量推理文本\n\nCoT 通常只在足够大的模型上才有效(本身是涌现的),小模型加 CoT 可能反而变差。衍生:Self-Consistency(多次采样投票)、ToT、ReAct(推理+行动)。",
+      "references": [
+        { "label": "Wei et al. (2022) — Chain-of-Thought Prompting", "url": "https://arxiv.org/abs/2201.11903" },
+        { "label": "Schaeffer et al. (2023) — Are Emergent Abilities a Mirage?", "url": "https://arxiv.org/abs/2304.15004" }
+      ]
+    },
+    {
+      "id": "q30",
+      "category": "train",
+      "difficulty": "Medium",
+      "tags": ["微调", "LoRA", "PEFT"],
+      "question": "什么是 LoRA?为什么参数高效微调(PEFT)能省这么多资源?",
+      "answer": "**LoRA(Low-Rank Adaptation)** 冻结预训练权重 W,在旁边加一个低秩旁路:`W' = W + BA`,其中 `B∈R^{d×r}`、`A∈R^{r×k}`,秩 `r ≪ d`。只训练 A、B 两个小矩阵。\n\n**为什么省**:\n- 可训练参数从 `d×k` 降到 `r×(d+k)`,常只占原模型 **0.1%~1%**\n- 优化器状态(Adam 的 m、v)只需为这些小矩阵保存,**显存大降**\n- 推理时可把 `BA` 合并进 W,**零额外延迟**;也可挂载多个 LoRA 切换任务\n\n**理论依据**:大模型微调时权重更新具有**低“内在秩”**,低秩近似足够。\n\n**衍生 QLoRA**:把基座模型量化到 4-bit(NF4)冻结,只在其上训练 LoRA,使单张消费级 GPU 微调数十亿参数模型成为可能。\n\n**其他 PEFT**:Adapter、Prefix-Tuning、Prompt-Tuning、(IA)³。LoRA/QLoRA 因效果好、无推理开销而最流行。",
+      "references": [
+        { "label": "Hu et al. (2021) — LoRA", "url": "https://arxiv.org/abs/2106.09685" },
+        { "label": "Dettmers et al. (2023) — QLoRA", "url": "https://arxiv.org/abs/2305.14314" }
+      ]
+    },
+    {
+      "id": "q31",
+      "category": "train",
+      "difficulty": "Hard",
+      "tags": ["分布式", "并行"],
+      "question": "数据并行、张量并行、流水线并行分别是什么?如何组合训练超大模型?",
+      "answer": "三种并行维度,常组合成 **3D 并行**:\n\n- **数据并行(DP)**:每张卡放完整模型副本,处理不同数据分片,反向后 all-reduce 同步梯度。简单、扩展性好,但每卡需放下整个模型。\n- **张量并行(TP)**:把单层的权重矩阵**切分到多卡**(如把 FFN/注意力的矩阵按列/行切),每卡算一部分再通信合并。解决“单层放不下”,但通信频繁,通常限在单机内 NVLink。\n- **流水线并行(PP)**:把模型**按层切成多段**放到不同卡,像流水线一样让不同 micro-batch 在各段并行流动。需处理“气泡(bubble)”空闲,用 micro-batch 切分缓解。\n\n**组合**:典型如 Megatron-LM + DeepSpeed:机内用 TP,跨机用 PP,再在外层叠 DP。\n\n**ZeRO / FSDP**:把优化器状态、梯度、参数在数据并行组内**分片**,消除冗余副本,是当前训练超大模型显存优化的核心(ZeRO-3/FSDP 可分片到参数级)。",
+      "references": [
+        { "label": "Shoeybi et al. (2019) — Megatron-LM", "url": "https://arxiv.org/abs/1909.08053" },
+        { "label": "Rajbhandari et al. (2020) — ZeRO", "url": "https://arxiv.org/abs/1910.02054" }
+      ]
+    },
+    {
+      "id": "q32",
+      "category": "train",
+      "difficulty": "Medium",
+      "tags": ["混合精度", "显存"],
+      "question": "混合精度训练是怎么回事?为什么需要 loss scaling?BF16 和 FP16 怎么选?",
+      "answer": "**混合精度训练**用低精度(FP16/BF16)做前向反向以省显存、提速(利用 Tensor Core),同时保留 FP32 主权重和某些累加以保证数值稳定。\n\n**为什么需要 loss scaling(用 FP16 时)**:FP16 动态范围窄,小梯度会下溢成 0。做法是把损失乘一个大的 scale,梯度同比放大避免下溢,更新前再缩回。通常用动态 loss scaling 自动调整。\n\n**BF16 vs FP16**:\n- **FP16**:10 位尾数、5 位指数,精度高但**动态范围小**,易上溢/下溢,需 loss scaling\n- **BF16**:7 位尾数、8 位指数(指数范围同 FP32),**范围大、几乎不需 loss scaling**,但精度略低\n\n**选择**:Ampere(A100)及以后硬件优先 **BF16**,更稳、免 loss scaling,是大模型训练默认;老硬件(V100)只能用 FP16。前沿还在探索 FP8 训练(H100)。",
+      "references": [
+        { "label": "Micikevicius et al. (2018) — Mixed Precision Training", "url": "https://arxiv.org/abs/1710.03740" }
+      ]
+    },
+    {
+      "id": "q33",
+      "category": "train",
+      "difficulty": "Medium",
+      "tags": ["显存优化", "梯度检查点"],
+      "question": "训练大模型时显存都花在哪?有哪些省显存的手段?",
+      "answer": "**显存四大去向**:\n1. **模型参数**(FP16/BF16)\n2. **梯度**(与参数等大)\n3. **优化器状态**:AdamW 的 m、v(FP32)约为参数的 2-4 倍——往往最大\n4. **激活值**:前向缓存供反向用,随 batch 和序列长度增长\n\n**省显存手段**:\n- **激活检查点(gradient checkpointing)**:不存中间激活,反向时重算,用算力换显存(约 +30% 算力,激活显存大降)\n- **ZeRO / FSDP**:分片优化器状态/梯度/参数到多卡\n- **混合精度 + BF16**:参数梯度减半\n- **梯度累积**:用小 micro-batch 多步累积,模拟大 batch 而不增显存\n- **CPU/NVMe offload**:把优化器状态卸载到 CPU 内存(ZeRO-Offload)\n- **量化训练 / 8-bit 优化器**(bitsandbytes)\n- **PEFT(LoRA)**:只训练少量参数,优化器状态骤减\n\n面试组合答:激活检查点 + ZeRO + BF16 + 梯度累积是标配。",
+      "references": []
+    },
+    {
+      "id": "q34",
+      "category": "train",
+      "difficulty": "Easy",
+      "tags": ["学习率", "warmup"],
+      "question": "为什么大模型训练要用 learning rate warmup + cosine decay?",
+      "answer": "**Warmup(预热)**:训练初期把学习率从 0 线性升到目标值,持续若干步后再衰减。\n\n原因:\n- 初始权重随机、Adam 的二阶矩估计还不准,**一开始就用大学习率容易梯度爆炸/发散**\n- 大 batch 训练尤其需要,warmup 让优化器统计量先“热身”稳定\n- Pre-LN Transformer 对此略宽容,但 warmup 仍是稳定训练的常规手段\n\n**Cosine decay(余弦衰减)**:warmup 后让学习率沿余弦曲线平滑降到接近 0。\n\n原因:\n- 前期大学习率快速探索,后期小学习率精细收敛到更平坦的极小值\n- 比阶梯式衰减更平滑,经验上泛化更好\n- 通常配合一个最终学习率(如峰值的 10%)而非降到 0\n\n面试加分:能说出 warmup 步数常取总步数的 1-5%,且 batch 越大 warmup 越长。",
+      "references": [
+        { "label": "Loshchilov & Hutter (2017) — SGDR (cosine restarts)", "url": "https://arxiv.org/abs/1608.03983" }
+      ]
+    },
+    {
+      "id": "q35",
+      "category": "train",
+      "difficulty": "Medium",
+      "tags": ["指令微调", "SFT"],
+      "question": "预训练、指令微调(SFT)、对齐(RLHF/DPO)在 LLM 训练流程中各起什么作用?",
+      "answer": "现代 LLM 的典型三阶段:\n\n1. **预训练(Pretraining)**:在海量无标注文本上自回归学语言建模,获得**知识和通用能力**,但只会“续写”,不会“听话”。\n2. **指令微调 / SFT(Supervised Fine-Tuning)**:用人工编写的(指令→优质回答)对微调,教模型**遵循指令、按对话格式回应**。这一步把“续写机”变成“助手”。\n3. **对齐(RLHF / DPO)**:用人类偏好数据(对同一问题的多个回答排序)进一步优化,让模型输出**更符合人类偏好**(有用、无害、诚实),抑制有害/低质内容。\n\n**直觉**:\n- 预训练给“智商和知识”\n- SFT 给“格式和服从”\n- 对齐给“价值观和偏好打磨”\n\n近年也有简化:DPO 直接用偏好数据做监督式优化,省去训练奖励模型和 PPO 的复杂度;还有 SFT 与对齐合并、用 AI 反馈替代人工(RLAIF)等。",
+      "references": [
+        { "label": "Ouyang et al. (2022) — InstructGPT", "url": "https://arxiv.org/abs/2203.02155" }
+      ]
+    },
+    {
+      "id": "q36",
+      "category": "infer",
+      "difficulty": "Medium",
+      "tags": ["KV Cache", "推理"],
+      "question": "什么是 KV Cache?它如何加速自回归生成?带来什么问题?",
+      "answer": "自回归生成时,每生成一个新 token 都要对全部历史做注意力。若不缓存,每步都要重算所有历史 token 的 Key/Value,复杂度 O(N²) 重复劳动。\n\n**KV Cache** 把已计算的每层 Key、Value **缓存**起来,新 token 只需计算自己的 Q/K/V,与缓存的 K/V 做注意力即可。把每步计算从“重算全序列”降到“只算一个 token”,生成 N 个 token 从 O(N³) 降到 O(N²)。\n\n**带来的问题——显存**:\n- KV cache 大小 = `2 × 层数 × 序列长度 × KV头数 × 头维 × batch × 精度字节`,**随序列和并发线性增长**,长上下文/高并发时成为显存主要瓶颈\n- 显存碎片化导致利用率低\n\n**优化技术**:\n- **GQA/MQA**:减少 KV 头数,直接缩小 cache\n- **PagedAttention(vLLM)**:像操作系统分页一样管理 KV cache,消除碎片、支持高效共享,大幅提升吞吐\n- **量化 KV cache**、滑动窗口丢弃远端 KV。",
+      "references": [
+        { "label": "Kwon et al. (2023) — PagedAttention / vLLM", "url": "https://arxiv.org/abs/2309.06180" }
+      ]
+    },
+    {
+      "id": "q37",
+      "category": "infer",
+      "difficulty": "Medium",
+      "tags": ["量化", "INT8", "INT4"],
+      "question": "模型量化是什么?训练后量化(PTQ)和量化感知训练(QAT)有何区别?",
+      "answer": "**量化**把权重/激活从 FP16/32 降到低比特(INT8/INT4),减小显存和带宽、加速推理。核心是用 `scale`(和 zero-point)把浮点范围映射到整数格点。\n\n- **训练后量化 PTQ**:训练完直接量化,用少量校准数据估计量化参数。**快、无需重训**,但低比特(如 INT4)精度可能下降。代表:GPTQ(逐层最优量化)、AWQ(按激活重要性保护关键权重)、SmoothQuant(平衡激活/权重难度)。\n- **量化感知训练 QAT**:训练中**模拟量化误差**(前向假量化、反向用直通估计器),让模型学会适应。**精度更高**,但要重新训练,成本大。\n\n**实践**:\n- 大模型推理主流是 PTQ(GPTQ/AWQ),因为重训太贵,且这些方法已能做到 INT4 几乎无损\n- 权重量化收益最大(权重是显存主体);激活量化更难(有离群值 outlier)\n- 区分 weight-only 量化 vs weight+activation 量化。",
+      "references": [
+        { "label": "Frantar et al. (2022) — GPTQ", "url": "https://arxiv.org/abs/2210.17323" },
+        { "label": "Lin et al. (2023) — AWQ", "url": "https://arxiv.org/abs/2306.00978" }
+      ]
+    },
+    {
+      "id": "q38",
+      "category": "infer",
+      "difficulty": "Hard",
+      "tags": ["投机解码", "加速"],
+      "question": "投机解码(speculative decoding)如何在不损失质量的前提下加速生成?",
+      "answer": "瓶颈:大模型自回归一次只出一个 token,且是**显存带宽受限**(每步都要读全部权重),GPU 算力没吃满。\n\n**投机解码思路**:\n1. 用一个**小的草稿模型(draft)**快速自回归生成 K 个候选 token\n2. 用**大模型一次前向**并行验证这 K 个 token(并行验证几乎和生成一个 token 一样快,因为是带宽受限)\n3. 从第一个不一致处接受前缀、用大模型的分布纠正该位置,其余丢弃\n\n**关键**:通过精心设计的接受-拒绝采样,保证最终输出分布**与大模型单独解码完全一致**——无损加速。平均每次大模型前向能产出多个 token,典型 2-3 倍加速。\n\n**变体**:\n- **Medusa**:给大模型加多个预测头,自己当草稿,免单独草稿模型\n- **EAGLE**、n-gram/lookahead、自投机\n\n面试要点:加速来自“并行验证”摊薄了带宽瓶颈,且数学上保证输出分布不变。",
+      "references": [
+        { "label": "Leviathan et al. (2023) — Speculative Decoding", "url": "https://arxiv.org/abs/2211.17192" }
+      ]
+    },
+    {
+      "id": "q39",
+      "category": "infer",
+      "difficulty": "Easy",
+      "tags": ["采样", "解码策略"],
+      "question": "Greedy、Beam Search、Top-k、Top-p、temperature 各是什么?如何选择?",
+      "answer": "**确定性解码**:\n- **Greedy**:每步选概率最高的 token。快但单调、易重复,创造性差。\n- **Beam Search**:保留 b 条候选路径找全局更优序列。适合**翻译/摘要**等有“标准答案”的任务;开放生成中易乏味重复。\n\n**随机采样**:\n- **Temperature**:缩放 logits `logits/T`。T<1 更尖锐保守,T>1 更平更随机,T→0 退化为 greedy。\n- **Top-k**:只从概率最高的 k 个 token 中采样,截断长尾。\n- **Top-p(nucleus)**:从累积概率达 p 的最小 token 集合采样,**动态**调整候选数,比 top-k 更自适应。\n\n**选择**:\n- 事实问答/代码 → 低温(或 greedy)、小 top-p,要确定性\n- 创意写作/对话 → temperature≈0.7-1.0 + top-p≈0.9,要多样性\n- 常组合使用:先 temperature 再 top-p。还可加 repetition/frequency penalty 抑制重复。",
+      "references": [
+        { "label": "Holtzman et al. (2020) — Nucleus Sampling (Top-p)", "url": "https://arxiv.org/abs/1904.09751" }
+      ]
+    },
+    {
+      "id": "q40",
+      "category": "infer",
+      "difficulty": "Medium",
+      "tags": ["吞吐", "服务化"],
+      "question": "LLM 推理服务里,throughput 和 latency 如何权衡?continuous batching 起什么作用?",
+      "answer": "- **Latency(延迟)**:单请求响应时间,关注首 token 时间(TTFT)和每 token 时间(TPOT)。面向用户体验。\n- **Throughput(吞吐)**:单位时间处理的总 token 数。面向成本/规模。\n\n**根本矛盾**:增大 batch 提升吞吐(摊薄权重读取的带宽成本、吃满算力),但单请求可能等待、延迟上升。\n\n**Continuous batching(连续批处理 / in-flight batching)** 的作用:\n- 传统静态批处理要等一批请求**全部完成**才能换下一批,长短请求互相拖累,GPU 空转\n- 连续批处理在**每个解码步**动态地把已完成的请求移出、新请求插入,GPU 始终满载\n- 配合 PagedAttention 管理变长 KV cache,大幅提升真实吞吐(vLLM、TGI、TensorRT-LLM 都用)\n\n**其他手段**:prefill/decode 分离(disaggregation)、chunked prefill、量化、投机解码。面试要点:吞吐靠 batching+显存管理,延迟靠减少每步计算与并行解码。",
+      "references": [
+        { "label": "Yu et al. (2022) — Orca (continuous batching)", "url": "https://www.usenix.org/conference/osdi22/presentation/yu" }
+      ]
+    },
+    {
+      "id": "q41",
+      "category": "rag-agent",
+      "difficulty": "Medium",
+      "tags": ["RAG", "检索"],
+      "question": "RAG 的完整流程是什么?相比直接微调有什么优势?",
+      "answer": "**RAG(检索增强生成)流程**:\n1. **离线索引**:文档切块(chunking)→ 用嵌入模型编码成向量 → 存入向量库\n2. **检索**:用户问题编码 → 向量相似度检索 Top-k 相关块(常配 BM25 关键词做混合检索)\n3. **(可选)重排 rerank**:用 cross-encoder 对召回结果精排\n4. **生成**:把检索到的上下文拼进 prompt,让 LLM 基于证据回答\n\n**相比微调的优势**:\n- **知识可更新**:换文档即可,无需重训,适合时效性强、私域知识\n- **可溯源**:能给出引用,降低幻觉、便于审计\n- **成本低**:不动模型权重\n- **数据隔离/权限**:不同用户检索不同库\n\n**微调的优势场景**:改变模型**风格/格式/能力**(而非注入事实)、把高频知识内化降延迟。实践中常 **RAG + 轻量微调** 结合。\n\n**RAG 的难点**:切块策略、检索质量(召回不到就答不对)、长上下文利用、多跳推理。",
+      "references": [
+        { "label": "Lewis et al. (2020) — RAG", "url": "https://arxiv.org/abs/2005.11401" }
+      ]
+    },
+    {
+      "id": "q42",
+      "category": "rag-agent",
+      "difficulty": "Medium",
+      "tags": ["嵌入", "向量检索"],
+      "question": "向量检索里 ANN 索引(如 HNSW、IVF)解决什么问题?嵌入模型怎么选?",
+      "answer": "**问题**:精确最近邻(暴力计算 query 与全部向量的相似度)在百万/十亿级向量上太慢。**近似最近邻(ANN)** 用少量精度换巨大速度提升。\n\n**主流索引**:\n- **HNSW(分层可导航小世界图)**:构建多层图,从粗到细贪心搜索。查询快、召回高、支持增量插入,内存占用较大。最常用。\n- **IVF(倒排+聚类)**:先 k-means 把向量分桶,查询只搜最近的几个桶。省内存、可配合 PQ。\n- **PQ(乘积量化)**:把向量压缩成短码,大幅省内存,常与 IVF 组合(IVF-PQ)。\n\n关键权衡:**召回率 vs 延迟 vs 内存**,通过 ef/nprobe 等参数调节。\n\n**嵌入模型选择**:\n- 看 **MTEB** 等榜单的检索任务表现\n- 匹配语言(中文选中文/多语模型)、领域、最大长度\n- 维度(影响存储/速度)、是否支持指令/非对称检索\n- 配合 reranker(cross-encoder)提升精排质量。",
+      "references": [
+        { "label": "Malkov & Yashunin (2018) — HNSW", "url": "https://arxiv.org/abs/1603.09320" }
+      ]
+    },
+    {
+      "id": "q43",
+      "category": "rag-agent",
+      "difficulty": "Medium",
+      "tags": ["Agent", "ReAct", "工具调用"],
+      "question": "LLM Agent 是什么?ReAct 范式和 function calling 如何工作?",
+      "answer": "**Agent** 指让 LLM 不只是回答,而是能**自主规划、调用工具、观察结果、迭代**直到完成任务的系统。核心组件:规划(planning)、工具(tools)、记忆(memory)。\n\n**ReAct(Reason + Act)范式**:让模型交替产生:\n- **Thought**:推理下一步该做什么\n- **Action**:调用某个工具(搜索、计算器、代码执行、API)\n- **Observation**:接收工具返回\n循环直到得出最终答案。把推理(CoT)和行动(工具)结合,能获取外部信息、减少幻觉。\n\n**Function calling(工具调用)** 是工程实现:\n- 给模型提供工具的 JSON Schema(名称、参数、描述)\n- 模型输出结构化的工具调用(函数名+参数)\n- 系统执行函数,把结果回填上下文,模型继续\n\n**挑战**:多步误差累积、规划能力有限、工具选择错误、循环不收敛、成本与延迟高。衍生:Reflexion(自我反思)、Plan-and-Execute、多智能体协作。",
+      "references": [
+        { "label": "Yao et al. (2022) — ReAct", "url": "https://arxiv.org/abs/2210.03629" }
+      ]
+    },
+    {
+      "id": "q44",
+      "category": "rag-agent",
+      "difficulty": "Easy",
+      "tags": ["提示工程", "few-shot"],
+      "question": "Zero-shot、Few-shot(in-context learning)、CoT 提示有什么区别?in-context learning 为何神奇?",
+      "answer": "- **Zero-shot**:只给指令,不给例子。如“把这句话翻译成英文:…”。\n- **Few-shot / In-Context Learning(ICL)**:在 prompt 里给几个示范(输入→输出),模型**不更新参数**就能模仿完成新样本。GPT-3 的标志能力。\n- **CoT(思维链)**:在示范或指令中引导模型先写推理步骤再给答案,提升复杂推理。\n\n**ICL 为何“神奇”**:\n- 模型在预训练中见过海量“模式续写”,few-shot 示范激活了相应能力,相当于在上下文里“定位任务”\n- 研究视角:ICL 可被看作一种隐式的“前向优化”/贝叶斯任务推断(有理论把 Transformer 的 ICL 类比为在上下文中做梯度下降)\n\n**实践要点**:\n- 示例的**格式、顺序、标签分布**都影响效果(对 prompt 敏感)\n- 示例选得越相关、越有代表性越好(可用检索选 few-shot 例子)\n- 复杂任务 few-shot + CoT 往往优于纯 zero-shot。",
+      "references": [
+        { "label": "Brown et al. (2020) — GPT-3 (Few-shot learners)", "url": "https://arxiv.org/abs/2005.14165" }
+      ]
+    },
+    {
+      "id": "q45",
+      "category": "align",
+      "difficulty": "Hard",
+      "tags": ["RLHF", "PPO"],
+      "question": "RLHF 的完整流程是什么?PPO 在其中起什么作用?",
+      "answer": "**RLHF(基于人类反馈的强化学习)三步**(InstructGPT):\n1. **SFT**:用人工示范数据监督微调出初始策略模型\n2. **训练奖励模型(RM)**:收集人类对同一 prompt 多个回答的**排序偏好**,训练一个 RM 给回答打分(用 Bradley-Terry 偏好损失)\n3. **RL 优化(PPO)**:把 LLM 当策略,RM 当奖励,用 PPO 优化策略最大化奖励\n\n**PPO 的作用与关键设计**:\n- PPO 是稳定的策略梯度算法,用**裁剪(clip)**限制每次更新幅度,防止策略崩溃\n- 奖励 = RM 打分 **− β·KL(策略‖SFT参考)**:KL 惩罚防止模型为了刷高 RM 分而“钻空子”(reward hacking)偏离语言能力\n- 需同时加载 4 个模型(策略、参考、RM、Critic),工程复杂、显存大、不稳定\n\n**这正是 DPO 等方法想简化的痛点**(见下一题)。",
+      "references": [
+        { "label": "Ouyang et al. (2022) — InstructGPT / RLHF", "url": "https://arxiv.org/abs/2203.02155" },
+        { "label": "Schulman et al. (2017) — PPO", "url": "https://arxiv.org/abs/1707.06347" }
+      ]
+    },
+    {
+      "id": "q46",
+      "category": "align",
+      "difficulty": "Hard",
+      "tags": ["DPO", "偏好优化"],
+      "question": "DPO 相比 RLHF-PPO 有什么优势?它的核心思想是什么?",
+      "answer": "**DPO(Direct Preference Optimization)** 的核心洞见:RLHF 中“训练奖励模型 + PPO”这一整套,可以用数学推导**等价转化成一个直接在偏好数据上的监督式分类损失**,无需显式奖励模型、无需在线 RL 采样。\n\n**核心思想**:\n- RLHF 的最优策略与奖励之间有闭式关系,把奖励用“策略与参考模型的对数比”重参数化\n- 于是优化目标变成:**让模型对人类偏好的回答 `y_w` 相对参考模型的概率,高于不偏好的 `y_l`**\n- 损失形如 `-log σ(β[ (log π(y_w)−log π_ref(y_w)) − (log π(y_l)−log π_ref(y_l)) ])`\n\n**优势**:\n- 只需偏好数据 + 一次性的监督训练,**不训 RM、不跑 PPO**\n- 稳定、易实现、显存省(只需策略和参考两个模型)\n- 效果常与 PPO 相当或更好\n\n**权衡/局限**:对偏好数据质量敏感,离线方法可能不如在线 RL 探索充分;衍生有 IPO、KTO、ORPO、在线 DPO 等。",
+      "references": [
+        { "label": "Rafailov et al. (2023) — Direct Preference Optimization", "url": "https://arxiv.org/abs/2305.18290" }
+      ]
+    },
+    {
+      "id": "q47",
+      "category": "align",
+      "difficulty": "Medium",
+      "tags": ["奖励欺骗", "对齐难题"],
+      "question": "什么是 reward hacking / 对齐税?对齐过程中有哪些常见陷阱?",
+      "answer": "**Reward hacking(奖励欺骗)**:模型找到奖励模型的漏洞,刷高分却没真正变好。例:RM 偏爱长回答 → 模型啰嗦冗长;RM 偏爱自信语气 → 模型对错误也斩钉截铁(加重幻觉)。根因是 RM 是真实目标的**不完美代理**,过度优化代理会偏离真实目标(Goodhart 定律)。\n\n**缓解**:KL 惩罚约束偏离参考模型、RM 集成/定期更新、长度去偏、限制优化步数、用更强 RM。\n\n**对齐税(alignment tax)**:对齐(SFT/RLHF)可能损害模型在某些基准上的原始能力(如安全微调后推理/多样性下降)。需在“有用性”和“无害性”间平衡。\n\n**常见陷阱**:\n- **谄媚(sycophancy)**:迎合用户观点而非说真话\n- **过度拒绝(over-refusal)**:把无害请求也拒掉\n- **分布偏移**:对齐数据覆盖不全,真实场景失效\n- **偏好标注噪声/不一致**污染 RM\n\n面试要点:对齐是多目标权衡,没有免费午餐,核心是控制对不完美代理的过度优化。",
+      "references": [
+        { "label": "Gao et al. (2022) — Scaling Laws for Reward Model Overoptimization", "url": "https://arxiv.org/abs/2210.10760" }
+      ]
+    },
+    {
+      "id": "q48",
+      "category": "dl",
+      "difficulty": "Medium",
+      "tags": ["CNN", "卷积"],
+      "question": "卷积神经网络的核心归纳偏置是什么?和 Transformer(ViT)相比有何取舍?",
+      "answer": "**CNN 的归纳偏置**:\n- **局部性(locality)**:卷积核只看局部感受野,假设相邻像素相关\n- **平移等变性(translation equivariance)**:同一卷积核在全图共享权重,物体平移特征也平移\n- **层级性**:浅层学边缘纹理,深层学语义\n\n这些先验让 CNN **样本高效**,小数据也能学好图像。\n\n**ViT(Vision Transformer)** 把图像切成 patch 当 token 用纯注意力处理:\n- **几乎无视觉归纳偏置**,全靠数据学全局关系\n- 后果:**小数据上不如 CNN**,但**大数据(JFT-300M)预训练后超越 CNN**,且全局建模能力更强、扩展性好\n\n**取舍**:\n- 数据少/算力少 → CNN(或带卷积的混合架构)\n- 数据多/追求 SOTA 与多模态统一 → ViT\n- 折中:ConvNeXt(用 Transformer 训练技巧的 CNN)、Swin(带局部窗口的 ViT)结合两者优点。",
+      "references": [
+        { "label": "Dosovitskiy et al. (2020) — ViT (An Image is Worth 16x16 Words)", "url": "https://arxiv.org/abs/2010.11929" }
+      ]
+    },
+    {
+      "id": "q49",
+      "category": "llm",
+      "difficulty": "Medium",
+      "tags": ["多模态", "CLIP"],
+      "question": "多模态大模型如何对齐图像和文本?CLIP 的训练思想是什么?",
+      "answer": "**CLIP** 用**对比学习**对齐图文:\n- 图像编码器(ViT/CNN)和文本编码器(Transformer)分别编码\n- 一个 batch 内 N 个图文对,构造 N×N 相似度矩阵,**对角线(匹配对)拉近、非对角(不匹配)推远**(对称的 InfoNCE 对比损失)\n- 在 4 亿网络图文对上训练,得到**共享的图文嵌入空间**\n\n意义:实现强大的**零样本分类**(把类别名编码成文本去匹配图像),是众多多模态系统的视觉地基。\n\n**多模态 LLM(如 LLaVA、Qwen-VL)的通用范式**:\n- 用预训练视觉编码器(常是 CLIP ViT)提取图像特征\n- 用一个**投影/连接模块(projector,如 MLP 或 Q-Former)**把视觉特征映射到 LLM 的 token 嵌入空间\n- 把视觉 token 和文本 token 一起喂给 LLM\n- 分阶段训练:先对齐 projector,再指令微调\n\n关键挑战:模态对齐质量、视觉 token 数量(影响上下文/成本)、高分辨率与细粒度理解。",
+      "references": [
+        { "label": "Radford et al. (2021) — CLIP", "url": "https://arxiv.org/abs/2103.00020" },
+        { "label": "Liu et al. (2023) — LLaVA", "url": "https://arxiv.org/abs/2304.08485" }
+      ]
+    },
+    {
+      "id": "q50",
+      "category": "llm",
+      "difficulty": "Hard",
+      "tags": ["扩散模型", "生成"],
+      "question": "扩散模型的基本原理是什么?为什么能生成高质量图像?和自回归生成有何不同?",
+      "answer": "**扩散模型**分两个过程:\n- **前向(加噪)**:逐步往真实图像加高斯噪声,T 步后变成纯噪声。这个过程固定、无需学习。\n- **反向(去噪)**:训练一个网络(常是 U-Net 或 DiT)**预测每一步要去除的噪声**,从纯噪声逐步还原出图像。\n\n训练目标简化为:对随机时间步 t,预测被加入的噪声 ε(简单的 MSE 损失,即 DDPM 的去噪目标)。\n\n**为什么生成质量高**:\n- 把“一步生成”的难题拆成**上千个简单的小去噪步**,每步只需微调,易学且稳定\n- 覆盖模式好(不像 GAN 易模式崩溃),训练稳定\n- 可用 classifier-free guidance 在条件(文本)控制和多样性间灵活权衡\n\n**与自回归(LLM)对比**:\n- 自回归:**离散**序列、**逐 token** 顺序生成、似然显式\n- 扩散:**连续**空间(图像)、**并行**对全图迭代去噪、可加速采样(DDIM 等几十步)\n- 趋势:Stable Diffusion(潜空间扩散)、DiT(用 Transformer 替代 U-Net,Sora 的基础),以及把扩散思想用于文本/离散数据的探索。",
+      "references": [
+        { "label": "Ho et al. (2020) — DDPM", "url": "https://arxiv.org/abs/2006.11239" },
+        { "label": "Peebles & Xie (2022) — DiT", "url": "https://arxiv.org/abs/2212.09748" }
+      ]
+    }
+  ]
+}

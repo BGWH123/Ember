@@ -1,0 +1,6 @@
+:root {
+  --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+}
+
+/* Leave layout to Fern; only keep long reference cells readable on narrow screens. */
+td code, th code { overflow-wrap: anywhere; }

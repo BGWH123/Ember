@@ -1,0 +1,56 @@
+---
+# SPDX-License-Identifier: MIT
+title: 打包与签名模块
+subtitle: 制作自包含评测 ZIP 和 Ed25519 签名清单。
+---
+
+模块包包含可重定位 Python、依赖、执行器和任务源码。打包脚本检查任务测试与桌面 catalog 的语法树一致，再对清单的原始 UTF-8 payload 签名。
+
+## 前置条件
+
+在目标平台使用 uv 管理的 Python 3.11 创建独立 release 环境。不要从系统 Python 构建，也不要把开发虚拟环境直接压成 ZIP。准备受保护的 Ed25519 私钥文件，以及 ZIP 发布后的 HTTPS 直链。
+
+下面给出 Linux CPU 构建。Windows、macOS 需要原生构建并独立验收，路径差异见[兼容性](../../reference/compatibility.md)。
+
+<Steps>
+  <Step title="准备专用解释器">
+    ```bash
+    uv python install 3.11
+    uv venv --python 3.11 .release-venv
+    uv pip install --python .release-venv -r modules/evaluator/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+    uv pip install --python .release-venv cryptography
+    ```
+  </Step>
+  <Step title="同步执行题库">
+    ```bash
+    .release-venv/bin/python scripts/desktop/export_catalog.py
+    ```
+
+    提交生成的 catalog，并让壳与模块基于相同内容构建。
+  </Step>
+  <Step title="设置签名输入">
+    在当前终端设置 `MODULE_KEY_FILE` 为已有的32字节十六进制私钥文件绝对路径，设置 `MODULE_ARCHIVE_URL` 为实际发布后的 HTTPS ZIP 直链。不要把私钥放进仓库。
+
+    首次生成密钥时，可显式使用打包器的 `--generate-key`；它以排他方式创建文件，并限制文件权限。后续发布复用既有密钥。
+  </Step>
+  <Step title="生成模块与清单">
+    ```bash
+    .release-venv/bin/python scripts/desktop/package_evaluator.py \
+      --key "$MODULE_KEY_FILE" \
+      --version 0.1.0 \
+      --url "$MODULE_ARCHIVE_URL" \
+      --output artifacts/desktop/module
+    ```
+
+    输出 `evaluator.zip`、`manifest.json` 和十六进制 `public-key.txt`。私钥不属于分发产物。
+  </Step>
+  <Step title="在桌面应用中验收">
+    构建应用时，将 `EMBER_EVALUATOR_PUBLIC_KEY` 设置为 `public-key.txt` 的内容；在设置中离线导入这组文件。运行 ReLU 的样例与完整提交，再测试回退和不兼容模块拒绝。
+  </Step>
+</Steps>
+
+## 分发约束
+
+清单中的 URL 应指向不可变版本的直接下载地址；当前下载器不跟随重定向。`version` 使用规范 semver，`target` 由构建机器决定。完整字段和大小上限见[模块清单](../../reference/evaluator/module-manifest.md)。
+
+仓库的[模块工作流](https://github.com/BGWH123/Ember/blob/main/.github/workflows/evaluator-release.yml)接受独立版本与下载基址，使用 `EMBER_EVALUATOR_SIGNING_KEY` secret 生成 CI 产物，不自动公开发布。桌面 updater 采用另一套签名格式和密钥，配置见[配置参考](../../reference/configuration.md)。
