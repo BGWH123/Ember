@@ -19,7 +19,7 @@ def test_invalid_inputs_before_execution():
 
 
 def test_stdio_real_four_workloads_and_errors():
-    workloads = json.loads((ROOT / 'scripts/desktop/workload.json').read_text(encoding='utf-8'))
+    workloads = json.loads((ROOT / 'tests/fixtures/evaluator-workloads.json').read_text(encoding='utf-8'))
     requests = [{'id':'hello','method':'hello','params':None}]
     for index, item in enumerate(workloads):
         requests.append({'id':str(index),'method':'evaluate','params':{'requestId':str(index),**item}})

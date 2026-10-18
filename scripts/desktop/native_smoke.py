@@ -114,13 +114,13 @@ def main():
         report['initialMemory']=initial_memory
         report['afterEvaluationMemory']=memory()
         if args.measure_idle:
-            print('Waiting for idle evaluator reclamation',flush=True)
-            deadline=time.monotonic()+90
+            print('Checking evaluator stays resident while idle',flush=True)
+            deadline=time.monotonic()+75
             observations=[]
             while True:
                 sample=memory();observations.append(sample)
-                if sample['pythonProcesses']==0:break
-                if time.monotonic()>deadline:raise RuntimeError('Idle evaluator was not reclaimed within 90 seconds')
+                if sample['pythonProcesses']==0:raise RuntimeError('Evaluator unexpectedly exited while idle')
+                if time.monotonic()>deadline:break
                 time.sleep(1)
             report['afterIdleMemory']=sample;report['idleMemorySamples']=observations
         (ROOT/('artifacts/desktop/native-release-smoke.json' if args.release_package else 'artifacts/desktop/native-smoke.json')).write_text(json.dumps(report,indent=2));print(json.dumps({key:value for key,value in report.items() if key!='idleMemorySamples'}))

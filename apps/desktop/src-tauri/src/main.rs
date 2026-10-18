@@ -138,11 +138,10 @@ fn main() {
                     working_dir: root,
                 })?;
             }
-            let idle = core.clone();
+            let startup = core.clone();
             tauri::async_runtime::spawn(async move {
-                loop {
-                    tokio::time::sleep(std::time::Duration::from_secs(15)).await;
-                    idle.reap_idle().await;
+                if let Err(error) = startup.start_local().await {
+                    eprintln!("Evaluator startup failed; next submission can retry: {error}");
                 }
             });
             app.manage(core);

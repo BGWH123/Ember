@@ -32,6 +32,7 @@ flowchart TB
 | `content/catalog` | 随壳打包的展示与测试元数据 |
 | `torch_judge/tasks` | 执行任务与测试的源码 |
 | `scripts/desktop` | 导出、构建、签名、验收和性能工具 |
+| `tests` | 题库构建回归测试与共享评测输入；评测器测试就近放在 `modules/evaluator` |
 
 旧版 Next.js 网页端、`grading_service` 与 Python 远程服务均已移除。桌面与本地评测不依赖 HTTP 服务。`remote.rs` 仅保留标注“线上评测预留功能”的接口，调用时直接返回不可用，不发送请求。旧数据库的只读导入由 Rust 核心提供。
 

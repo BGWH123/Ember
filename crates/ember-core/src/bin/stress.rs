@@ -58,8 +58,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .worker_threads(4)
         .enable_all()
         .build()?;
-    let workloads: Value =
-        serde_json::from_slice(&std::fs::read(root.join("scripts/desktop/workload.json"))?)?;
+    let workloads: Value = serde_json::from_slice(&std::fs::read(
+        root.join("tests/fixtures/evaluator-workloads.json"),
+    )?)?;
     if mode == "evaluate" || mode == "fault" {
         app.use_development_evaluator(Launch {
             executable: std::env::var("EMBER_DEV_PYTHON")?.into(),

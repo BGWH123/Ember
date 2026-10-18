@@ -100,11 +100,13 @@ impl Application {
             local.shutdown().await;
         }
     }
-    pub async fn reap_idle(&self) {
-        let local = self.selection().ok().and_then(|s| s.local.clone());
+    pub async fn start_local(&self) -> Result<()> {
+        let _guard = self.gate.lock().await;
+        let local = self.selection()?.local.clone();
         if let Some(local) = local {
-            local.reap_if_idle().await;
+            local.probe().await?;
         }
+        Ok(())
     }
     pub async fn install(&self, url: &str) -> Result<Value> {
         let _guard = self
@@ -136,12 +138,18 @@ impl Application {
         self.status()
     }
     async fn activate_verified(&self, version: &str) -> Result<()> {
-        let candidate =
-            LocalEvaluator::new(self.modules.launch(version)?, self.catalog.version.clone());
+        let candidate = Arc::new(LocalEvaluator::new(
+            self.modules.launch(version)?,
+            self.catalog.version.clone(),
+        ));
         candidate.probe().await?;
         self.modules.activate(version)?;
         self.shutdown_local().await;
-        self.load_active()
+        let mut selection = self.selection()?;
+        selection.provider = Some(candidate.clone());
+        selection.local = Some(candidate);
+        selection.mode = "local".into();
+        Ok(())
     }
     pub async fn submit(&self, request: SubmitRequest, mode: &str) -> Result<Value> {
         if !["sample", "submit"].contains(&mode)

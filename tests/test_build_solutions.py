@@ -3,8 +3,9 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
-sys.path.insert(0, str(Path(__file__).parent.parent))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT))
 
 import pytest
 
@@ -46,7 +47,7 @@ def test_strips_whitespace():
 
 # --- integration: verify solutions.json ---
 
-SOLUTIONS_JSON = Path(__file__).parent.parent / "content" / "catalog" / "solutions.json"
+SOLUTIONS_JSON = ROOT / "content" / "catalog" / "solutions.json"
 
 
 @pytest.mark.skipif(not SOLUTIONS_JSON.exists(), reason="solutions.json not generated yet")

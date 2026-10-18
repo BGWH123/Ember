@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "fern docs dev --port 4310",
-    "check": "node fern/scripts/check.mjs && fern check && fern docs md check",
+    "check": "node fern/scripts/validate.mjs",
     "check:content": "node fern/scripts/check.mjs"
   },
   "devDependencies": {

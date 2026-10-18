@@ -23,7 +23,7 @@
     "docs:install": "npm --prefix docs ci",
     "docs:dev": "npm --prefix docs run dev",
     "docs:check": "npm --prefix docs run check",
-    "test:python": "node scripts/run-python.js -m pytest modules/evaluator scripts/test_build_solutions.py scripts/test_export_problems.py scripts/test_grading.py -q"
+    "test:python": "node scripts/run-python.js -m pytest modules/evaluator tests -q"
   },
   "devDependencies": {}
 }

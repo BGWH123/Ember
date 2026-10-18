@@ -1,9 +1,9 @@
 name: Desktop validation
 on:
   push:
-    paths: ['apps/desktop/**', 'crates/**', 'modules/evaluator/**', 'scripts/desktop/**', 'Cargo.*', 'content/**', '.github/workflows/desktop.yml']
+    paths: ['apps/desktop/**', 'crates/**', 'modules/evaluator/**', 'scripts/**', 'tests/**', 'Cargo.*', 'content/**', '.github/workflows/desktop.yml']
   pull_request:
-    paths: ['apps/desktop/**', 'crates/**', 'modules/evaluator/**', 'scripts/desktop/**', 'Cargo.*', 'content/**', '.github/workflows/desktop.yml']
+    paths: ['apps/desktop/**', 'crates/**', 'modules/evaluator/**', 'scripts/**', 'tests/**', 'Cargo.*', 'content/**', '.github/workflows/desktop.yml']
   workflow_dispatch:
 jobs:
   core:
@@ -39,6 +39,6 @@ jobs:
       - run: cargo build --release -p ember-core --features developer-tools
       - run: python -m venv .venv && .venv/bin/pip install -r modules/evaluator/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
       - run: .venv/bin/pip install pytest
-      - run: .venv/bin/python -m pytest modules/evaluator -q
+      - run: .venv/bin/python -m pytest modules/evaluator tests -q
       - run: npm --prefix apps/desktop exec -- playwright install --with-deps chromium
       - run: npm --prefix apps/desktop test

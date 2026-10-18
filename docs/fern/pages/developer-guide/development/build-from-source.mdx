@@ -61,7 +61,7 @@ EMBER_DEV_PYTHON="$PWD/.venv/bin/python" npm --prefix apps/desktop run tauri -- 
 ## 验证评测链路
 
 ```bash
-.venv/bin/python -m pytest modules/evaluator/test_protocol.py scripts/test_build_solutions.py scripts/test_export_problems.py scripts/test_grading.py -q
+.venv/bin/python -m pytest modules/evaluator tests -q
 cargo build --release -p ember-core --features developer-tools
 npm --prefix apps/desktop test
 ```

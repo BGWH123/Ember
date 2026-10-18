@@ -89,13 +89,6 @@ pub struct LocalEvaluator {
     launch: Launch,
     catalog: String,
     session: Mutex<Option<Session>>,
-    last_used: std::sync::atomic::AtomicU64,
-}
-fn now() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
 }
 impl LocalEvaluator {
     pub fn new(launch: Launch, catalog: String) -> Self {
@@ -103,26 +96,21 @@ impl LocalEvaluator {
             launch,
             catalog,
             session: Mutex::new(None),
-            last_used: std::sync::atomic::AtomicU64::new(now()),
         }
     }
     pub async fn probe(&self) -> Result<()> {
-        let session = tokio::time::timeout(Duration::from_secs(20), self.start())
-            .await
-            .map_err(|_| Error::Invalid("Evaluator handshake timed out".into()))??;
-        drop(session);
+        let mut guard = self.session.lock().await;
+        if guard.is_none() {
+            *guard = Some(
+                tokio::time::timeout(Duration::from_secs(20), self.start())
+                    .await
+                    .map_err(|_| Error::Invalid("Evaluator handshake timed out".into()))??,
+            );
+        }
         Ok(())
     }
     pub async fn shutdown(&self) {
         self.session.lock().await.take();
-    }
-    pub async fn reap_if_idle(&self) {
-        if now().saturating_sub(self.last_used.load(std::sync::atomic::Ordering::Relaxed)) < 60 {
-            return;
-        }
-        if let Ok(mut guard) = self.session.try_lock() {
-            guard.take();
-        }
     }
     async fn start(&self) -> Result<Session> {
         let mut command = Command::new(&self.launch.executable);
@@ -187,8 +175,6 @@ impl Evaluator for LocalEvaluator {
             };
             // Includes cold import/handshake; the Python worker separately enforces its per-job budget.
             let response = tokio::time::timeout(Duration::from_secs(60), operation).await;
-            self.last_used
-                .store(now(), std::sync::atomic::Ordering::Relaxed);
             match response {
                 Ok(Ok(value)) => Ok(value),
                 Ok(Err(error)) => {
@@ -203,5 +189,89 @@ impl Evaluator for LocalEvaluator {
                 }
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn probe_retains_session_and_protocol_failure_allows_restart() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let venv = root.join(if cfg!(windows) {
+            ".venv/Scripts/python.exe"
+        } else {
+            ".venv/bin/python"
+        });
+        let python = std::env::var_os("EMBER_TEST_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| {
+                if venv.is_file() {
+                    venv
+                } else {
+                    PathBuf::from(if cfg!(windows) { "python" } else { "python3" })
+                }
+            });
+        let directory = tempfile::tempdir().unwrap();
+        let fixture = directory.path().join("fixture.py");
+        std::fs::write(
+            &fixture,
+            r#"
+import json, os, sys
+for line in sys.stdin:
+    request = json.loads(line)
+    if request['method'] == 'hello':
+        result = dict(protocolVersion=1, catalogVersion='test', engineVersion='test')
+    else:
+        if request['params']['code'] == 'bad_protocol':
+            print(json.dumps(dict(id='wrong-id',result={})),flush=True)
+            continue
+        result = dict(outcome='passed',passed=1,total=1,results=[os.getpid()],totalTimeMs=1)
+    print(json.dumps(dict(id=request['id'],result=result)),flush=True)
+"#,
+        )
+        .unwrap();
+        let evaluator = LocalEvaluator::new(
+            Launch {
+                executable: python,
+                args: vec![fixture.to_string_lossy().into_owned()],
+                working_dir: root,
+            },
+            "test".into(),
+        );
+        evaluator.probe().await.unwrap();
+        let pid = evaluator
+            .session
+            .lock()
+            .await
+            .as_ref()
+            .unwrap()
+            .child
+            .id()
+            .unwrap();
+        evaluator.probe().await.unwrap();
+        let request = |code: &str| EvaluationRequest {
+            request_id: "job".into(),
+            task_id: "relu".into(),
+            code: code.into(),
+            test_indices: None,
+            resource_budget: Default::default(),
+        };
+        let worker_pid = evaluator.evaluate(request("valid")).await.unwrap().results[0].clone();
+        for _ in 0..2 {
+            let result = evaluator.evaluate(request("valid")).await.unwrap();
+            assert_eq!(result.results[0], worker_pid);
+            assert_eq!(
+                evaluator.session.lock().await.as_ref().unwrap().child.id(),
+                Some(pid)
+            );
+        }
+        assert!(evaluator.evaluate(request("bad_protocol")).await.is_err());
+        assert!(evaluator.session.lock().await.is_none());
+        let recovered = evaluator.evaluate(request("valid")).await.unwrap();
+        assert_ne!(recovered.results[0], worker_pid);
+        evaluator.shutdown().await;
+        assert!(evaluator.session.lock().await.is_none());
     }
 }

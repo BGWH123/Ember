@@ -16,6 +16,8 @@ npm run docs:dev
 
 `npm run docs:check` 检查导航覆盖、文件名、frontmatter、标题、语言围栏、相对文件与标题链接、本地源码引用、Fern 配置及 MDX。GitHub Actions 运行同一检查，不自动发布。
 
+校验入口只对子进程设置 `FERN_DISABLE_TELEMETRY=true`，避免 Node.js 24 在 Windows 上因 Fern 遥测请求与退出过程竞争而触发 libuv 断言。所有校验步骤和失败退出码仍保留，不改变全局环境或预览命令；CI 同时覆盖 Linux 与 Windows。
+
 当前 `ember-local` 组织与实例是本地预览配置，不代表已上线站点。正式发布前替换为维护者拥有的 Fern 组织和实例，完成认证，再按[发布说明](fern/pages/community/contributing/documentation/local-preview.mdx)操作。
 
-站点组织参考了 [Dynamo 的 Fern 文档](https://github.com/ai-dynamo/dynamo/tree/main/docs/fern)，内容根据 Ember 当前实现编写。内部设计与性能原始记录继续保留在被 Git 忽略的项目 `wiki`；公开站点不依赖该目录。
+站点组织参考了 [Dynamo 的 Fern 文档](https://github.com/ai-dynamo/dynamo/tree/main/docs/fern)，内容根据 Ember 当前实现编写。正式说明集中在文档站；一次性实验结束后删除源码与产物，不转存到被忽略的目录。

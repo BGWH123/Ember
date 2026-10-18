@@ -10,8 +10,6 @@ notebooks/
 # Environment files
 .env
 .env.local
-web/.env
-web/.env.local
 
 # Playwright CLI artifacts
 .playwright-cli/
@@ -25,32 +23,11 @@ dist/
 build/
 .venv/
 
-# JupyterLab extension build artifacts
-labextension/lib/
-labextension/node_modules/
-labextension/torchcode_labext/labextension/
-labextension/tsconfig.tsbuildinfo
-labextension/yarn.lock
 .worktrees/
 .omc/
 CLAUDE.md
-pyre-code-design/
 
-# Runtime data
-web/data/
-
-# Public Fern source is tracked; other local docs stay ignored.
-/docs/*
-!/docs/fern/
-!/docs/README.md
-!/docs/package.json
-!/docs/package-lock.json
 node_modules/
-web/node_modules/
-
-# Next.js build output
-web/.next/
-web/next-env.d.ts
 *.tsbuildinfo
 data/
 !/docs/fern/pages/desktop/data/
@@ -65,8 +42,7 @@ logs/
 # Load-test evidence (may contain deployment details)
 artifacts/loadtest/
 
-# Local architecture and measurement evidence
-/wiki/
+# Generated build and measurement outputs
 /artifacts/desktop/
 /target/
 /apps/desktop/dist/
