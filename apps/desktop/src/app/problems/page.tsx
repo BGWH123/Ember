@@ -1,7 +1,7 @@
 import { appFetch } from '@/transport/client';
 
 import { useEffect, useState, useMemo } from 'react';
-import Link from '@/routing/Link';
+import { useRouter } from '@/routing/navigation';
 import { Search } from 'lucide-react';
 import { StatusIcon } from '@/components/problem/StatusIcon';
 import { Badge } from '@/components/ui/Badge';
@@ -11,6 +11,7 @@ import type { Problem, ProgressMap } from '@/lib/types';
 
 export default function ProblemsPage() {
   const { locale, t } = useLocale();
+  const router = useRouter();
   const [problems, setProblems] = useState<Problem[]>([]);
   const [progress, setProgress] = useState<ProgressMap>({});
   const [search, setSearch] = useState('');
@@ -188,7 +189,7 @@ export default function ProblemsPage() {
                         key={p.id}
                         className="cursor-pointer transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--accent)_3%,var(--bg-elev))]"
                         style={{ borderTop: '1px solid var(--line)', background: 'var(--bg-elev)' }}
-                        onClick={() => window.location.href = `/problems/${p.id}`}
+                        onClick={() => router.push(`/problems/${p.id}`)}
                       >
                         <td className="px-4 py-3 mono text-[12px] text-text-3 tabular-nums">{String(i + 1).padStart(3, '0')}</td>
                         <td className="px-1 py-3"><StatusIcon status={status} /></td>
