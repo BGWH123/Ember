@@ -29,6 +29,11 @@ export const appleLight: MonacoThemeData = {
     'editor.inactiveSelectionBackground': '#0f766e11',
     'editorIndentGuide.background': '#e5e5e5',
     'editorCursor.foreground': '#0f766e',
+    'editorSuggestWidget.background': '#ffffff',
+    'editorSuggestWidget.foreground': '#20292f',
+    'editorSuggestWidget.selectedBackground': '#f4f7f8',
+    'editorSuggestWidget.highlightForeground': '#0f766e',
+    'editorSuggestWidget.border': '#e5e5e5',
   },
 };
 
@@ -56,5 +61,10 @@ export const appleDark: MonacoThemeData = {
     'editor.inactiveSelectionBackground': '#5ee0cc11',
     'editorIndentGuide.background': '#333333',
     'editorCursor.foreground': '#5ee0cc',
+    'editorSuggestWidget.background': '#151b20',
+    'editorSuggestWidget.foreground': '#e5e5e5',
+    'editorSuggestWidget.selectedBackground': '#1e2830',
+    'editorSuggestWidget.highlightForeground': '#5ee0cc',
+    'editorSuggestWidget.border': '#333333',
   },
 };

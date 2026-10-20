@@ -1,10 +1,13 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import 'monaco-editor/esm/vs/basic-languages/python/python.contribution';
+import 'monaco-editor/esm/vs/editor/contrib/suggest/browser/suggestController.js';
+import 'monaco-editor/esm/vs/editor/contrib/snippet/browser/snippetController2.js';
 
 import { useRef, useEffect } from 'react';
 import Editor, { loader, type OnMount } from '@monaco-editor/react';
 import { appleLight, appleDark } from '@/lib/monacoTheme';
+import { registerPythonCompletions } from '@/lib/pythonCompletions';
 import { useTheme } from '@/context/ThemeContext';
 import { WaitingState } from '@/components/ui/WaitingState';
 
@@ -36,6 +39,7 @@ export function CodeEditor({
     monaco.editor.defineTheme('apple-light', appleLight);
     monaco.editor.defineTheme('apple-dark', appleDark);
     monaco.editor.setTheme(theme === 'dark' ? 'apple-dark' : 'apple-light');
+    registerPythonCompletions(monaco);
     // Refresh cached glyph widths once the bundled font finishes loading.
     void document.fonts.load('14px "Fira Code Variable"').then(() => monaco.editor.remeasureFonts());
   };
@@ -68,6 +72,10 @@ export function CodeEditor({
         cursorBlinking: 'smooth',
         cursorSmoothCaretAnimation: 'on',
         bracketPairColorization: { enabled: true },
+        fixedOverflowWidgets: true,
+        quickSuggestions: { other: 'on', comments: 'off', strings: 'off' },
+        suggestOnTriggerCharacters: true,
+        wordBasedSuggestions: 'currentDocument',
         overviewRulerBorder: false,
         hideCursorInOverviewRuler: true,
         scrollbar: {
