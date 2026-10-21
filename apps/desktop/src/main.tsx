@@ -19,6 +19,7 @@ const Path=lazy(()=>import('./app/paths/[id]/page'));
 const Solution=lazy(()=>import('./app/solutions/[id]/page'));
 const Curriculum=lazy(()=>import('./app/curriculum/page'));
 const Bagu=lazy(()=>import('./app/bagu/page'));
+const BaguDetail=lazy(()=>import('./app/bagu/[slug]/page'));
 const Hot=lazy(()=>import('./app/hot/page'));
 const Interview=lazy(()=>import('./app/interview/page'));
 const Settings=lazy(()=>import('./settings'));
@@ -28,5 +29,5 @@ class ErrorBoundary extends React.Component<{children:React.ReactNode},{error:st
   render(){return this.state.error?<main className="p-8"><h1>页面无法加载</h1><p>{this.state.error}</p><a href="#/settings">打开设置</a></main>:this.props.children;}
 }
 createRoot(document.getElementById('root')!).render(<ErrorBoundary><ThemeScript/><ThemeProvider><LocaleProvider><HashRouter><DesktopShell><Suspense fallback={<WaitingState/>}><Routes>
-  <Route path="/" element={<Home/>}/><Route path="/problems" element={<Problems/>}/><Route path="/problems/:id" element={<WorkspaceRoute/>}/><Route path="/paths" element={<Paths/>}/><Route path="/paths/:id" element={<Path/>}/><Route path="/solutions/:id" element={<Solution/>}/><Route path="/curriculum" element={<Curriculum/>}/><Route path="/bagu" element={<Bagu/>}/><Route path="/hot" element={<Hot/>}/><Route path="/interview" element={<Interview/>}/><Route path="/settings" element={<Settings/>}/><Route path="*" element={<p className="p-8">页面不存在 · <a href="#/">返回首页</a></p>}/>
+  <Route path="/" element={<Home/>}/><Route path="/problems" element={<Problems/>}/><Route path="/problems/:id" element={<WorkspaceRoute/>}/><Route path="/paths" element={<Paths/>}/><Route path="/paths/:id" element={<Path/>}/><Route path="/solutions/:id" element={<Solution/>}/><Route path="/curriculum" element={<Curriculum/>}/><Route path="/bagu" element={<Bagu/>}/><Route path="/bagu/:kind/:slug" element={<BaguDetail/>}/><Route path="/hot" element={<Hot/>}/><Route path="/interview" element={<Interview/>}/><Route path="/settings" element={<Settings/>}/><Route path="*" element={<p className="p-8">页面不存在 · <a href="#/">返回首页</a></p>}/>
 </Routes></Suspense></DesktopShell></HashRouter></LocaleProvider></ThemeProvider></ErrorBoundary>);

@@ -1,0 +1,684 @@
+{
+  "version": 2,
+  "importedAt": "2026-10-21T13:37:43.095Z",
+  "title": "Ember AI 理论手册",
+  "subtitle": "从基础原理到大模型系统、生成模型、智能体与具身智能",
+  "categories": [
+    {
+      "id": "general",
+      "title": "基础知识",
+      "titleEn": "General",
+      "description": "Attention、Transformer、评测、归一化、优化器、分词与 KL 散度。"
+    },
+    {
+      "id": "post-training",
+      "title": "后训练与推理",
+      "titleEn": "Post-Training & Reasoning",
+      "description": "RLHF、DPO、GRPO、推理模型、在线蒸馏与参数高效微调。"
+    },
+    {
+      "id": "llm-systems",
+      "title": "大模型架构与系统",
+      "titleEn": "LLM Architecture & Systems",
+      "description": "MoE、长上下文、高效注意力、KV Cache、量化、分布式训练与推理服务。"
+    },
+    {
+      "id": "generative-theory",
+      "title": "生成模型理论",
+      "titleEn": "Generative Models",
+      "description": "Flow Matching、Diffusion 基础与离散潜变量模型。"
+    },
+    {
+      "id": "generation-systems",
+      "title": "生成系统",
+      "titleEn": "Generation Systems",
+      "description": "图像、视频、3D 生成，以及 Diffusion 后训练与蒸馏。"
+    },
+    {
+      "id": "multimodal",
+      "title": "多模态",
+      "titleEn": "Multimodal",
+      "description": "视觉语言模型与多模态表示学习。"
+    },
+    {
+      "id": "agents",
+      "title": "智能体",
+      "titleEn": "Agents",
+      "description": "Agent 基础、Agentic RL、多智能体、自进化与 RAG。"
+    },
+    {
+      "id": "embodied-world-models",
+      "title": "具身智能与世界模型",
+      "titleEn": "Embodied AI & World Models",
+      "description": "世界模型，以及完整的具身智能社区面试题库。"
+    },
+    {
+      "id": "blogs",
+      "title": "技术长文",
+      "titleEn": "Technical Blogs",
+      "description": "连续扩散语言模型、表征与流形、Cosmos 3 深度导读。"
+    }
+  ],
+  "documents": [
+    {
+      "slug": "attention",
+      "title": "Attention 面试手册",
+      "titleEn": "Attention",
+      "category": "general",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/attention.md",
+      "enPath": "tutorials/en/attention.md",
+      "sourceFile": "attention_tutorial.md",
+      "sourceFileEn": "attention_tutorial_en.md",
+      "code": [
+        "code/mha.py",
+        "code/axial_attention.py"
+      ],
+      "questionCount": 25
+    },
+    {
+      "slug": "transformer-block",
+      "title": "Transformer Block",
+      "titleEn": "Transformer Block",
+      "category": "general",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/transformer-block.md",
+      "enPath": "tutorials/en/transformer-block.md",
+      "sourceFile": "transformer_block_tutorial.md",
+      "sourceFileEn": "transformer_block_tutorial_en.md",
+      "code": [
+        "code/transformer_block.py"
+      ],
+      "questionCount": 30
+    },
+    {
+      "slug": "llm-evaluation",
+      "title": "大模型评测与基准",
+      "titleEn": "LLM Evaluation & Benchmarking",
+      "category": "general",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/llm-evaluation.md",
+      "enPath": "tutorials/en/llm-evaluation.md",
+      "sourceFile": "llm_evaluation_benchmarking_tutorial.md",
+      "sourceFileEn": "llm_evaluation_benchmarking_tutorial_en.md",
+      "code": [
+        "code/llm_eval_metrics.py"
+      ],
+      "questionCount": 25
+    },
+    {
+      "slug": "normalization-init",
+      "title": "归一化、残差与初始化",
+      "titleEn": "Normalization, Residuals & Initialization",
+      "category": "general",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/normalization-init.md",
+      "enPath": "tutorials/en/normalization-init.md",
+      "sourceFile": "normalization_init_tutorial.md",
+      "sourceFileEn": "normalization_init_tutorial_en.md",
+      "code": [
+        "code/normalization.py"
+      ],
+      "questionCount": 25
+    },
+    {
+      "slug": "optimizer-lr",
+      "title": "优化器与学习率调度",
+      "titleEn": "Optimizers & LR Schedules",
+      "category": "general",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/optimizer-lr.md",
+      "enPath": "tutorials/en/optimizer-lr.md",
+      "sourceFile": "optimizer_lr_schedule_tutorial.md",
+      "sourceFileEn": "optimizer_lr_schedule_tutorial_en.md",
+      "code": [
+        "code/optimizer_lr_schedule.py"
+      ],
+      "questionCount": 25
+    },
+    {
+      "slug": "tokenization",
+      "title": "Tokenization 分词器",
+      "titleEn": "Tokenization",
+      "category": "general",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/tokenization.md",
+      "enPath": "tutorials/en/tokenization.md",
+      "sourceFile": "tokenization_tutorial.md",
+      "sourceFileEn": "tokenization_tutorial_en.md",
+      "code": [
+        "code/tokenization.py"
+      ],
+      "questionCount": 25
+    },
+    {
+      "slug": "kl-divergence-rlhf",
+      "title": "RLHF 中的 KL 散度",
+      "titleEn": "KL Divergence in RLHF",
+      "category": "general",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/kl-divergence-rlhf.md",
+      "enPath": "tutorials/en/kl-divergence-rlhf.md",
+      "sourceFile": "kl_divergence_rlhf_tutorial.md",
+      "sourceFileEn": "kl_divergence_rlhf_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "rlhf-dpo-grpo-ppo",
+      "title": "RLHF、DPO、GRPO 与 PPO",
+      "titleEn": "RLHF, DPO, GRPO & PPO",
+      "category": "post-training",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/rlhf-dpo-grpo-ppo.md",
+      "enPath": "tutorials/en/rlhf-dpo-grpo-ppo.md",
+      "sourceFile": "rlhf_dpo_grpo_ppo_tutorial.md",
+      "sourceFileEn": "rlhf_dpo_grpo_ppo_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "reasoning-models",
+      "title": "推理模型",
+      "titleEn": "Reasoning Models",
+      "category": "post-training",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/reasoning-models.md",
+      "enPath": "tutorials/en/reasoning-models.md",
+      "sourceFile": "reasoning_models_tutorial.md",
+      "sourceFileEn": "reasoning_models_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "llm-on-policy-distillation",
+      "title": "大模型在线策略蒸馏",
+      "titleEn": "LLM On-Policy Distillation",
+      "category": "post-training",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/llm-on-policy-distillation.md",
+      "enPath": "tutorials/en/llm-on-policy-distillation.md",
+      "sourceFile": "llm_opd_tutorial.md",
+      "sourceFileEn": "llm_opd_tutorial_en.md",
+      "code": [],
+      "questionCount": 21
+    },
+    {
+      "slug": "lora-peft",
+      "title": "LoRA 与参数高效微调",
+      "titleEn": "LoRA & PEFT",
+      "category": "post-training",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/lora-peft.md",
+      "enPath": "tutorials/en/lora-peft.md",
+      "sourceFile": "lora_peft_tutorial.md",
+      "sourceFileEn": "lora_peft_tutorial_en.md",
+      "code": [
+        "code/lora.py"
+      ],
+      "questionCount": 25
+    },
+    {
+      "slug": "moe",
+      "title": "混合专家模型 MoE",
+      "titleEn": "Mixture of Experts",
+      "category": "llm-systems",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/moe.md",
+      "enPath": "tutorials/en/moe.md",
+      "sourceFile": "moe_tutorial.md",
+      "sourceFileEn": "moe_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "long-context",
+      "title": "长上下文",
+      "titleEn": "Long Context",
+      "category": "llm-systems",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/long-context.md",
+      "enPath": "tutorials/en/long-context.md",
+      "sourceFile": "long_context_rope_yarn_mla_tutorial.md",
+      "sourceFileEn": "long_context_rope_yarn_mla_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "linear-sparse-attention",
+      "title": "线性与稀疏注意力",
+      "titleEn": "Linear & Sparse Attention",
+      "category": "llm-systems",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/linear-sparse-attention.md",
+      "enPath": "tutorials/en/linear-sparse-attention.md",
+      "sourceFile": "linear_sparse_attention_tutorial.md",
+      "sourceFileEn": "linear_sparse_attention_tutorial_en.md",
+      "code": [
+        "code/linear_sparse_attention.py"
+      ],
+      "questionCount": 25
+    },
+    {
+      "slug": "kv-cache-speculative",
+      "title": "KV Cache 与推测解码",
+      "titleEn": "KV Cache & Speculative Decoding",
+      "category": "llm-systems",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/kv-cache-speculative.md",
+      "enPath": "tutorials/en/kv-cache-speculative.md",
+      "sourceFile": "kv_cache_speculative_decoding_tutorial.md",
+      "sourceFileEn": "kv_cache_speculative_decoding_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "quantization",
+      "title": "模型量化",
+      "titleEn": "Quantization",
+      "category": "llm-systems",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/quantization.md",
+      "enPath": "tutorials/en/quantization.md",
+      "sourceFile": "quantization_tutorial.md",
+      "sourceFileEn": "quantization_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "distributed-training",
+      "title": "分布式训练",
+      "titleEn": "Distributed Training",
+      "category": "llm-systems",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/distributed-training.md",
+      "enPath": "tutorials/en/distributed-training.md",
+      "sourceFile": "distributed_training_tutorial.md",
+      "sourceFileEn": "distributed_training_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "llm-pretraining",
+      "title": "大模型预训练流水线",
+      "titleEn": "LLM Pretraining Pipeline",
+      "category": "llm-systems",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/llm-pretraining.md",
+      "enPath": "tutorials/en/llm-pretraining.md",
+      "sourceFile": "llm_pretraining_pipeline_tutorial.md",
+      "sourceFileEn": "llm_pretraining_pipeline_tutorial_en.md",
+      "code": [
+        "code/pretraining_pipeline.py"
+      ],
+      "questionCount": 26
+    },
+    {
+      "slug": "llm-inference-serving",
+      "title": "大模型推理与服务栈",
+      "titleEn": "LLM Inference & Serving Stack",
+      "category": "llm-systems",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/llm-inference-serving.md",
+      "enPath": "tutorials/en/llm-inference-serving.md",
+      "sourceFile": "llm_inference_serving_tutorial.md",
+      "sourceFileEn": "llm_inference_serving_tutorial_en.md",
+      "code": [
+        "code/inference_serving.py"
+      ],
+      "questionCount": 25
+    },
+    {
+      "slug": "flow-matching",
+      "title": "Flow Matching 速查",
+      "titleEn": "Flow Matching Quick Reference",
+      "category": "generative-theory",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/flow-matching.md",
+      "enPath": "tutorials/en/flow-matching.md",
+      "sourceFile": "flow_matching_tutorial.md",
+      "sourceFileEn": "flow_matching_tutorial_en.md",
+      "code": [
+        "code/flow_matching.py"
+      ],
+      "questionCount": 0
+    },
+    {
+      "slug": "diffusion-foundations",
+      "title": "Diffusion 基础",
+      "titleEn": "Diffusion Foundations",
+      "category": "generative-theory",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/diffusion-foundations.md",
+      "enPath": "tutorials/en/diffusion-foundations.md",
+      "sourceFile": "diffusion_foundations_tutorial.md",
+      "sourceFileEn": "diffusion_foundations_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "vae-vqvae-vqgan",
+      "title": "VAE、VQ-VAE、VQ-GAN 与 FSQ",
+      "titleEn": "VAE, VQ-VAE, VQ-GAN & FSQ",
+      "category": "generative-theory",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/vae-vqvae-vqgan.md",
+      "enPath": "tutorials/en/vae-vqvae-vqgan.md",
+      "sourceFile": "vae_vqvae_vqgan_tutorial.md",
+      "sourceFileEn": "vae_vqvae_vqgan_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "image-generation",
+      "title": "图像生成系统",
+      "titleEn": "Image Generation Systems",
+      "category": "generation-systems",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/image-generation.md",
+      "enPath": "tutorials/en/image-generation.md",
+      "sourceFile": "image_generation_systems_tutorial.md",
+      "sourceFileEn": "image_generation_systems_tutorial_en.md",
+      "code": [
+        "code/dit.py",
+        "code/mmdit_block.py",
+        "code/toy_mmdit_t2i_pipeline.py"
+      ],
+      "questionCount": 25
+    },
+    {
+      "slug": "video-generation",
+      "title": "视频生成系统",
+      "titleEn": "Video Generation",
+      "category": "generation-systems",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/video-generation.md",
+      "enPath": "tutorials/en/video-generation.md",
+      "sourceFile": "video_generation_tutorial.md",
+      "sourceFileEn": "video_generation_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "3d-generation",
+      "title": "3D 生成",
+      "titleEn": "3D Generation",
+      "category": "generation-systems",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/3d-generation.md",
+      "enPath": "tutorials/en/3d-generation.md",
+      "sourceFile": "3d_generation_tutorial.md",
+      "sourceFileEn": "3d_generation_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "diffusion-post-training",
+      "title": "Diffusion 后训练",
+      "titleEn": "Diffusion Post-Training",
+      "category": "generation-systems",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/diffusion-post-training.md",
+      "enPath": "tutorials/en/diffusion-post-training.md",
+      "sourceFile": "diffusion_post_training_tutorial.md",
+      "sourceFileEn": "diffusion_post_training_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "modern-diffusion-post-training",
+      "title": "现代 Diffusion 后训练",
+      "titleEn": "Modern Diffusion Post-Training",
+      "category": "generation-systems",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/modern-diffusion-post-training.md",
+      "enPath": "tutorials/en/modern-diffusion-post-training.md",
+      "sourceFile": "modern_diffusion_post_training_tutorial.md",
+      "sourceFileEn": "modern_diffusion_post_training_tutorial_en.md",
+      "code": [
+        "code/diffusion_online_rl.py"
+      ],
+      "questionCount": 25
+    },
+    {
+      "slug": "diffusion-distillation",
+      "title": "Diffusion 与 Flow 蒸馏",
+      "titleEn": "Diffusion & Flow Distillation",
+      "category": "generation-systems",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/diffusion-distillation.md",
+      "enPath": "tutorials/en/diffusion-distillation.md",
+      "sourceFile": "diffusion_distillation_tutorial.md",
+      "sourceFileEn": "diffusion_distillation_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "vlm-multimodal",
+      "title": "视觉语言模型",
+      "titleEn": "VLM & Multimodal",
+      "category": "multimodal",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/vlm-multimodal.md",
+      "enPath": "tutorials/en/vlm-multimodal.md",
+      "sourceFile": "vlm_multimodal_tutorial.md",
+      "sourceFileEn": "vlm_multimodal_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "agent-foundations",
+      "title": "Agent 基础",
+      "titleEn": "Agent Foundations",
+      "category": "agents",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/agent-foundations.md",
+      "enPath": "tutorials/en/agent-foundations.md",
+      "sourceFile": "agent_foundations_tutorial.md",
+      "sourceFileEn": "agent_foundations_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "agentic-rl",
+      "title": "Agentic RL",
+      "titleEn": "Agentic RL",
+      "category": "agents",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/agentic-rl.md",
+      "enPath": "tutorials/en/agentic-rl.md",
+      "sourceFile": "agentic_rl_tutorial.md",
+      "sourceFileEn": "agentic_rl_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "multi-agent-long-horizon",
+      "title": "多智能体与长时程任务",
+      "titleEn": "Multi-Agent & Long-Horizon",
+      "category": "agents",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/multi-agent-long-horizon.md",
+      "enPath": "tutorials/en/multi-agent-long-horizon.md",
+      "sourceFile": "multi_agent_long_horizon_tutorial.md",
+      "sourceFileEn": "multi_agent_long_horizon_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "self-evolving-agents",
+      "title": "自进化智能体",
+      "titleEn": "Self-Evolving Agents",
+      "category": "agents",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/self-evolving-agents.md",
+      "enPath": "tutorials/en/self-evolving-agents.md",
+      "sourceFile": "self_evolving_agents_tutorial.md",
+      "sourceFileEn": "self_evolving_agents_tutorial_en.md",
+      "code": [],
+      "questionCount": 25
+    },
+    {
+      "slug": "rag-embedding-retrieval",
+      "title": "RAG、Embedding 与检索",
+      "titleEn": "RAG, Embeddings & Retrieval",
+      "category": "agents",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/rag-embedding-retrieval.md",
+      "enPath": "tutorials/en/rag-embedding-retrieval.md",
+      "sourceFile": "rag_embedding_retrieval_tutorial.md",
+      "sourceFileEn": "rag_embedding_retrieval_tutorial_en.md",
+      "code": [
+        "code/rag_embedding.py"
+      ],
+      "questionCount": 25
+    },
+    {
+      "slug": "world-models",
+      "title": "世界模型",
+      "titleEn": "World Models",
+      "category": "embodied-world-models",
+      "kind": "tutorial",
+      "zhPath": "tutorials/zh/world-models.md",
+      "enPath": "tutorials/en/world-models.md",
+      "sourceFile": "world_models_tutorial.md",
+      "sourceFileEn": "world_models_tutorial_en.md",
+      "code": [
+        "code/world_models_toy.py"
+      ],
+      "questionCount": 25
+    },
+    {
+      "slug": "embodied-basics",
+      "title": "卷一：通识基础",
+      "titleEn": "Embodied Basics",
+      "questionCount": 58,
+      "kind": "question-bank",
+      "category": "embodied-world-models",
+      "zhPath": "embodied/embodied-basics.md"
+    },
+    {
+      "slug": "embodied-rl",
+      "title": "卷二：强化学习算法",
+      "titleEn": "RL Algorithms",
+      "questionCount": 53,
+      "kind": "question-bank",
+      "category": "embodied-world-models",
+      "zhPath": "embodied/embodied-rl.md"
+    },
+    {
+      "slug": "embodied-vla-il",
+      "title": "卷三：VLA 与模仿学习",
+      "titleEn": "VLA & Imitation Learning",
+      "questionCount": 77,
+      "kind": "question-bank",
+      "category": "embodied-world-models",
+      "zhPath": "embodied/embodied-vla-il.md"
+    },
+    {
+      "slug": "embodied-world-sim",
+      "title": "卷四：世界模型与 Sim2Real",
+      "titleEn": "World Models & Sim2Real",
+      "questionCount": 35,
+      "kind": "question-bank",
+      "category": "embodied-world-models",
+      "zhPath": "embodied/embodied-world-sim.md"
+    },
+    {
+      "slug": "embodied-engineering",
+      "title": "卷五：工程落地",
+      "titleEn": "Engineering",
+      "questionCount": 65,
+      "kind": "question-bank",
+      "category": "embodied-world-models",
+      "zhPath": "embodied/embodied-engineering.md"
+    },
+    {
+      "slug": "embodied-legged-control",
+      "title": "卷六：腿足控制与遥操作",
+      "titleEn": "Legged Control & Teleoperation",
+      "questionCount": 58,
+      "kind": "question-bank",
+      "category": "embodied-world-models",
+      "zhPath": "embodied/embodied-legged-control.md"
+    },
+    {
+      "slug": "embodied-perception-nav",
+      "title": "卷七：3D 感知、SLAM 与导航",
+      "titleEn": "3D Perception, SLAM & Navigation",
+      "questionCount": 70,
+      "kind": "question-bank",
+      "category": "embodied-world-models",
+      "zhPath": "embodied/embodied-perception-nav.md"
+    },
+    {
+      "slug": "embodied-coding-system",
+      "title": "卷八：Coding 与系统设计",
+      "titleEn": "Coding & System Design",
+      "questionCount": 40,
+      "kind": "question-bank",
+      "category": "embodied-world-models",
+      "zhPath": "embodied/embodied-coding-system.md"
+    },
+    {
+      "slug": "embodied-frontier",
+      "title": "卷九：近期前沿方向",
+      "titleEn": "Recent Frontiers",
+      "questionCount": 8,
+      "kind": "question-bank",
+      "category": "embodied-world-models",
+      "zhPath": "embodied/embodied-frontier.md"
+    },
+    {
+      "slug": "cosmos3-mot",
+      "title": "NVIDIA Cosmos 3：MoT 架构深度导读",
+      "titleEn": "NVIDIA Cosmos 3：MoT 架构深度导读",
+      "kind": "blog",
+      "category": "blogs",
+      "htmlPath": "blogs/cosmos3-mot.html"
+    },
+    {
+      "slug": "continuous-dlm",
+      "title": "Continuous DLM 综述：表征视角",
+      "titleEn": "Continuous DLM 综述：表征视角",
+      "kind": "blog",
+      "category": "blogs",
+      "htmlPath": "blogs/continuous-dlm.html"
+    },
+    {
+      "slug": "diffusion-representation-manifold",
+      "title": "扩散、表征与流形",
+      "titleEn": "扩散、表征与流形",
+      "kind": "blog",
+      "category": "blogs",
+      "htmlPath": "blogs/diffusion-representation-manifold.html"
+    }
+  ],
+  "sources": [
+    {
+      "id": "aris-ai-offer",
+      "name": "ARIS-in-AI-Offer",
+      "author": "Ruofeng Yang (杨若峰)",
+      "url": "https://github.com/wanshuiyin/ARIS-in-AI-Offer",
+      "commit": "af9926140546a52ea4ef97172e463977d0c8775c",
+      "license": "MIT"
+    },
+    {
+      "id": "embodied-interview-qa",
+      "name": "embodied-interview-qa",
+      "author": "WinstonJQ",
+      "url": "https://github.com/WinstonJQ/embodied-interview-qa",
+      "commit": "001e42385d421294066767f286e786e378595f13",
+      "license": "MIT"
+    }
+  ],
+  "stats": {
+    "tutorials": 35,
+    "languages": 2,
+    "codeExamples": 18,
+    "blogs": 3,
+    "embodiedVolumes": 9,
+    "embodiedQuestions": 464,
+    "interviewQuestions": 1316
+  }
+}

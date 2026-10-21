@@ -1,624 +1,198 @@
-import { WaitingState } from '@/components/ui/WaitingState';
-import { appFetch } from '@/transport/client';
+import { useEffect, useMemo, useState } from 'react';
+import { BookOpen, Boxes, Code2, FileText, Languages, Search, ShieldCheck } from 'lucide-react';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { WaitingState } from '@/components/ui/WaitingState';
+import { useLocale } from '@/context/LocaleContext';
 import {
-  Search,
-  BookOpen,
-  ChevronRight,
-  ChevronDown,
-  MessageCircle,
-  ArrowUp,
-  Eye,
-  EyeOff,
-} from 'lucide-react';
+  handbookHref,
+  loadHandbookIndex,
+  type HandbookDocument,
+  type HandbookIndex,
+  type HandbookKind,
+} from '@/lib/handbook';
 import Link from '@/routing/Link';
 
-// ─── Types ───────────────────────────────────────────────────────────────
+const kindLabels: Record<HandbookKind, { zh: string; en: string }> = {
+  tutorial: { zh: '双语教程', en: 'Bilingual tutorial' },
+  'question-bank': { zh: '题库', en: 'Question bank' },
+  blog: { zh: '技术长文', en: 'Technical blog' },
+};
 
-interface SubSubSection {
-  title: string;
-  content: string;
+function documentTitle(document: HandbookDocument, locale: 'zh' | 'en') {
+  return locale === 'zh' ? document.title : document.titleEn;
 }
-
-interface SubSection {
-  title: string;
-  content: string;
-  subsubsections: SubSubSection[];
-}
-
-interface Section {
-  title: string;
-  content: string;
-  subsections: SubSection[];
-}
-
-interface Chapter {
-  id: string;
-  title: string;
-  category?: string;
-  sourceNote?: string;
-  sections: Section[];
-}
-
-interface BaguCategory {
-  id: string;
-  name: string;
-  desc: string;
-}
-
-interface BaguData {
-  meta?: { title: string; subtitle?: string; version?: number; sourceNote?: string };
-  categories?: BaguCategory[];
-  chapters: Chapter[];
-}
-
-// ─── Data Hook ───────────────────────────────────────────────────────────
-
-function useBaguData() {
-  const [data, setData] = useState<BaguData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    appFetch('/bagu-data.json')
-      .then((r) => r.json())
-      .then((d) => {
-        // Tolerate both the wrapped {meta,categories,chapters} and a bare array.
-        if (Array.isArray(d)) {
-          setData({ chapters: d });
-        } else {
-          setData(d || { chapters: [] });
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
-
-  return { data, loading };
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────
-
-function cn(...classes: (string | false | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
-}
-
-function countQuestions(chapters: Chapter[]) {
-  return chapters.reduce((acc, ch) => acc + ch.sections.length, 0);
-}
-
-// ─── Interview Link Banner ───────────────────────────────────────────────
-
-function InterviewBanner() {
-  return (
-    <Link
-      href="/interview"
-      className="group flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all duration-200 hover:shadow-sm hover:border-accent mb-6"
-      style={{ borderColor: 'var(--line)', background: 'var(--bg-card)' }}
-    >
-      <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors group-hover:bg-accent-wash"
-        style={{ background: 'var(--accent-bg)' }}
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent">
-          <path d="M7 17L17 7" />
-          <path d="M7 7h10v10" />
-        </svg>
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold text-text">进入模拟面试</div>
-        <div className="text-xs text-text-3 mt-0.5">随机抽题自测 · 八股面试 + 代码面试</div>
-      </div>
-      <ArrowUp size={14} className="text-text-3 group-hover:text-accent transition-colors rotate-45" />
-    </Link>
-  );
-}
-
-// ─── Sidebar ─────────────────────────────────────────────────────────────
-
-function Sidebar({
-  chapters,
-  categories,
-  activeCategory,
-  onCategory,
-  activeChapter,
-  activeSection,
-  onSelect,
-  expandedChapters,
-  toggleChapter,
-}: {
-  chapters: Chapter[];
-  categories: BaguCategory[];
-  activeCategory: string;
-  onCategory: (id: string) => void;
-  activeChapter: string;
-  activeSection: string;
-  onSelect: (chId: string, secKey: string) => void;
-  expandedChapters: Set<string>;
-  toggleChapter: (id: string) => void;
-}) {
-  return (
-    <aside
-      className="w-[250px] shrink-0 h-[calc(100dvh-42px)] sticky top-0 overflow-y-auto border-r hidden md:block"
-      style={{ borderColor: 'var(--line)', background: 'var(--bg-sunken)' }}
-    >
-      <div className="p-4">
-        {/* Interview Entry */}
-        <Link
-          href="/interview"
-          className="flex items-center gap-2 w-full px-2.5 py-2 rounded-lg mb-4 text-sm font-medium transition-all duration-200 hover:opacity-90"
-          style={{
-            background: 'var(--accent-bg)',
-            color: 'var(--accent)',
-            border: '1px solid var(--accent-line)',
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M7 17L17 7" />
-            <path d="M7 7h10v10" />
-          </svg>
-          <span>模拟面试</span>
-        </Link>
-
-        {/* Category filter */}
-        {categories.length > 0 && (
-          <div className="mb-4 flex flex-col gap-1">
-            <button
-              onClick={() => onCategory('')}
-              className={cn(
-                'w-full px-2.5 py-[7px] rounded-lg text-left text-[13px] transition-colors duration-150',
-                activeCategory === ''
-                  ? 'text-accent font-medium'
-                  : 'text-text-2 hover:text-text'
-              )}
-              style={activeCategory === '' ? { background: 'var(--accent-wash)' } : undefined}
-            >
-              全部方向
-            </button>
-            {categories.map((cat) => {
-              const count = chapters.filter((c) => c.category === cat.id).length;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => onCategory(cat.id)}
-                  className={cn(
-                    'w-full px-2.5 py-[7px] rounded-lg text-left text-[13px] transition-colors duration-150',
-                    activeCategory === cat.id
-                      ? 'text-accent font-medium'
-                      : 'text-text-2 hover:text-text'
-                  )}
-                  style={activeCategory === cat.id ? { background: 'var(--accent-wash)' } : undefined}
-                  title={cat.desc}
-                >
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="truncate">{cat.name}</span>
-                    <span className="mono text-[11px] text-text-3 tabular-nums">{count}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 mb-3 px-2">
-          <BookOpen size={16} className="text-accent" />
-          <span className="text-sm font-semibold text-text">目录</span>
-        </div>
-        {chapters.map((ch) => {
-          const isExpanded = expandedChapters.has(ch.id);
-          const isActive = activeChapter === ch.id;
-          return (
-            <div key={ch.id} className="mb-1">
-              <button
-                onClick={() => toggleChapter(ch.id)}
-                className={cn(
-                  'w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-left text-sm transition-all duration-200',
-                  isActive
-                    ? 'text-accent font-medium'
-                    : 'text-text-2 hover:text-text'
-                )}
-                style={isActive ? { background: 'var(--accent-bg)' } : {}}
-              >
-                {isExpanded ? (
-                  <ChevronDown size={13} />
-                ) : (
-                  <ChevronRight size={13} />
-                )}
-                <span className="truncate">{ch.title}</span>
-              </button>
-              {isExpanded && (
-                <div className="ml-4 mt-0.5 space-y-0.5">
-                  {ch.sections.map((sec, idx) => {
-                    const secKey = `${ch.id}::${idx}`;
-                    const isSecActive = activeSection === secKey;
-                    return (
-                      <button
-                        key={secKey}
-                        onClick={() => onSelect(ch.id, secKey)}
-                        className={cn(
-                          'w-full text-left px-2 py-1 rounded-md text-xs transition-colors truncate',
-                          isSecActive
-                            ? 'text-accent font-medium'
-                            : 'text-text-3 hover:text-text-2'
-                        )}
-                        style={
-                          isSecActive ? { background: 'var(--accent-bg)' } : {}
-                        }
-                        title={sec.title}
-                      >
-                        {sec.title || '(无标题)'}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </aside>
-  );
-}
-
-// ─── RichText: render **bold** inline ────────────────────────────────────
-
-function RichText({ text, className }: { text: string; className?: string }) {
-  if (!text) return null;
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return (
-    <span className={className}>
-      {parts.map((part, i) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return (
-            <strong key={i} className="font-semibold text-text">
-              {part.slice(2, -2)}
-            </strong>
-          );
-        }
-        return <span key={i}>{part}</span>;
-      })}
-    </span>
-  );
-}
-
-// ─── RevealBlock: per-item collapsible ───────────────────────────────────
-
-function RevealBlock({
-  title,
-  children,
-}: {
-  title?: string;
-  children: React.ReactNode;
-}) {
-  const [revealed, setRevealed] = useState(false);
-
-  if (!revealed) {
-    return (
-      <div
-        className="rounded-lg border cursor-pointer transition-all duration-200 hover:border-accent hover:shadow-sm"
-        style={{ borderColor: 'var(--line)', background: 'var(--bg-sunken)' }}
-        onClick={() => setRevealed(true)}
-      >
-        <div className="flex items-center justify-between px-3.5 py-2.5">
-          <span className="text-sm font-medium text-text truncate pr-3">
-            {title ? <RichText text={title} /> : <span className="text-text-3 font-normal">答案</span>}
-          </span>
-          <div
-            className="flex items-center gap-1 text-[11px] font-medium shrink-0 px-2 py-0.5 rounded-full"
-            style={{ color: 'var(--accent)', background: 'var(--accent-bg)' }}
-          >
-            <Eye size={11} />
-            <span>显示</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="rounded-lg border p-3.5"
-      style={{ borderColor: 'var(--line)', background: 'var(--bg-sunken)' }}
-    >
-      {title && (
-        <h4 className="text-sm font-medium text-text mb-1.5">
-          <RichText text={title} />
-        </h4>
-      )}
-      {children}
-      <button
-        onClick={() => setRevealed(false)}
-        className="mt-2 flex items-center gap-1 text-[11px] text-text-3 hover:text-accent transition-colors"
-      >
-        <EyeOff size={11} />
-        <span>收起</span>
-      </button>
-    </div>
-  );
-}
-
-// ─── ContentCard: each subsection independently collapsible ──────────────
-
-function ContentCard({
-  title,
-  content,
-  subsections,
-  id,
-}: {
-  title: string;
-  content: string;
-  subsections: SubSection[];
-  id: string;
-}) {
-  if (!title && !content && subsections.length === 0) return null;
-
-  return (
-    <div
-      id={id}
-      className="mb-5 rounded-xl border p-5 transition-all duration-300 hover:shadow-md"
-      style={{
-        borderColor: 'var(--line)',
-        background: 'var(--bg-card)',
-      }}
-    >
-      {/* Question Title */}
-      {title && (
-        <h3 className="text-base font-semibold text-text mb-3 flex items-start gap-2.5">
-          <MessageCircle size={16} className="text-accent mt-1 shrink-0" />
-          <RichText text={title} />
-        </h3>
-      )}
-
-      {/* Content block (if no subsections) */}
-      {content && subsections.length === 0 && (
-        <RevealBlock>
-          <div className="text-sm text-text-2 leading-relaxed whitespace-pre-wrap">
-            <RichText text={content} />
-          </div>
-        </RevealBlock>
-      )}
-
-      {/* Content shown directly + subsections collapsed */}
-      {content && subsections.length > 0 && (
-        <div className="text-sm text-text-2 leading-relaxed whitespace-pre-wrap mb-3">
-          <RichText text={content} />
-        </div>
-      )}
-
-      {/* Subsection blocks */}
-      {subsections.length > 0 && (
-        <div className="space-y-2.5">
-          {subsections.map((sub, i) => (
-            <RevealBlock key={i} title={sub.title}>
-              <div className="text-xs text-text-2 leading-relaxed whitespace-pre-wrap">
-                <RichText text={sub.content} />
-              </div>
-              {sub.subsubsections?.length > 0 && (
-                <div className="mt-2 space-y-1.5">
-                  {sub.subsubsections.map((ss, j) => (
-                    <div
-                      key={j}
-                      className="ml-2 pl-3 border-l-2"
-                      style={{ borderColor: 'var(--accent)' }}
-                    >
-                      {ss.title && (
-                        <h5 className="text-xs font-medium text-text">
-                          <RichText text={ss.title} />
-                        </h5>
-                      )}
-                      {ss.content && (
-                        <div className="text-xs text-text-2 leading-relaxed whitespace-pre-wrap mt-0.5">
-                          <RichText text={ss.content} />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </RevealBlock>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Main Page ───────────────────────────────────────────────────────────
 
 export default function BaguPage() {
-  const { data, loading } = useBaguData();
-  const chapters = data?.chapters ?? [];
-  const categories = data?.categories ?? [];
-  const meta = data?.meta;
-  const [activeCategory, setActiveCategory] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeChapter, setActiveChapter] = useState('');
-  const [activeSection, setActiveSection] = useState('');
-  const [expandedChapters, setExpandedChapters] = useState<Set<string>>(
-    new Set()
-  );
+  const { locale } = useLocale();
+  const [index, setIndex] = useState<HandbookIndex | null>(null);
+  const [error, setError] = useState('');
+  const [category, setCategory] = useState('');
+  const [query, setQuery] = useState('');
 
-  // Initialize expanded chapters
   useEffect(() => {
-    if (chapters.length > 0) {
-      const ids = new Set(chapters.map((c) => c.id));
-      setExpandedChapters(ids);
-      setActiveChapter(chapters[0].id);
-    }
-  }, [chapters.length]);
-
-  const filteredChapters = useMemo(() => {
-    const base = activeCategory ? chapters.filter((c) => c.category === activeCategory) : chapters;
-    if (!searchQuery.trim()) return base;
-    const q = searchQuery.toLowerCase();
-    return base
-      .map((ch) => ({
-        ...ch,
-        sections: ch.sections.filter(
-          (sec) =>
-            sec.title.toLowerCase().includes(q) ||
-            sec.content.toLowerCase().includes(q) ||
-            sec.subsections.some(
-              (sub) =>
-                sub.title.toLowerCase().includes(q) ||
-                sub.content.toLowerCase().includes(q)
-            )
-        ),
-      }))
-      .filter((ch) => ch.sections.length > 0);
-  }, [chapters, searchQuery]);
-
-  const handleSelect = useCallback((chId: string, secKey: string) => {
-    setActiveChapter(chId);
-    setActiveSection(secKey);
-    const el = document.getElementById(secKey);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, []);
-
-  const toggleChapter = useCallback((id: string) => {
-    setExpandedChapters((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+    loadHandbookIndex().then(setIndex).catch((reason: unknown) => {
+      setError(reason instanceof Error ? reason.message : String(reason));
     });
   }, []);
 
-  const scrollToTop = () => document.querySelector('[data-desktop-scroll]')?.scrollTo({ top: 0, behavior: 'smooth' });
+  const documents = useMemo(() => {
+    if (!index) return [];
+    const normalized = query.trim().toLowerCase();
+    return index.documents.filter((document) => {
+      if (category && document.category !== category) return false;
+      if (!normalized) return true;
+      const categoryInfo = index.categories.find((item) => item.id === document.category);
+      return [
+        document.title,
+        document.titleEn,
+        categoryInfo?.title,
+        categoryInfo?.titleEn,
+      ].some((value) => value?.toLowerCase().includes(normalized));
+    });
+  }, [category, index, query]);
 
-  if (loading) {
-    return (
-      <WaitingState />
-    );
+  if (!index && !error) return <WaitingState />;
+  if (!index) {
+    return <main className="desktop-page p-8"><p role="alert" className="text-hard">{error}</p></main>;
   }
 
-  const activeCh = chapters.find((c) => c.id === activeChapter);
-
+  const zh = locale === 'zh';
   return (
     <div className="desktop-page bg-bg">
-
-      <div className="flex" >
-        <Sidebar
-          chapters={filteredChapters}
-          categories={categories}
-          activeCategory={activeCategory}
-          onCategory={setActiveCategory}
-          activeChapter={activeChapter}
-          activeSection={activeSection}
-          onSelect={handleSelect}
-          expandedChapters={expandedChapters}
-          toggleChapter={toggleChapter}
-        />
-        <main className="flex-1 min-h-[calc(100dvh-40px)]">
-          <div className="max-w-[800px] mx-auto px-6 py-6">
-            {/* Header */}
-            <div className="mb-6">
-              <h1 className="text-xl font-bold text-text mb-2">
-                {meta?.title || '大模型面试八股文'}
+      <main className="max-w-[1240px] mx-auto px-6 py-7">
+        <section className="pb-7 mb-7" style={{ borderBottom: '1px solid var(--line)' }}>
+          <div className="eyebrow mb-2">{zh ? '离线知识库' : 'OFFLINE KNOWLEDGE BASE'}</div>
+          <div className="flex items-start justify-between gap-8 max-[760px]:flex-col">
+            <div className="max-w-[760px]">
+              <h1 className="text-[clamp(30px,4vw,48px)] font-semibold tracking-[-0.035em] leading-[1.08] text-text">
+                {zh ? index.title : 'Ember AI Theory Handbook'}
               </h1>
-              <p className="text-sm text-text-2">
-                {(meta?.subtitle || '主流 AI 岗位高频面试题')}，共{' '}
-                {countQuestions(chapters)}+ 个高频问题，按 {categories.length} 大方向组织
+              <p className="mt-3 text-[15px] leading-relaxed text-text-2">
+                {zh ? index.subtitle : 'From foundations to LLM systems, generative models, agents and embodied AI.'}
               </p>
-              {meta?.sourceNote && (
-                <p className="mt-2 max-w-[68ch] text-[12px] leading-relaxed text-text-3">
-                  {meta.sourceNote}
-                </p>
-              )}
             </div>
-
-            {/* Interview Link */}
-            <InterviewBanner />
-
-            {/* Search */}
-            <div className="relative mb-6">
-              <Search
-                size={15}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-text-3"
-              />
-              <input
-                type="text"
-                placeholder="搜索问题或关键词..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border outline-none focus:border-accent transition-colors"
-                style={{
-                  background: 'var(--bg-sunken)',
-                  borderColor: 'var(--line)',
-                  color: 'var(--text)',
-                }}
-              />
-            </div>
-
-            {/* Content */}
-            {searchQuery.trim() ? (
-              // Search results across all chapters
-              <div>
-                <div className="text-xs text-text-3 mb-3">
-                  找到{' '}
-                  {filteredChapters.reduce(
-                    (acc, ch) => acc + ch.sections.length,
-                    0
-                  )}{' '}
-                  条结果
-                </div>
-                {filteredChapters.map((ch) =>
-                  ch.sections.map((sec, idx) => (
-                    <ContentCard
-                      key={`${ch.id}::${idx}`}
-                      id={`${ch.id}::${idx}`}
-                      title={`[${ch.title}] ${sec.title}`}
-                      content={sec.content}
-                      subsections={sec.subsections}
-                    />
-                  ))
-                )}
-              </div>
-            ) : activeCh ? (
-              // Show active chapter content
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-lg font-semibold text-text">
-                    {activeCh.title}
-                  </span>
-                  <span
-                    className="text-xs text-text-3 px-2 py-0.5 rounded-full"
-                    style={{ background: 'var(--bg-sunken)' }}
-                  >
-                    {activeCh.sections.length} 个问题
-                  </span>
-                </div>
-                {activeCh.sections.map((sec, idx) => (
-                  <ContentCard
-                    key={idx}
-                    id={`${activeCh.id}::${idx}`}
-                    title={sec.title}
-                    content={sec.content}
-                    subsections={sec.subsections}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-20 text-text-3 text-sm">
-                选择一个章节开始阅读
-              </div>
-            )}
+            <Link
+              href="/interview"
+              className="shrink-0 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+              style={{ background: 'var(--accent)' }}
+            >
+              <Boxes size={15} />
+              {zh ? '随机抽题' : 'Practice questions'}
+            </Link>
           </div>
-        </main>
-      </div>
 
+          <div className="mt-7 grid grid-cols-2 md:grid-cols-5 gap-2.5">
+            {[
+              [BookOpen, index.stats.tutorials, zh ? '篇双语教程' : 'tutorials'],
+              [FileText, index.stats.blogs, zh ? '篇技术长文' : 'technical blogs'],
+              [Code2, index.stats.codeExamples, zh ? '个代码示例' : 'code examples'],
+              [Boxes, index.stats.embodiedQuestions, zh ? '道具身题目' : 'embodied questions'],
+              [Languages, index.stats.languages, zh ? '种语言' : 'languages'],
+            ].map(([Icon, value, label]) => {
+              const StatIcon = Icon as typeof BookOpen;
+              return (
+                <div key={String(label)} className="rounded-xl border px-3.5 py-3" style={{ borderColor: 'var(--line)', background: 'var(--bg-elev)' }}>
+                  <StatIcon size={14} className="text-accent mb-2" />
+                  <div className="text-lg font-semibold tabular-nums text-text">{String(value)}</div>
+                  <div className="text-[11px] text-text-3">{String(label)}</div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
-      {/* Back to top */}
-      <button
-        onClick={scrollToTop}
-        className="fixed bottom-6 right-6 p-2.5 rounded-full border shadow-sm hover:shadow-md transition-shadow"
-        style={{ background: 'var(--bg-card)', borderColor: 'var(--line)' }}
-        title="回到顶部"
-      >
-        <ArrowUp size={16} className="text-text-2" />
-      </button>
+        <div className="relative mb-5">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-3" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={zh ? '搜索教程、方向或关键词…' : 'Search tutorials, categories or keywords…'}
+            className="field w-full pl-10 pr-4 py-3"
+          />
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-3 mb-5">
+          <button
+            type="button"
+            onClick={() => setCategory('')}
+            className="shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors"
+            style={category === '' ? { color: 'var(--accent)', background: 'var(--accent-wash)', border: '1px solid var(--accent-line)' } : { color: 'var(--text-2)', border: '1px solid var(--line)' }}
+          >
+            {zh ? '全部内容' : 'All'}
+          </button>
+          {index.categories.map((item) => (
+            <button
+              type="button"
+              key={item.id}
+              onClick={() => setCategory(item.id)}
+              className="shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors"
+              style={category === item.id ? { color: 'var(--accent)', background: 'var(--accent-wash)', border: '1px solid var(--accent-line)' } : { color: 'var(--text-2)', border: '1px solid var(--line)' }}
+            >
+              {zh ? item.title : item.titleEn}
+              <span className="ml-1.5 text-text-3">{index.documents.filter((document) => document.category === item.id).length}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-8">
+          {index.categories.map((categoryInfo) => {
+            const categoryDocuments = documents.filter((document) => document.category === categoryInfo.id);
+            if (categoryDocuments.length === 0) return null;
+            return (
+              <section key={categoryInfo.id}>
+                <div className="flex items-end justify-between gap-5 mb-3">
+                  <div>
+                    <h2 className="text-xl font-semibold tracking-[-0.02em] text-text">
+                      {zh ? categoryInfo.title : categoryInfo.titleEn}
+                    </h2>
+                    <p className="mt-1 text-xs leading-relaxed text-text-3">{categoryInfo.description}</p>
+                  </div>
+                  <span className="mono text-[11px] text-text-3">{categoryDocuments.length} {zh ? '项' : 'items'}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {categoryDocuments.map((document) => (
+                    <Link
+                      key={`${document.kind}:${document.slug}`}
+                      href={handbookHref(document)}
+                      className="card card-hover group min-h-[132px] p-4 flex flex-col"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="mono text-[10px] uppercase tracking-[.08em] text-accent">
+                          {kindLabels[document.kind][locale]}
+                        </span>
+                        {document.questionCount ? (
+                          <span className="mono text-[10px] text-text-3">{document.questionCount} Q</span>
+                        ) : null}
+                      </div>
+                      <h3 className="mt-3 text-[15px] font-semibold leading-snug text-text group-hover:text-accent transition-colors">
+                        {documentTitle(document, locale)}
+                      </h3>
+                      <div className="mt-auto pt-4 flex items-center gap-3 text-[11px] text-text-3">
+                        {document.enPath ? <span>中 / EN</span> : null}
+                        {document.code?.length ? <span>{document.code.length} code</span> : null}
+                        <span className="ml-auto text-accent">{zh ? '打开 →' : 'Open →'}</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+
+        {documents.length === 0 ? (
+          <div className="py-20 text-center text-sm text-text-3">{zh ? '没有匹配内容' : 'No matching content'}</div>
+        ) : null}
+
+        <footer className="mt-10 pt-5 flex items-start gap-3 text-xs leading-relaxed text-text-3" style={{ borderTop: '1px solid var(--line)' }}>
+          <ShieldCheck size={16} className="mt-0.5 shrink-0 text-accent" />
+          <p>
+            {zh
+              ? '内容已随 Ember 本地打包，可离线阅读。教程与博客来自 ARIS-in-AI-Offer，具身题库来自 embodied-interview-qa；原作者、固定版本与 MIT 许可均在每篇详情页和 NOTICE 中保留。'
+              : 'Content is bundled locally for offline reading. Original authors, pinned revisions and MIT licenses are preserved on each detail page and in NOTICE.'}
+          </p>
+        </footer>
+      </main>
     </div>
   );
 }

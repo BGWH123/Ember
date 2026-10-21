@@ -87,6 +87,24 @@ const HOT_CAT_NAMES: Record<string, string> = {
   align: '对齐与 RLHF',
 };
 
+const HANDBOOK_TITLES: Record<string, string> = {
+  attention: 'Attention',
+  'linear-sparse-attention': '线性与稀疏注意力',
+  'long-context': '长上下文',
+  'transformer-block': 'Transformer Block',
+  'llm-pretraining': '大模型预训练流水线',
+  'reasoning-models': '推理模型',
+  moe: '混合专家模型 MoE',
+  quantization: '模型量化',
+  'distributed-training': '分布式训练',
+  'lora-peft': 'LoRA 与 PEFT',
+  'llm-inference-serving': '大模型推理与服务栈',
+  'rlhf-dpo-grpo-ppo': 'RLHF、DPO、GRPO 与 PPO',
+  'rag-embedding-retrieval': 'RAG、Embedding 与检索',
+  'agent-foundations': 'Agent 基础',
+  'llm-on-policy-distillation': '大模型在线策略蒸馏',
+};
+
 // ─── Data hooks ──────────────────────────────────────────────────────────
 
 function useCurriculum() {
@@ -204,11 +222,11 @@ function ModuleRow({ mod, problemMap }: { mod: CurriculumModule; problemMap: Map
                 {mod.baguChapters.map((ch) => (
                   <Link
                     key={ch}
-                    href="/bagu"
+                    href={`/bagu/tutorial/${ch}`}
                     className="inline-flex items-center rounded-[7px] px-2.5 py-1 text-[12.5px] text-text-2 transition-colors hover:text-accent"
                     style={{ background: 'var(--bg-sunken)', border: '1px solid var(--line)' }}
                   >
-                    {ch.replace(/_/g, ' ').replace(/大模型 LLMs /, '')}
+                    {HANDBOOK_TITLES[ch] ?? ch}
                   </Link>
                 ))}
               </div>

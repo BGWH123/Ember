@@ -173,7 +173,7 @@
           "blurb": "缩放点积、多头、因果、交叉注意力、注意力掩码。",
           "problems": ["attention", "mha", "causal_attention", "cross_attention", "attention_mask", "softmax_temperature"],
           "hotCategories": ["transformer"],
-          "baguChapters": ["大模型_LLMs_基础面"]
+          "baguChapters": ["attention"]
         },
         {
           "id": "attention-efficient",
@@ -182,7 +182,7 @@
           "blurb": "Flash、滑动窗口、线性、GQA、差分注意力、MLA、环形注意力。",
           "problems": ["flash_attention", "sliding_window", "linear_attention", "gqa", "diff_attention", "mla", "ring_attention"],
           "hotCategories": ["transformer"],
-          "baguChapters": ["大模型_LLMs_进阶面"]
+          "baguChapters": ["linear-sparse-attention"]
         },
         {
           "id": "position-encoding",
@@ -191,7 +191,7 @@
           "blurb": "Embedding、正弦位置编码、RoPE、ALiBi、NTK-aware RoPE。",
           "problems": ["embedding", "sinusoidal_pe", "rope", "alibi", "ntk_rope"],
           "hotCategories": ["transformer"],
-          "baguChapters": ["大模型_LLMs_进阶面"]
+          "baguChapters": ["long-context"]
         },
         {
           "id": "transformer-blocks",
@@ -200,7 +200,7 @@
           "blurb": "GPT-2 Block、编码器/解码器、ViT Patch 与 Block、分词(BPE)。",
           "problems": ["gpt2_block", "transformer_encoder", "transformer_decoder", "vit_patch", "vit_block", "bpe"],
           "hotCategories": ["transformer"],
-          "baguChapters": ["大模型_LLMs_基础面"]
+          "baguChapters": ["transformer-block"]
         }
       ]
     },
@@ -219,7 +219,7 @@
           "blurb": "自回归语言建模、架构选型、Scaling Law/Chinchilla、涌现能力、幻觉。",
           "problems": ["multi_token_prediction"],
           "hotCategories": ["llm"],
-          "baguChapters": ["大模型_LLMs_基础面", "大模型_LLMs_进阶面"]
+          "baguChapters": ["llm-pretraining", "reasoning-models"]
         },
         {
           "id": "moe",
@@ -228,7 +228,7 @@
           "blurb": "MoE 路由、负载均衡、带噪声 Top-k 门控——解耦参数量与计算量。",
           "problems": ["moe", "moe_load_balance", "noisy_topk_gating"],
           "hotCategories": ["llm"],
-          "baguChapters": ["大模型_LLMs_进阶面"]
+          "baguChapters": ["moe"]
         },
         {
           "id": "ssm",
@@ -274,7 +274,7 @@
           "blurb": "混合精度、梯度累积、激活检查点——单卡也能训大模型。",
           "problems": ["mixed_precision", "gradient_accumulation", "activation_checkpointing", "gradient_clipping"],
           "hotCategories": ["train"],
-          "baguChapters": ["大模型_LLMs_显存问题面"]
+          "baguChapters": ["quantization"]
         },
         {
           "id": "distributed",
@@ -283,7 +283,7 @@
           "blurb": "数据/张量/流水线并行、FSDP/ZeRO——扩展到多卡多机。",
           "problems": ["tensor_parallel", "fsdp_step"],
           "hotCategories": ["train"],
-          "baguChapters": ["大模型_LLMs_分布式训练面"]
+          "baguChapters": ["distributed-training"]
         },
         {
           "id": "finetuning",
@@ -292,7 +292,7 @@
           "blurb": "LoRA、QLoRA、INT8 量化——低成本适配预训练模型。",
           "problems": ["lora", "qlora", "int8_quantization"],
           "hotCategories": ["train"],
-          "baguChapters": ["大模型_LLMs_微调面", "大模型_LLMs_增量预训练篇"]
+          "baguChapters": ["lora-peft", "llm-pretraining"]
         },
         {
           "id": "inference-opt",
@@ -301,7 +301,7 @@
           "blurb": "KV Cache、PagedAttention、投机解码、采样策略、Beam Search。",
           "problems": ["kv_cache", "paged_attention", "speculative_decoding", "topk_sampling", "beam_search"],
           "hotCategories": ["infer"],
-          "baguChapters": ["大模型_LLMs_推理面"]
+          "baguChapters": ["llm-inference-serving"]
         },
         {
           "id": "cuda-systems",
@@ -329,7 +329,7 @@
           "blurb": "奖励模型、PPO、DPO、GRPO、GAE、MCTS——从偏好到策略优化。",
           "problems": ["reward_model", "ppo_loss", "dpo_loss", "grpo_loss", "gae", "mcts_search"],
           "hotCategories": ["align"],
-          "baguChapters": ["大模型_LLMs_强化学习___PPO_面"]
+          "baguChapters": ["rlhf-dpo-grpo-ppo"]
         },
         {
           "id": "rag",
@@ -338,7 +338,7 @@
           "blurb": "切块、嵌入、向量检索(HNSW/IVF)、重排、混合检索——给模型外部知识。",
           "problems": ["cosine_similarity"],
           "hotCategories": ["rag-agent"],
-          "baguChapters": ["大模型_LLMs_langchain面"]
+          "baguChapters": ["rag-embedding-retrieval"]
         },
         {
           "id": "agent",
@@ -347,7 +347,7 @@
           "blurb": "ReAct、function calling、规划与记忆、多智能体协作。",
           "problems": [],
           "hotCategories": ["rag-agent"],
-          "baguChapters": ["大模型_LLMs_agent_面"]
+          "baguChapters": ["agent-foundations"]
         },
         {
           "id": "distill",
@@ -356,7 +356,7 @@
           "blurb": "软标签蒸馏、自蒸馏、模型压缩——大模型能力向小模型迁移。",
           "problems": ["kl_divergence"],
           "hotCategories": ["train"],
-          "baguChapters": ["大模型_LLMs_蒸馏篇"]
+          "baguChapters": ["llm-on-policy-distillation"]
         }
       ]
     }

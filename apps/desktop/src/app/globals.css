@@ -411,3 +411,89 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
   }
   .ember-activity__matrix > span { opacity: .6; }
 }
+
+/* Offline theory handbook */
+.handbook-markdown {
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.85;
+  overflow-wrap: anywhere;
+}
+.handbook-markdown > :first-child { margin-top: 0; }
+.handbook-markdown h1,
+.handbook-markdown h2,
+.handbook-markdown h3,
+.handbook-markdown h4 {
+  color: var(--text);
+  font-weight: 650;
+  line-height: 1.35;
+  scroll-margin-top: 22px;
+}
+.handbook-markdown h1 { margin: 0 0 24px; font-size: 30px; letter-spacing: -.025em; }
+.handbook-markdown h2 { margin: 42px 0 16px; padding-top: 6px; font-size: 23px; letter-spacing: -.02em; border-top: 1px solid var(--line); }
+.handbook-markdown h3 { margin: 28px 0 12px; font-size: 18px; }
+.handbook-markdown h4 { margin: 22px 0 10px; font-size: 15px; }
+.handbook-markdown p { margin: 11px 0; }
+.handbook-markdown ul,
+.handbook-markdown ol { margin: 12px 0; padding-left: 24px; }
+.handbook-markdown li { margin: 6px 0; padding-left: 3px; }
+.handbook-markdown strong { color: var(--text); font-weight: 650; }
+.handbook-markdown a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 3px; }
+.handbook-markdown blockquote {
+  margin: 18px 0;
+  padding: 12px 16px;
+  color: var(--text-2);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  background: var(--accent-wash);
+}
+.handbook-markdown blockquote > :first-child { margin-top: 0; }
+.handbook-markdown blockquote > :last-child { margin-bottom: 0; }
+.handbook-markdown :not(pre) > code {
+  padding: 2px 5px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: .88em;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--bg-sunken);
+}
+.handbook-markdown table { display: block; width: 100%; margin: 18px 0; overflow-x: auto; border-collapse: collapse; }
+.handbook-markdown th,
+.handbook-markdown td { min-width: 110px; padding: 9px 11px; text-align: left; border: 1px solid var(--line); }
+.handbook-markdown th { color: var(--text); background: var(--bg-sunken); }
+.handbook-markdown hr { margin: 32px 0; border: 0; border-top: 1px solid var(--line); }
+.handbook-markdown details {
+  margin: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--bg-elev);
+  overflow: hidden;
+}
+.handbook-markdown details[open] { padding-bottom: 12px; }
+.handbook-markdown summary {
+  padding: 12px 14px;
+  color: var(--text);
+  font-weight: 550;
+  cursor: pointer;
+  background: var(--bg-sunken);
+}
+.handbook-markdown details > :not(summary) { margin-left: 14px; margin-right: 14px; }
+.handbook-markdown .lv,
+.handbook-markdown .freq {
+  display: inline-flex;
+  margin-right: 6px;
+  padding: 1px 6px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-wash);
+}
+.handbook-code { margin: 18px 0; overflow: hidden; border: 1px solid var(--line); border-radius: 11px; background: var(--bg-code); }
+.handbook-code__bar { display: flex; align-items: center; justify-content: space-between; height: 34px; padding: 0 11px; color: var(--text-3); font-family: var(--font-mono); font-size: 10px; border-bottom: 1px solid var(--line); background: var(--bg-sunken); }
+.handbook-code__bar button { display: flex; align-items: center; gap: 5px; color: var(--text-3); }
+.handbook-code__bar button:hover { color: var(--accent); }
+.handbook-code pre { margin: 0; padding: 16px; overflow-x: auto; color: var(--text); font-family: var(--font-mono); font-size: 12px; line-height: 1.65; tab-size: 2; }
+.handbook-markdown .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }

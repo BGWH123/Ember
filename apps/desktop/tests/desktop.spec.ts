@@ -53,6 +53,17 @@ test('offline pages, real Rust/PyTorch submission, draft and navigation',async({
     await expect(page.locator('.desktop-shell')).toHaveAttribute('data-persistent','true');
     await expect(page.getByRole('banner')).toHaveCount(1);
   }
+  await page.goto('/#/bagu');
+  await expect(page.getByRole('heading',{name:'Ember AI Theory Handbook',exact:true})).toBeVisible();
+  await expect(page.getByText('35',{exact:true}).first()).toBeVisible();
+  await page.getByRole('link',{name:/Attention/}).first().click();
+  await expect(page.getByRole('heading',{name:'Attention',exact:true})).toBeVisible();
+  await expect(page.locator('.handbook-markdown')).toContainText('Attention');
+  await page.goto('/#/bagu/question-bank/embodied-basics');
+  await expect(page.getByRole('heading',{name:'Embodied Basics',exact:true})).toBeVisible();
+  await expect(page.locator('.handbook-markdown details').first()).toBeVisible();
+  await page.goto('/#/bagu/blog/cosmos3-mot');
+  await expect(page.locator('iframe[title*=\"Cosmos 3\"]')).toBeVisible();
   await page.goto('/#/problems/relu');
   const editor=page.locator('.monaco-editor textarea').first();await expect(editor).toBeVisible();
   await editor.focus();await page.keyboard.press('Control+a');await page.keyboard.insertText('def relu(x):\n    return x.clamp(min=0)\n');

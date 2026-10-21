@@ -22,11 +22,18 @@
     "@tauri-apps/api": "^2.0.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "katex": "0.19.0",
     "lucide-react": "^1.59.0",
+    "mathjax": "3.2.2",
     "monaco-editor": "^0.52.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.0.0",
+    "rehype-katex": "^7.0.1",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "tailwind-merge": "^2.3.0",
     "zustand": "^4.5.2"
   },
@@ -42,5 +49,8 @@
     "tailwindcss": "^3.4.3",
     "typescript": "^5.4.5",
     "vite": "^6.0.0"
+  },
+  "overrides": {
+    "katex": "0.19.0"
   }
 }

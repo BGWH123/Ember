@@ -1,7 +1,7 @@
 import { WaitingState } from '@/components/ui/WaitingState';
 import { appFetch } from '@/transport/client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dices,
   Code2,
@@ -15,20 +15,10 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useRouter } from '@/routing/navigation';
+import { HandbookMarkdown } from '@/components/handbook/HandbookMarkdown';
+import { loadHandbookIndex, loadHandbookQuestions, type HandbookDocument, type HandbookQuestion } from '@/lib/handbook';
 
 // ─── Types ───────────────────────────────────────────────────────────────
-
-interface Section {
-  title: string;
-  content: string;
-  subsections: { title: string; content: string; subsubsections?: { title: string; content: string }[] }[];
-}
-
-interface Chapter {
-  id: string;
-  title: string;
-  sections: Section[];
-}
 
 interface ProblemItem {
   id: string;
@@ -40,21 +30,22 @@ interface ProblemItem {
 
 // ─── Data Hooks ──────────────────────────────────────────────────────────
 
-function useBaguData() {
-  const [chapters, setChapters] = useState<Chapter[]>([]);
+function useHandbookData() {
+  const [questions, setQuestions] = useState<HandbookQuestion[]>([]);
+  const [documents, setDocuments] = useState<HandbookDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    appFetch('/bagu-data.json')
-      .then((r) => r.json())
-      .then((d) => {
-        setChapters(Array.isArray(d) ? d : (d?.chapters ?? []));
+    Promise.all([loadHandbookQuestions(), loadHandbookIndex()])
+      .then(([questionData, handbookIndex]) => {
+        setQuestions(questionData.questions);
+        setDocuments(handbookIndex.documents);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  return { chapters, loading };
+  return { questions, documents, loading };
 }
 
 function useProblems() {
@@ -110,33 +101,23 @@ function difficultyColor(d: string) {
 
 // ─── Bagu Quiz Module ────────────────────────────────────────────────────
 
-function BaguQuizModule({ chapters }: { chapters: Chapter[] }) {
-  const allSections = useMemo(() => {
-    const list: { chapterTitle: string; section: Section }[] = [];
-    for (const ch of chapters) {
-      for (const sec of ch.sections) {
-        list.push({ chapterTitle: ch.title, section: sec });
-      }
-    }
-    return list;
-  }, [chapters]);
-
-  const [current, setCurrent] = useState<{ chapterTitle: string; section: Section } | null>(null);
+function BaguQuizModule({ questions, documents }: { questions: HandbookQuestion[]; documents: HandbookDocument[] }) {
+  const [current, setCurrent] = useState<HandbookQuestion | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [started, setStarted] = useState(false);
   const [history, setHistory] = useState<number[]>([]);
 
   const draw = useCallback(() => {
-    if (allSections.length === 0) return;
+    if (questions.length === 0) return;
     let idx: number;
     do {
-      idx = Math.floor(Math.random() * allSections.length);
-    } while (history.includes(idx) && history.length < allSections.length);
-    setCurrent(allSections[idx]);
+      idx = Math.floor(Math.random() * questions.length);
+    } while (history.includes(idx) && history.length < questions.length);
+    setCurrent(questions[idx]);
     setRevealed(false);
     setStarted(true);
     setHistory((prev) => [...prev.slice(-19), idx]);
-  }, [allSections, history]);
+  }, [history, questions]);
 
   const reset = () => {
     setCurrent(null);
@@ -159,7 +140,7 @@ function BaguQuizModule({ chapters }: { chapters: Chapter[] }) {
           <div>
             <h2 className="text-base font-semibold text-text">八股面试</h2>
             <p className="text-xs text-text-3">
-              {allSections.length > 0 ? `共 ${allSections.length} 道高频面试题` : '加载中...'}
+              {questions.length > 0 ? `共 ${questions.length} 道高频面试题` : '加载中...'}
             </p>
           </div>
         </div>
@@ -214,7 +195,7 @@ function BaguQuizModule({ chapters }: { chapters: Chapter[] }) {
                     className="text-[11px] text-text-3 px-2 py-0.5 rounded-md"
                     style={{ background: 'var(--bg-sunken)' }}
                   >
-                    {current.chapterTitle}
+                    {current.documentTitle}
                   </span>
                   <span className="text-[11px] text-text-3">
                     第 {history.length} 题
@@ -222,7 +203,7 @@ function BaguQuizModule({ chapters }: { chapters: Chapter[] }) {
                 </div>
 
                 <h3 className="text-[15px] font-semibold text-text mb-4 leading-relaxed">
-                  <RichText text={current.section.title} />
+                  <RichText text={current.title} />
                 </h3>
 
                 {/* Answer Area */}
@@ -256,25 +237,7 @@ function BaguQuizModule({ chapters }: { chapters: Chapter[] }) {
                       revealed ? 'opacity-100' : 'opacity-10 blur-[1px] select-none'
                     )}
                   >
-                    <RichText text={current.section.content} />
-                    {current.section.subsections.map((sub, i) => (
-                      <div key={i} className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--line)' }}>
-                        {sub.title && (
-                          <div className="font-medium text-text text-xs mb-1">
-                            <RichText text={sub.title} />
-                          </div>
-                        )}
-                        <div className="text-xs">
-                          <RichText text={sub.content} />
-                        </div>
-                        {sub.subsubsections?.map((ss, j) => (
-                          <div key={j} className="mt-2 ml-2 pl-3 border-l-2" style={{ borderColor: 'var(--accent)' }}>
-                            {ss.title && <div className="font-medium text-text text-[11px]"><RichText text={ss.title} /></div>}
-                            <div className="text-[11px] text-text-2"><RichText text={ss.content} /></div>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
+                    <HandbookMarkdown markdown={current.answer} documents={documents} />
                   </div>
                 </div>
               </>
@@ -480,7 +443,7 @@ function CodeQuizModule({ problems }: { problems: ProblemItem[] }) {
 // ─── Main Page ───────────────────────────────────────────────────────────
 
 export default function InterviewPage() {
-  const { chapters, loading } = useBaguData();
+  const { questions, documents, loading } = useHandbookData();
   const problems = useProblems();
 
   if (loading) {
@@ -509,7 +472,7 @@ export default function InterviewPage() {
             className="rounded-2xl border p-6 flex flex-col"
             style={{ borderColor: 'var(--line)', background: 'var(--bg-elev)', minHeight: 560 }}
           >
-            <BaguQuizModule chapters={chapters} />
+            <BaguQuizModule questions={questions} documents={documents} />
           </div>
 
           {/* Code Module */}
