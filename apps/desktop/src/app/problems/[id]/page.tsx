@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams, useRouter } from '@/routing/navigation';
 import Link from '@/routing/Link';
 import * as Tabs from '@radix-ui/react-tabs';
-import { Menu, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Menu, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { SplitPane, VerticalSplitPane } from '@/components/ui/SplitPane';
 import { ProblemDrawer } from '@/components/layout/ProblemDrawer';
 import { FeedbackModal } from '@/components/workspace/FeedbackModal';
@@ -46,9 +46,11 @@ export default function WorkspacePage() {
 
 
   const draftSnapshot = useRef<{id:string;code:string}|null>(null);
-  if (draftReady) draftSnapshot.current = {id,code:currentCode};
+  const readyId = useRef<string | null>(null);
+  if (draftReady && readyId.current === id) draftSnapshot.current = {id,code:currentCode};
   useEffect(() => {
     let alive = true;
+    readyId.current = null;
     setDraftReady(false);
     setProblem(null);
     appFetch(`/api/problems/${id}`).then(async response => {
@@ -56,6 +58,7 @@ export default function WorkspacePage() {
       if (!response.ok) throw new Error(data.error || 'Problem unavailable');
       const draft = await invoke<string | null>('load_draft', { id });
       if (!alive) return;
+      readyId.current = id;
       setCurrentCode(draft ?? data.starterCode ?? '');
       setProblem(data);
       setDraftReady(true);
@@ -79,10 +82,18 @@ export default function WorkspacePage() {
     return ()=>{alive=false;};
   },[pathId]);
   useEffect(() => {
-    if (!draftReady) return;
+    if (!draftReady || readyId.current !== id) return;
     const timer = setTimeout(() => { void invoke('save_draft', { id, code: currentCode }).catch(console.error); }, 500);
     return () => clearTimeout(timer);
   }, [id, currentCode, draftReady]);
+
+  const handleRestore = () => {
+    const starter = problem?.starterCode;
+    if (!starter || starter === currentCode || readyId.current !== id) return;
+    setCurrentCode(starter);
+    draftSnapshot.current = {id, code: starter};
+    void invoke('save_draft', { id, code: starter }).catch(console.error);
+  };
 
   const handleRun = async () => {
     if (!problem || isRunning || isSubmitting) return;
@@ -201,7 +212,17 @@ export default function WorkspacePage() {
                 <path d="M10 1.5v3h3" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
               </svg>
               <span className="mono text-[12.5px] text-text-2">{id}.py</span>
-              <span className="ml-auto mono text-[11.5px] text-text-3 px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-sunken)', border: '1px solid var(--line)' }}>Python</span>
+              <button
+                type="button"
+                onClick={handleRestore}
+                disabled={!problem.starterCode || currentCode === problem.starterCode}
+                className="ml-auto inline-flex items-center gap-1.5 h-6 px-2 rounded text-[11.5px] text-text-2 cursor-pointer hover:text-text disabled:opacity-40 disabled:pointer-events-none"
+                style={{ background: 'var(--bg-sunken)', border: '1px solid var(--line)' }}
+              >
+                <RotateCcw className="w-3 h-3" />
+                {t('restoreTemplate')}
+              </button>
+              <span className="mono text-[11.5px] text-text-3 px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-sunken)', border: '1px solid var(--line)' }}>Python</span>
             </div>
             <div className="flex-1 overflow-hidden">
               <CodeEditor value={currentCode} onChange={setCurrentCode} />

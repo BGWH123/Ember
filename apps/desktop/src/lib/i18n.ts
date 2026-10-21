@@ -37,6 +37,7 @@ const en = {
   judging: 'Judging...',
   run: 'Run',
   running: 'Running...',
+  restoreTemplate: 'Restore template',
   allPassed: 'All Passed',
   passedCount: '{passed}/{total} Passed',
   // test panel
@@ -150,6 +151,7 @@ const zh: Translations = {
   judging: '评测中...',
   run: '运行',
   running: '运行中...',
+  restoreTemplate: '恢复模板',
   allPassed: '全部通过',
   passedCount: '{passed}/{total} 通过',
   loadingSolution: '加载题解中...',
