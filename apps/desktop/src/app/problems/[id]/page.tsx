@@ -15,6 +15,7 @@ import { AIHelpTab } from '@/components/workspace/AIHelpTab';
 import { CodeEditor } from '@/components/workspace/CodeEditor';
 import { TestPanel } from '@/components/workspace/TestPanel';
 import { ActionBar } from '@/components/workspace/ActionBar';
+import { ProblemTabs } from '@/components/workspace/ProblemTabs';
 import { WaitingState } from '@/components/ui/WaitingState';
 import { useProblemStore } from '@/store/problemStore';
 import { useLocale } from '@/context/LocaleContext';
@@ -244,6 +245,11 @@ export default function WorkspacePage() {
 
   return (
     <div className="workspace-document bg-bg">
+      <ProblemTabs
+        currentId={id}
+        problems={allProblems}
+        onAdd={() => setDrawerOpen(true)}
+      />
       <div className="workspace-toolbar">
         {/* Breadcrumbs */}
         <div className="text-xs text-text-3 flex items-center gap-1.5 min-w-0">
