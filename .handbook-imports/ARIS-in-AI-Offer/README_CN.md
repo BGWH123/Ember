@@ -1,0 +1,388 @@
+<p align="center">
+  <img src="assets/aris_logo.svg" alt="ARIS — Auto Research in Sleep" width="640">
+</p>
+
+# ARIS-in-AI-Offer (ARIS in 秋招)
+
+> 希望大家秋招的时候轻松一点 🌱
+>
+> 📖 **English version (default)**: [README.md](README.md)
+
+> 📱 **一个链接看全部：**[**easyaioffer.github.io**](https://easyaioffer.github.io)（短地址，站点本体是 [wanshuiyin.github.io/ARIS-in-AI-Offer](https://wanshuiyin.github.io/ARIS-in-AI-Offer/)）—— 全部教程一页收齐，可搜索、中/EN 切换、深色模式、本机记「已读」。存到手机里刷。
+
+**📚 按方向直达** —— 35 篇 first-party cheat sheet，8 大方向，外加 1 份社区贡献题库：
+
+[🧠 General / 基础](#-general--基础) · [🎯 Post-Training & Reasoning](#-post-training--reasoning) · [🏛️ LLM Architecture & Systems](#-llm-architecture--systems) · [🌊 Generative Models — 理论 & Tokenizers](#-generative-models--理论--tokenizers) · [🎨 Generation Systems（图像 / 视频 / 3D / Diffusion 后训练）](#-generation-systems--图像--视频--3d--diffusion-后训练) · [👁️ Multimodal](#-multimodal) · [🤖 Agents](#-agents) · [🦾 Embodied AI & World Models / 具身与世界模型](#-embodied-ai--world-models--具身与世界模型)
+
+或浏览完整 [📚 教程清单 ↓](#-教程清单) · 跳到 [🌐 ARIS-Homepage ↓](#-aris-homepage--fact-checked-学术主页生成器)。
+
+[![Stars](https://img.shields.io/github/stars/wanshuiyin/Auto-claude-code-research-in-sleep?style=flat&logo=github&logoColor=white&color=gold&label=ARIS%20Stars)](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep/stargazers) · [![arXiv](https://img.shields.io/badge/arXiv-2605.03042-b31b1b?style=flat&logo=arxiv)](https://huggingface.co/papers/2605.03042) · [![HF Daily #1](https://img.shields.io/badge/HF%20Daily%20Papers-%231-yellow?style=flat)](https://huggingface.co/papers/2605.03042) · [![PaperWeekly](https://img.shields.io/badge/Featured%20on-PaperWeekly-red?style=flat)](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep) · [![awesome-agent-skills](https://img.shields.io/badge/Featured%20in-awesome--agent--skills-blue?style=flat&logo=github)](https://github.com/VoltAgent/awesome-agent-skills) · [![Project of the Day](https://img.shields.io/badge/AI%20Digital%20Crew-Project%20of%20the%20Day-orange?style=flat)](https://aidigitalcrew.com)
+
+> 🏆 **建立在已经验证的方法论上** —— [**ARIS 主仓**](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep) 拿了 ~10k GitHub stars，HuggingFace Daily Papers #1，AI Digital Crew Project of the Day，74+ 个 research skill 跑在 7+ 平台上。这里不是 vaporware preview —— **每一篇 cheat sheet 都是同一个 `/interview-cheatsheet` + `/render-html` workflow 的产出**，跟科研生产里用的是同一套。
+
+**双语**（中文 + English）ML / LLM / 多模态 / diffusion / agent / 生成式面试 cheat sheet 合集，由 **[ARIS — Auto Research in Sleep](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep)** 的 `/render-html` workflow 自动生成。
+
+每篇都是一份长文 + 公式 + 从零开始的 PyTorch 代码 + 25 高频面试题（L1 必会 · L2 进阶 · L3 顶级 lab）。
+
+<p align="center">
+  <img src="assets/preview_strip.jpg" alt="ARIS-in-AI-Offer 预览 — 基础知识 + 面试题 + 实际代码，截自一篇代表性 cheat sheet" width="100%">
+</p>
+
+> 📖 **预览**（上图）：每个 pillar 一张截图，全部来自 [Diffusion Foundations 教程](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/diffusion_foundations_tutorial.html) —— ① **基础知识点**（公式推导 + 直觉 + TL;DR），② **面试题**（25 高频题分层 L1/L2/L3），③ **实际代码**（可跑的 PyTorch，含 CFG 训练 + DDIM 采样）。这个三柱结构在本仓库每篇 cheat sheet 里都一样。
+
+<details>
+<summary>🌐 <b>ARIS-Homepage 预览</b> —— CV → fact-checked 学术主页 <i>（点开看）</i></summary>
+
+<p align="center">
+  <img src="assets/homepage_preview_strip.jpg" alt="ARIS-Homepage 预览 —— Header & Bio、ARIS Featured section (hero SVG 右浮动)、Publications (topic group + 缩略图)" width="100%">
+</p>
+
+同一套 `/render-html` workflow，把 CV 变成 fact-checked 学术主页。Live demo：[wanshuiyin.github.io](https://wanshuiyin.github.io/)。详情 + 流程图见 [ARIS-Homepage section ↓](#-aris-homepage--fact-checked-学术主页生成器)。
+
+</details>
+
+<details>
+<summary>📝 <b>长文 blog 预览</b> —— <i>Continuous DLM 综述</i>（2026 上半年）<i>（点开看）</i></summary>
+
+<p align="center">
+  <a href="https://wanshuiyin.github.io/ARIS-in-AI-Offer/blogs/continuous_dlm_representation_perspective.html">
+    <img src="assets/blog_continuous_dlm_preview_strip.jpg" alt="Continuous DLM 综述 blog 预览 —— 引言 + 训练 pipeline + 推理结果，3 panel 取自长文综述" width="100%" />
+  </a>
+</p>
+
+独立手写的长文技术综述。*Continuous DLM 综述*（2026 上半年 6 篇）—— 作者 **杨若峰 (Ruofeng Yang)**（上海交大），通过跨模型讨论端到端撰写（Claude Opus 4.7 + Codex GPT-5.5 xhigh + Gemini auto-gemini-3）。[**📖 阅读完整 blog ↗**](https://wanshuiyin.github.io/ARIS-in-AI-Offer/blogs/continuous_dlm_representation_perspective.html)。
+
+</details>
+
+### 📱 HTML 格式哪里都能读，清清楚楚
+
+地铁上掏手机、咖啡馆开 iPad、图书馆开笔记本——同一个 HTML 链接打开都能读：
+
+- 🧮 **MathJax** 渲染所有 LaTeX 公式（**不是截图**，可缩放、可复制、可选中）
+- 💻 **highlight.js** 给 PyTorch 代码高亮上色
+- 📐 **响应式排版** 自动适配窗口宽度，不糊不溢出
+- 📑 **Sticky TOC** 长文里随时跳转章节
+- 💾 **单文件 HTML**，下载就能离线读，不依赖任何后端
+
+---
+
+## 📢 最新动态
+
+- **2026-09-11** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 🌍 **第 35 篇 World Models + 3D 生成、量化两篇的 2025–26 刷新** —— 来自群里的反馈（「3D 和 WM 有点少/老」「quant 主流用 PTQ 和 QAT」）。**World Models** 是新篇，刻意做了筛选——只收有影响力、有代表性、大组出品、优先开源权重的工作，入选标准写在文里，著名但未入选的逐条给理由：latent dynamics（RSSM → Dreamer v1–4、MuZero、TD-MPC2）· JEPA（I-/V-JEPA、V-JEPA 2/2.1、DINO-WM）· 生成式与交互式（Genie → Genie 3、GameNGen、Cosmos 1→3、Matrix-Game 3.0、Atlas）· 具身三条路 · 评测与定义之争。**3D** 补上 feed-forward 重建（DUSt3R → VGGT → MapAnything / DA3，含置信度损失推导）、feed-forward 3DGS、原生 mesh 生成（MeshGPT → Meshtron，token 预算）、按 latent 表示轴重写的 TRELLIS.2 / Hunyuan3D 2.x、部件级与 sim-ready 资产；五道重复的 L3 题换掉。**量化** §10 围绕 QAT 重写：PACT/LSQ 推导、ParetoQ、Gemma 3/4 官方 QAT 权重、Apple 端侧 2 bpw、DeepSeek FP8 / NVFP4 / MXFP8 训练配方——以及 2026 年的 PTQ-vs-QAT 取舍，成本给出处不给断言。全部双语；新增可运行 [`code/world_models_toy.py`](docs/tutorials/code/world_models_toy.py)（RSSM balanced-KL 不动点、JEPA 捷径、gridworld LAM，断言对解析解）。文献调研 fan-out 给 Opus 5、每个 arXiv ID 逐一 fetch 核实；稿子由 gpt-6-astra xhigh 各审 2–3 轮。[`world_models_tutorial.html`](docs/tutorials/world_models_tutorial.html)。
+- **2026-09-10** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 🎯 **第 34 篇：现代 Diffusion 后训练 —— Flow-GRPO · DGPO · DiffusionNFT** —— 2025 年 flow-matching 文生图的三种在线 RL 方法，按唯一的分岔点组织：reward 怎么进梯度——保边缘 SDE 上的逐步策略梯度、组级 DPO 的 $\log Z$ 抵消、前向过程上的反射双支回归。Flow-GRPO 从 Diffusion Post-Training 那篇迁出，顺手修正了 reverse SDE 的符号和闭式 KL。**双语**，附可运行脚本（[`code/diffusion_online_rl.py`](docs/tutorials/code/diffusion_online_rl.py)——保边缘、NFT 更新方向、DGPO 权重平衡三个解析核验）和 25 高频题。起草前先过设计审（64 条护栏），再三轮复审，全程 gpt-6-astra xhigh。[`modern_diffusion_post_training_tutorial.html`](docs/tutorials/modern_diffusion_post_training_tutorial.html)。
+<details>
+<summary>📋 更早的更新（22 条）</summary>
+
+- **2026-07-31** — ![QUALITY](https://img.shields.io/badge/QUALITY-2ea44f?style=flat-square) ✂️ **#30-33 四篇"面试可扫读性"专项重构 + 全库表格滚动修复** —— 响应读者反馈"内容全但快速扫读抓不到重点":Transformer Block 把具体 block 组装+数据流+可运行代码从垫底 §7 提前为 §1(先给答案后讲道理);四篇统一去冗余——主句先出结论、限定后置、同一 caveat 只留唯一归宿(inference 可见正文 -33.5%,transformer_block -17.2%,eval -17.4%),事实结论零改动;量化筛查确认老 29 篇健康无需动。渲染器修复宽表格溢出,67 个 HTML 全量重渲染;EN 四篇重翻+保真审。Gate PASS。([#37](https://github.com/wanshuiyin/ARIS-in-AI-Offer/pull/37) · [28e4fb9](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/28e4fb9))
+- **2026-07-22** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 🧱 **第 30-33 篇上线：Transformer Block · LLM Evaluation & Benchmarking · LLM Pretraining Pipeline · LLM Inference & Serving Stack** —— 一次补全四个地基/系统主题:残差拓扑与 MQA/GQA/MLA 设计轴、pass@k 无偏估计与 LLM-as-judge、Kaplan vs Chinchilla 与 corpus factory 数据流水线、请求状态机与 PagedAttention/KV 生命周期,各配 25-30 高频题。四篇首次把跨模型设计审前置到起草之前(每篇 90-105 条护栏),起草后再过 3-5 批 GPT-5.6-sol 独立审;3 处真 bug 被多批审核各自独立发现(Bradley-Terry separation 判定、best-of-n KV 公式等)。均**双语**+可跑脚本+gate PASS。([#36](https://github.com/wanshuiyin/ARIS-in-AI-Offer/pull/36) · [74644cf](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/74644cf))
+- **2026-07-13** — ![QUALITY](https://img.shields.io/badge/QUALITY-2ea44f?style=flat-square) 🔍 **扩散生成簇重扫收尾 —— 8 篇教程、66 处修复，全集 28 篇正式全部纳入 GPT-5.6-sol** —— 补齐上一轮（07-12）暂缓的扩散/生成媒体簇。同一套两阶段流水线（GPT-5.6-sol 找错 → 独立 Claude 对抗验证）：67 条候选 → 66 处落地，2 条 REFUTED 保留原文；含 iCT / FSQ / LFQ / DDPO 等 5 处真实代码 bug，以及"conditional path 直线"≠"marginal ODE 轨迹直线"这类高频概念混淆。Gate PASS。（[#32](https://github.com/wanshuiyin/ARIS-in-AI-Offer/pull/32) · [bfae8f1](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/bfae8f1)）
+- **2026-07-12** — ![QUALITY](https://img.shields.io/badge/QUALITY-2ea44f?style=flat-square) 🔍 **全集重扫 —— 20 篇教程、236 处修复，跨模型审升级到 GPT-5.6-sol** —— 审稿模型从 GPT-5.5 升级后对训练基础 / attention / RLHF / 推理系统 / PEFT / agent / RAG·VLM 共 20 篇重审。同一套两阶段流水线：240 条候选 → 236 处落地，4 条 REFUTED 保留原文；含 5 处真实代码 bug、StarPO 缩写用论文原文定案。Gate PASS。（[#31](https://github.com/wanshuiyin/ARIS-in-AI-Offer/pull/31) · [59636aa](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/59636aa)）
+- **2026-07-11** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 🔤 **第 29 篇 Tokenization / 分词器 cheat sheet 上线** —— 补分词这个全集默认已知的地基：BPE / WordPiece / Unigram（训练 ≠ 编码陷阱）· byte-level vs byte fallback · 词表五量易混淆项 · tokenizer-free 前沿。**双语**，含可跑脚本（[`code/tokenization.py`](docs/tutorials/code/tokenization.py) —— 精确复现 GPT-2 `bytes_to_unicode`、Unigram 双 DP 手算核对，纯标准库真机验证）和 25 高频题。首次把跨模型审前置到设计阶段（81 条护栏起草前置 + 5 批审 + ultra 终审，双向纠错）。[`tokenization_tutorial.html`](docs/tutorials/tokenization_tutorial.html)。
+- **2026-06-29** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) ⚙️ **第 28 篇 优化器 & LR Schedule cheat sheet 上线** —— 补优化器 / 调度训练机理这个洞：**SGD·Momentum·Nesterov** · **AdaGrad→RMSProp→Adam**（自适应谱系）· **Adam 偏差修正**（不修正首步是 ~3.16× **偏大**不是偏小——方向陷阱）· **AdamW 解耦权重衰减**（Adam 的 L2 ≠ weight decay）· **前沿**（Muon / Lion / Shampoo / SOAP / Adafactor / LAMB / Sophia）· **LR 调度**（warmup / cosine / Noam / WSD / one-cycle）· 权重衰减 + LR-batch 缩放 + no-decay 组 · 梯度裁剪 + LLM 超参（β₂=0.95）。**双语**（中文 + EN），含可跑脚本（[`code/optimizer_lr_schedule.py`](docs/tutorials/code/optimizer_lr_schedule.py) —— SGD/Adam/AdamW from-scratch vs `torch.optim`、可执行的 **AdamW≠Adam+L2** 证明、bias-correction 方向、cosine-warmup，真机验证）和 25 高频题。[`optimizer_lr_schedule_tutorial.html`](docs/tutorials/optimizer_lr_schedule_tutorial.html)。
+- **2026-06-19** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 🧱 **第 27 篇 归一化 / 残差 / 初始化 cheat sheet 上线** —— 补 foundational 训练机理这个洞：**BatchNorm / LayerNorm / RMSNorm / GroupNorm** · **Pre-vs-Post-LN**（Xiong 梯度论证——Post-LN 为何需 warmup）· **DeepNorm / Sandwich / QK-Norm** · **残差连接 + 缩放**（LayerScale / ReZero / GPT-2 的 1/√(2N)）· **Xavier vs Kaiming**（ReLU 的因子 2，且守恒的量是二阶矩 E[y²] 而非 Var）· **μP**（宽度不变超参迁移）· **Fixup / NFNets / DyT**（归一化-free）· 以及 **covariate-shift 辨析**（Santurkar）。**双语**（中文 + EN），含可跑脚本（[`code/normalization.py`](docs/tutorials/code/normalization.py) —— from-scratch LN/RMSNorm vs `torch` + Pre/Post-LN 梯度 + Kaiming 二阶矩 + GPT-2 残差缩放，真机验证）和 25 高频题。跨模型审抓到 Pre/Post-LN 梯度 demo 的一个真方法学混淆（输出归一化假象），改用对 loss 稳健的顶/底梯度比。[`normalization_init_tutorial.html`](docs/tutorials/normalization_init_tutorial.html)。
+- **2026-06-18** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) ⚡ **第 26 篇 线性 / 稀疏注意力 cheat sheet 上线** —— 补上次二次 / 高效注意力这个全集到处引用却没系统讲的洞：**线性注意力**（kernel φ + 结合律 → 矩阵状态 RNN）· **SSM / Mamba**（selective S6）· **Mamba-2 / SSD**（1-半可分对偶 ≡ 结构化掩码线性注意力）· **DeltaNet / Gated DeltaNet**（改写式更新）· **chunkwise 并行**训练 · **可训练稀疏**（NSA 三分支 / MoBA / Lightning / DSA）· **混合架构**（Jamba / Hymba / Qwen3-Next / Kimi-Linear / MiniMax-01）。**双语**（中文 + EN），含可跑脚本（[`code/linear_sparse_attention.py`](docs/tutorials/code/linear_sparse_attention.py) —— `chunkwise ≡ recurrent` 等价 + delta-rule + block-sparse，真机验证）和 25 高频题，经多批 Codex GPT-5.5 xhigh 引用 / 数学 / 代码 / 答案 / 整体 + render 保真审定稿。[`linear_sparse_attention_tutorial.html`](docs/tutorials/linear_sparse_attention_tutorial.html)（[#22](https://github.com/wanshuiyin/ARIS-in-AI-Offer/pull/22) · [b84e913](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/b84e913)）。
+- **2026-06-13 → 06-14** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 🧩 **两篇 must-know cheat sheet 上线：第 24 篇 LoRA / PEFT + 第 25 篇 RAG + 文本嵌入/检索** —— 全集到处在用、却从没讲过数学的两个 glaring hole。**LoRA/PEFT**：B=0 恒等起点 · α/r vs rsLoRA √r · 零延迟 merge · QLoRA（NF4 / 双重量化 / paged）· DoRA · 家族 vs Adapter / Prefix / Prompt / BitFit。**RAG**：双塔 · InfoNCE + 难负例 · Matryoshka · BM25 · HNSW · RRF 混合 · cross-encoder vs ColBERT late interaction · HyDE / Self-RAG / CRAG · GraphRAG · RAGAS。两篇均**双语**（中文 + EN），各含从零 PyTorch、可跑脚本（[`code/lora.py`](docs/tutorials/code/lora.py) · [`code/rag_embedding.py`](docs/tutorials/code/rag_embedding.py)，真机验证）和 25 高频题，经多轮 Codex GPT-5.5 xhigh 数学/代码 + render + EN 翻译保真审定稿。[`lora_peft_tutorial.html`](docs/tutorials/lora_peft_tutorial.html) · [`rag_embedding_retrieval_tutorial.html`](docs/tutorials/rag_embedding_retrieval_tutorial.html)。
+- **2026-06-08** — ![POLISH](https://img.shields.io/badge/POLISH-blue?style=flat-square) 🔧 [`tools/render_html.py`](tools/render_html.py) 在 frontmatter 检测前先剥掉开头的 UTF-8 BOM（[6cc4876](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/6cc4876)）。
+- **2026-06-05** — ![COMMUNITY](https://img.shields.io/badge/COMMUNITY-orange?style=flat-square) 🔭 **社区衍生：[@QiZishi](https://github.com/QiZishi) 的在线教程合集站** —— 把这里的 23 篇中文教程与 [Datawhale Hello-Agents](https://github.com/datawhalechina/hello-agents) 的大模型面试问答整合成卡片索引站，随时在线阅读（[线上阅读](https://qizishi.github.io/Autumn-Recruitment-Tutorials-for-LLM/) · 来自 [#3](https://github.com/wanshuiyin/ARIS-in-AI-Offer/issues/3)）。README 新增 [社区衍生](#-社区衍生) 小节收录社区二次创作 —— 基于这套教程做了新东西，开 issue 即可收录（[f8e7d33](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/f8e7d33)）。
+- **2026-06-02** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 📝 **两篇新 blog —— Continuous DLM（表征视角 v2）+ 扩散 × 表征 × 流形** —— Continuous DLM 综述升级为表征视角的扩写版（取代早先的 v1），并新增一篇姊妹篇梳理图像/视频扩散里「借表征 / 用流形」两条脉络（SSL / Consistency / REPA / RAE / JiT / V-JEPA2）。两篇均手写、跨模型审过，且互相引用。线上：[`continuous_dlm_representation_perspective.html`](docs/blogs/continuous_dlm_representation_perspective.html) · [`diffusion_representation_manifold.html`](docs/blogs/diffusion_representation_manifold.html)。见 [Blog 清单 ↓](#-blog-清单)。
+- **2026-06-01** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 📝 **新 blog：NVIDIA Cosmos 3 深度导读（omnimodal world model · MoT 架构）** —— 对 138 页 Cosmos 3 technical report 的中文长文科普（15 节 · 12 图）：把理解与生成缝进一个 Transformer（Mixture-of-Transformers）、训练配方、规模化训练与 serving、三个尺寸。经 5 轮 Codex GPT-5.5 xhigh 跨模型逐段审（数字/机制核对、overclaim 收敛）。自包含单文件 [`docs/blogs/cosmos3_mot_guide.html`](docs/blogs/cosmos3_mot_guide.html) —— 手写导读（ELF blog 格式），不走受审的 `/render-html` 管线。全文图表数字均出自 NVIDIA Cosmos 3 报告（[github.com/nvidia/cosmos](https://github.com/nvidia/cosmos)）；版权归原作者，此处作注明来源的个人科普导读。
+- **2026-05-31** — ![QUALITY](https://img.shields.io/badge/QUALITY-2ea44f?style=flat-square) 🔍 **跨模型审计 pass —— 全集抓出并修复真实错误，并接入 CI 强制** —— 用 fresh Codex GPT-5.5 xhigh 把每篇 cheat sheet（中文 + EN）重审一遍，挖出第一轮漏掉的真技术错误并修正：DeepSeek-V3 的 FP8 GEMM 用 **FP32 累加、而非 bf16**；Qwen2-VL M-RoPE base 是 **1e6**；Molmo 视觉塔是 **CLIP、而非 SigLIP**；TensoRF 复杂度 **O(N³)**；一个渲染坏掉的 StreamingLLM callout；外加 10 处 EN 翻译保真修复（语义反转、漏译框架清单）。现在每个 `docs/` 产物都带可追溯的跨模型审，新增 CI 门（[`tools/verify_reviews.py`](tools/verify_reviews.py) `--mode strict --reproduce`，见 [`review-audit.yml`](.github/workflows/review-audit.yml)）会拦下任何 HTML 非"可从源 byte 复现的已审视图"的 PR —— 未审或手改的内容进不来。**今天还一并 merge 了** Focus-dim 阅读模式（用于 `--blog-mode` 页面：dim 非当前 section · 浮动 🎯 按钮 · ↑/↓ 切节），由 dllm 的 blog 工作回流进 academic 模板——对 cheat sheet **休眠**（gate 在 `.aris-blog` 下），blog-mode 下才点亮，为即将上线的 blog 备好。（[5aae952](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/5aae952) · [498ecf2](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/498ecf2)）
+- **2026-05-28** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 📝 **首篇 blog 上线：*Continuous DLM 综述*（2026 上半年 6 篇）** —— 长篇中文技术综述（已被同路径的 v2 重写版取代，见 2026-06-02 条目），作者 **杨若峰 (Ruofeng Yang)**（上海交大），通过跨模型讨论端到端撰写（Claude Opus 4.7 + Codex GPT-5.5 xhigh + Gemini auto-gemini-3）。覆盖：离散 DLM 已有问题、ELF "已知未知" 连续空间核心想法、Flow-Matching 家族 5 paper 同期对比、ELF 训练 pipeline、架构/参数量/shape 最详细一节、推理代码+时间网格+Tab 6/7 全数字、去噪轨迹定性效果、与字节 Cola-DLM 的 Field Landscape 对比、Q&A、引用资源。文件在 [`docs/blogs/continuous_dlm_representation_perspective.html`](docs/blogs/continuous_dlm_representation_perspective.html)（1.7 MB 自包含单文件，无 build）—— 一份手写长文 HTML，不走受审的 [`/render-html`](skills/render-html/SKILL.md) 管线。**预览图 + Live 链接见 README 顶部**。（[8475a2d](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/8475a2d)）
+- **2026-05-28** — ![POLISH](https://img.shields.io/badge/POLISH-blue?style=flat-square) ⚡ **`render-html` P0 polish + 23 个 tutorial 全量 regenerate** —— academic 模板加了 7 个交互特性：print degradation 修复（PDF 导出不再丢 `<details>` 内容）、TOC 侧栏 scrollspy（当前 section 跟随滚动高亮）、figure lightbox（原生 `<dialog>` + focus trap + Esc）、长代码自动折叠（`<pre>` ≥30 行包成 `<details class="code-card">`，可用 ` ```python {collapsed}` / `{open}` fence flag 单块 override）、论文引用 popover（新增 `[[key]]` MD 语法 + `--papers <papers.json>` sidecar）、eyebrow 风格清理（marketing 大写 → 正文衬线灰）、`--blog-mode` 基础设施（opt-in `aris-blog` body class）。XSS 加固：`json_for_script()` 把 `<` / `>` / `&` / U+2028 等 escape 成 `\\uXXXX`，paper title 含 `</script>` 不会 break out。23 对双语 tutorial（共 46 个 HTML）全量 regenerate 吃到新模板，源 MD 没动。Codex GPT-5.5 xhigh 4 轮审（设计 ×2 → 代码 ×1 → spot-check ×1）。试试：滚动 [`attention_tutorial.html`](docs/tutorials/attention_tutorial.html) 看左侧 TOC 跟随高亮（[b79c57d](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/b79c57d)、[8793f40](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/8793f40)）。
+- **2026-05-26** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 🐍 **5 个可跑的 PyTorch 教学脚本** —— [`docs/tutorials/code/`](docs/tutorials/code/) 是仓库第一批 runnable-code 贡献：[`mha.py`](docs/tutorials/code/mha.py)（MHA + causal mask）、[`axial_attention.py`](docs/tutorials/code/axial_attention.py)（H/W axial + 复杂度表）、[`flow_matching.py`](docs/tutorials/code/flow_matching.py)（2D moons 上的 Rectified Flow）、[`mmdit_block.py`](docs/tutorials/code/mmdit_block.py)（双流 MMDiT block）、[`toy_mmdit_t2i_pipeline.py`](docs/tutorials/code/toy_mmdit_t2i_pipeline.py)（端到端 toy T2I pipeline）。纯 PyTorch，CPU 几秒到几十秒跑完，每个脚本自带 `assert` sanity check（shape 对齐、必要时跟 `nn.MultiheadAttention` 数值校准）。配合 [`attention_tutorial.md`](docs/tutorials/attention_tutorial.md) / [`flow_matching_tutorial.md`](docs/tutorials/flow_matching_tutorial.md) / [`image_generation_systems_tutorial.md`](docs/tutorials/image_generation_systems_tutorial.md) 阅读（[f63f468](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/f63f468)）。
+- **2026-05-24** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 🐙 **ARIS-Homepage v1.1：`--from-repos`** — 用户选定 `owner/repo` 列表通过 `gh` CLI 抓快照，调用方 LLM agent 把 repo 时间线 merge 进主页 News + `featured_projects[].github`。默认拒绝 private repo。Closes [#2](https://github.com/wanshuiyin/ARIS-in-AI-Offer/issues/2) by [@Yafei-Liu99](https://github.com/Yafei-Liu99)（[cdcf9a2](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/cdcf9a2)）。
+- **2026-05-23** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 🌐 **ARIS-Homepage v1 上线** — CV → fact-checked 学术主页（DBLP 审 venue/年份，错的硬阻断 ship）。单文件 HTML；Codex / Gemini review 可选。Live demo：[wanshuiyin.github.io](https://wanshuiyin.github.io/)。Skill：[`skills/homepage-generator/SKILL.md`](skills/homepage-generator/SKILL.md)（[b818c1d](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/b818c1d)）。
+- **2026-05-22** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 🦾 **社区贡献 feature：具身智能高频面试题库** by [@WinstonJQ](https://github.com/WinstonJQ) —— 413 题 8 卷（VLA / 模仿学习 / RL / 世界模型 / 工程落地 / 腿足控制 / 3D 感知 / 系统设计），外部托管，从 Tutorial Index 新增的 "🦾 Embodied AI" 分类里链接过去（[b1ebb6f](https://github.com/wanshuiyin/ARIS-in-AI-Offer/commit/b1ebb6f)）。
+- **2026-05** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 📚 **4 篇新双语 cheat sheet**：KL Divergence in RLHF（k1/k2/k3 · placement gradient bias）、LLM On-Policy Distillation（MiniLLM / GKD / Qwen3 / Tinker）、Diffusion Post-Training（DDPO / DPOK / DRaFT / AlignProp / Diffusion-DPO / Flow-GRPO）、Diffusion / Flow Distillation（CM / iCT / sCM / CTM / LCM / DMD/DMD2 / ADD/LADD）。总数：**23 篇 first-party cheat sheet**。
+- **2026-05** — ![DOCS](https://img.shields.io/badge/DOCS-blue?style=flat-square) 📖 **README 重构** —— 预览图 banner、ARIS 战绩前置（badges + 10K-star credibility paragraph）、与 [ARIS 主仓](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep)共享微信群二维码。
+</details>
+
+---
+
+## 📝 Blog 清单
+
+长文技术 blog —— 手写、跨模型审过；不走受审的 `/render-html` 管线（图表版权归原作者，注明来源使用）。
+
+| Blog | 内容 | |
+|---|---|---|
+| **NVIDIA Cosmos 3 —— MoT 架构深度导读**（中文） | omnimodal world model · Mixture-of-Transformers · 138 页 Cosmos 3 technical report 精读 | [📄 阅读](https://wanshuiyin.github.io/ARIS-in-AI-Offer/blogs/cosmos3_mot_guide.html) |
+| **Continuous DLM 综述 —— 表征视角**（中文） | 从表征视角看连续扩散语言模型 · ELF / 字节 Cola-DLM / Flow-Matching 家族（2026 上半年） | [📄 阅读](https://wanshuiyin.github.io/ARIS-in-AI-Offer/blogs/continuous_dlm_representation_perspective.html) |
+| **扩散 × 表征 × 流形**（中文） | 图像/视频扩散的「借表征 / 用流形」两条脉络 · SSL / Consistency / REPA / RAE / JiT / V-JEPA2 · 与 continuous DLM 互引 | [📄 阅读](https://wanshuiyin.github.io/ARIS-in-AI-Offer/blogs/diffusion_representation_manifold.html) |
+
+---
+
+## 📚 教程清单
+
+> 🌐 **双语版**：每一篇 cheat sheet 都同时提供中文（默认）和英文 HTML 版本——文件名 `*_tutorial.html`（中文）和 `*_tutorial_en.html`（英文），下方表格的 HTML 列直接给出对应链接。
+
+### 🧠 General / 基础
+
+| Topic | HTML 中文 | HTML EN | MD |
+|---|---|---|---|
+| **Attention 面试 Cheat Sheet** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/attention_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/attention_tutorial_en.html) | [MD](docs/tutorials/attention_tutorial.md) |
+| **Transformer Block（Post-LN/Pre-LN/branch pre+post 残差拓扑 · MHA/MQA/GQA/MLA · Dense FFN vs MoE · GPT-2→Llama-style 演进）** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/transformer_block_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/transformer_block_tutorial_en.html) | [MD](docs/tutorials/transformer_block_tutorial.md) |
+| **LLM Evaluation & Benchmarking（pass@k 无偏估计 · evaluator ladder · benchmark 污染检测 · LLM-as-judge · Bradley-Terry/Elo）** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/llm_evaluation_benchmarking_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/llm_evaluation_benchmarking_tutorial_en.html) | [MD](docs/tutorials/llm_evaluation_benchmarking_tutorial.md) |
+| **归一化 / 残差 / 初始化 (BatchNorm / LayerNorm / RMSNorm / Pre-vs-Post-LN / DeepNorm / QK-Norm / Xavier·Kaiming / μP)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/normalization_init_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/normalization_init_tutorial_en.html) | [MD](docs/tutorials/normalization_init_tutorial.md) |
+| **优化器 & LR Schedule (SGD·Momentum / Adam·AdamW / Muon·Lion·Shampoo·SOAP / warmup·cosine·WSD)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/optimizer_lr_schedule_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/optimizer_lr_schedule_tutorial_en.html) | [MD](docs/tutorials/optimizer_lr_schedule_tutorial.md) |
+| **Tokenization / 分词器 (BPE / WordPiece / Unigram·SentencePiece / byte-level·byte fallback / 词表·fertility·BPB / tokenizer-free)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/tokenization_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/tokenization_tutorial_en.html) | [MD](docs/tutorials/tokenization_tutorial.md) |
+| **KL Divergence in RLHF (k1/k2/k3 · placement gradient bias)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/kl_divergence_rlhf_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/kl_divergence_rlhf_tutorial_en.html) | [MD](docs/tutorials/kl_divergence_rlhf_tutorial.md) |
+
+### 🎯 Post-Training & Reasoning
+
+| Topic | HTML 中文 | HTML EN | MD |
+|---|---|---|---|
+| **RLHF / DPO / GRPO / PPO** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/rlhf_dpo_grpo_ppo_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/rlhf_dpo_grpo_ppo_tutorial_en.html) | [MD](docs/tutorials/rlhf_dpo_grpo_ppo_tutorial.md) |
+| **Reasoning Models (o1 / R1 / Test-Time Compute / PRM)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/reasoning_models_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/reasoning_models_tutorial_en.html) | [MD](docs/tutorials/reasoning_models_tutorial.md) |
+| **LLM On-Policy Distillation (MiniLLM / GKD / Qwen3 / Tinker)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/llm_opd_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/llm_opd_tutorial_en.html) | [MD](docs/tutorials/llm_opd_tutorial.md) |
+| **LoRA / PEFT (LoRA / QLoRA / DoRA / rsLoRA / PiSSA / AdaLoRA / (IA)³)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/lora_peft_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/lora_peft_tutorial_en.html) | [MD](docs/tutorials/lora_peft_tutorial.md) |
+
+### 🏛️ LLM Architecture & Systems
+
+| Topic | HTML 中文 | HTML EN | MD |
+|---|---|---|---|
+| **MoE (DeepSeek-V3 / Mixtral / Llama 4)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/moe_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/moe_tutorial_en.html) | [MD](docs/tutorials/moe_tutorial.md) |
+| **Long Context (RoPE / YaRN / NTK / MLA / StreamingLLM)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/long_context_rope_yarn_mla_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/long_context_rope_yarn_mla_tutorial_en.html) | [MD](docs/tutorials/long_context_rope_yarn_mla_tutorial.md) |
+| **线性 / 稀疏注意力 (Linear Attn / SSM·Mamba / Mamba-2·SSD / DeltaNet / NSA·MoBA / 混合架构)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/linear_sparse_attention_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/linear_sparse_attention_tutorial_en.html) | [MD](docs/tutorials/linear_sparse_attention_tutorial.md) |
+| **KV Cache + Speculative Decoding (Medusa / EAGLE / MLA)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/kv_cache_speculative_decoding_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/kv_cache_speculative_decoding_tutorial_en.html) | [MD](docs/tutorials/kv_cache_speculative_decoding_tutorial.md) |
+| **Quantization (GPTQ / AWQ / SmoothQuant / FlatQuant · FP8 / NVFP4 · QAT: LSQ / ParetoQ / Gemma-QAT · FP4 训练)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/quantization_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/quantization_tutorial_en.html) | [MD](docs/tutorials/quantization_tutorial.md) |
+| **Distributed Training (DDP / FSDP2 / ZeRO / TP / PP / EP / SP)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/distributed_training_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/distributed_training_tutorial_en.html) | [MD](docs/tutorials/distributed_training_tutorial.md) |
+| **LLM Pretraining Pipeline（Kaplan vs Chinchilla scaling law · corpus factory 数据流水线 · document packing/loss masking · checkpoint resume）** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/llm_pretraining_pipeline_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/llm_pretraining_pipeline_tutorial_en.html) | [MD](docs/tutorials/llm_pretraining_pipeline_tutorial.md) |
+| **LLM Inference & Serving Stack（请求状态机 · 采样算子精确定义 · PagedAttention/KV 生命周期 · continuous batching/chunked prefill · disaggregation）** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/llm_inference_serving_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/llm_inference_serving_tutorial_en.html) | [MD](docs/tutorials/llm_inference_serving_tutorial.md) |
+
+### 🌊 Generative Models — 理论 & Tokenizers
+
+| Topic | HTML 中文 | HTML EN | MD |
+|---|---|---|---|
+| **Flow Matching Quick Reference** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/flow_matching_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/flow_matching_tutorial_en.html) | [MD](docs/tutorials/flow_matching_tutorial.md) |
+| **Diffusion Foundations (DDPM / Score / DDIM / EDM / CFG)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/diffusion_foundations_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/diffusion_foundations_tutorial_en.html) | [MD](docs/tutorials/diffusion_foundations_tutorial.md) |
+| **VAE / VQ-VAE / VQ-GAN / FSQ** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/vae_vqvae_vqgan_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/vae_vqvae_vqgan_tutorial_en.html) | [MD](docs/tutorials/vae_vqvae_vqgan_tutorial.md) |
+
+### 🎨 Generation Systems — 图像 / 视频 / 3D / Diffusion 后训练
+
+| Topic | HTML 中文 | HTML EN | MD |
+|---|---|---|---|
+| **Image Gen Systems (LDM / SD / SDXL / SD3 / FLUX / ControlNet)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/image_generation_systems_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/image_generation_systems_tutorial_en.html) | [MD](docs/tutorials/image_generation_systems_tutorial.md) |
+| **Video Gen (Sora / Hunyuan-Video / Kling / Wan / Movie Gen)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/video_generation_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/video_generation_tutorial_en.html) | [MD](docs/tutorials/video_generation_tutorial.md) |
+| **3D Gen (NeRF / Instant-NGP / 3DGS / SDS · DUSt3R→VGGT feed-forward · 原生 mesh · TRELLIS / Hunyuan3D 2.x · 部件级 / sim-ready)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/3d_generation_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/3d_generation_tutorial_en.html) | [MD](docs/tutorials/3d_generation_tutorial.md) |
+| **Diffusion Post-Training (DDPO / DPOK / DRaFT / AlignProp / Diffusion-DPO)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/diffusion_post_training_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/diffusion_post_training_tutorial_en.html) | [MD](docs/tutorials/diffusion_post_training_tutorial.md) |
+| **Modern Diffusion Post-Training (Flow-GRPO / DGPO / DiffusionNFT)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/modern_diffusion_post_training_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/modern_diffusion_post_training_tutorial_en.html) | [MD](docs/tutorials/modern_diffusion_post_training_tutorial.md) |
+| **Diffusion / Flow Distillation (CM / iCT / sCM / CTM / LCM / DMD/DMD2 / ADD/LADD)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/diffusion_distillation_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/diffusion_distillation_tutorial_en.html) | [MD](docs/tutorials/diffusion_distillation_tutorial.md) |
+
+### 👁️ Multimodal
+
+| Topic | HTML 中文 | HTML EN | MD |
+|---|---|---|---|
+| **VLM (CLIP / LLaVA / Qwen-VL / DeepSeek-VL)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/vlm_multimodal_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/vlm_multimodal_tutorial_en.html) | [MD](docs/tutorials/vlm_multimodal_tutorial.md) |
+
+### 🤖 Agents
+
+| Topic | HTML 中文 | HTML EN | MD |
+|---|---|---|---|
+| **Agent Foundations (ReAct / MCP / A2A / SWE-bench / GAIA / OSWorld)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/agent_foundations_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/agent_foundations_tutorial_en.html) | [MD](docs/tutorials/agent_foundations_tutorial.md) |
+| **Agentic RL (AgentTuning / ToolRL / RAGEN / WebRL / SWE-RL / GRPO for tool use)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/agentic_rl_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/agentic_rl_tutorial_en.html) | [MD](docs/tutorials/agentic_rl_tutorial.md) |
+| **Multi-Agent & Long-Horizon (CAMEL / AutoGen / MetaGPT / MoA / Debate / MemGPT / LATS)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/multi_agent_long_horizon_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/multi_agent_long_horizon_tutorial_en.html) | [MD](docs/tutorials/multi_agent_long_horizon_tutorial.md) |
+| **Self-Evolving Agents (Ctx2Skill / Native Evolution / A²RD / Voyager / Reflexion / STaR)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/self_evolving_agents_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/self_evolving_agents_tutorial_en.html) | [MD](docs/tutorials/self_evolving_agents_tutorial.md) |
+| **RAG + Embedding / Retrieval (InfoNCE / 难负例 / Matryoshka / BM25 / RRF / ColBERT / GraphRAG)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/rag_embedding_retrieval_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/rag_embedding_retrieval_tutorial_en.html) | [MD](docs/tutorials/rag_embedding_retrieval_tutorial.md) |
+
+> 🎉 **23 篇 cheat sheet 全部就位**（2026-05），每篇都有中文 + 英文双语版本，覆盖 General / Post-Training / Architecture / Generative / Multimodal / Agents / Diffusion 后训练 七大类。本轮新增 4 篇：KL Divergence in RLHF、LLM On-Policy Distillation、Diffusion Post-Training、Diffusion Distillation。后续 Flow-OPD / Audio Gen / 更新 SOTA 等会逐步加 —— **PR 欢迎**（详见 [CONTRIBUTING](CONTRIBUTING.md)）。
+
+### 🦾 Embodied AI & World Models / 具身与世界模型
+
+| Topic | HTML 中文 | HTML EN | MD |
+|---|---|---|---|
+| **World Models / 世界模型 (Dreamer / MuZero / TD-MPC2 · JEPA / V-JEPA 2 · Genie / GameNGen / Cosmos 3 / Matrix-Game / Atlas · 具身三条路 · 评测)** | [📄 中](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/world_models_tutorial.html) | [📄 EN](https://wanshuiyin.github.io/ARIS-in-AI-Offer/tutorials/world_models_tutorial_en.html) | [MD](docs/tutorials/world_models_tutorial.md) |
+
+> 🌟 **社区贡献** by [@WinstonJQ](https://github.com/WinstonJQ) —— 这是社区独立维护的一份题库，托管在他自己的仓库，慷慨开源给大家。如果对你秋招有帮助，请去 ⭐ 一下原仓库，给作者一点鼓励 🙏
+
+| Topic | HTML 中文 | Source |
+|---|---|---|
+| **具身智能高频面试题库** (VLA / 模仿学习 / RL / 世界模型 / 工程落地 / 腿足控制 / 3D 感知 / LeetCode·系统设计 — 413 题，8 卷) | [📄 中 (在线)](https://winstonjq.github.io/embodied-interview-qa/) | [@WinstonJQ/embodied-interview-qa](https://github.com/WinstonJQ/embodied-interview-qa) |
+
+---
+
+## 🤖 这些教程是怎么生成的
+
+每篇都用了 [ARIS](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep) 的 `/interview-cheatsheet` skill：
+
+1. **Plan** — 12-14 节（TL;DR · 直觉 · 公式 · 代码 · 变体 · 复杂度 · 25 高频题）
+2. **Draft** — ~600-1000 行中文 + 真能跑的 PyTorch
+3. **Cross-model review** — 跨模型 codex GPT-5.5 xhigh 审 10 项（公式正确性 / 代码可运行 / 引用真实 / 表格 pipe 转义 / callout 风格 / 个人信息泄漏…）
+4. **Fix 循环**（trajectory-based，FAIL 集在收敛就继续，同一问题反复出现或 ~6 轮没收敛就停）
+5. **`/render-html`** 渲染 + 13 项渲染审查（信息保真 / TOC / 公式 / 代码高亮 / 安全 / 隐私…）
+6. **`.review.json`** 完整审计 trail
+
+跨模型对抗审查（executor != reviewer 家族）是 ARIS 的核心不变量——LLM 自己审自己等于没审。
+
+---
+
+## 🌐 ARIS-Homepage —— fact-checked 学术主页生成器
+
+> **唯一一个发布前 fact-check 你 CV 的个人主页生成器。**
+
+本仓库新增的 skill：`/homepage-generator` 把你的 CV（`.docx` / `.pdf` / `.txt`）变成一个 polished 单文件学术主页。每次 render 都会跑一遍 DBLP 核对（除非加 `--no-audit`）——venue 或年份对不上、声称了 Best Paper / Spotlight / Oral / Outstanding 却没填指向论文的链接，都会硬阻断，除非你改对或显式 override。（不核对作者名单。）
+
+**Live demo**：[wanshuiyin.github.io](https://wanshuiyin.github.io/) —— 这就是用这个 skill 跑 CV + 维护者之前 manual 主页（作 editorial reference）生成的。预览 strip 在 README 顶部。
+
+### 快速开始
+
+`aris-homepage` 不是一个可执行命令 —— 本仓库不提供任何安装器，直接调脚本。路径是相对当前目录的，`cd` 之后会变：
+
+```bash
+python tools/aris_homepage.py init --from-cv ./cv.pdf --out ./site
+cd ./site
+# 调用方 agent 读 .aris-homepage/EXTRACTION_HANDOFF.md，填 extraction.json
+python ../tools/aris_homepage.py finalize
+$EDITOR profile.yml             # 调整编辑选择
+python ../tools/aris_homepage.py render --persona theory-minimal
+```
+
+> 🪟 **Windows 用户**：上面的路径分隔符换成 `\`，另外还有几个 Windows 独有的坑 —— `python3` 空壳别名、`.py` 文件关联静默、`pdftotext` 中文路径、SSL 证书库。零基础完整走一遍见 [`WINDOWS.md`](skills/homepage-generator/WINDOWS.md)（[English](skills/homepage-generator/WINDOWS_en.md)）。
+
+输出：`index.html` + `audit-report.md`。HTML 扔 GitHub Pages、S3、学校 `~user/public_html/`、邮箱附件都行——零 build server。**最小运行时只要 Python + 调用方 LLM agent**；Codex MCP 可选（增强 adversarial 跨模型 review），Gemini 可选（多模态视觉 critique）。
+
+### 工作流程
+
+```
+                       ARIS-Homepage Pipeline
+
+   📄 CV (.docx/.pdf/.txt)    🌐 Manual Homepage URL    🖼 素材目录
+   事实源                     编辑源（可选）            视觉源（可选）
+         │                            │                      │
+         ▼                            │                      │
+   ┌──────────┐                       │                      │
+   │ init     │                       │                      │
+   │ extract  │                       │                      │
+   │ CV→text  │                       │                      │
+   └─────┬────┘                       │                      │
+         ▼                            ▼                      ▼
+   ┌─────────────────────────────────────────────────────────────────┐
+   │ 🤖 调用方 LLM agent 读 EXTRACTION_HANDOFF.md + 可选 manual      │
+   │    homepage URL + 素材目录作 context                             │
+   │ → 写 .aris-homepage/extraction.json                             │
+   └─────────────────────────┬───────────────────────────────────────┘
+                             ▼
+                       ┌──────────┐
+                       │ finalize │
+                       └─────┬────┘
+                             ▼
+   ┌─────────────────────────────────────────────────────────────────┐
+   │ ✋ 可编辑源文件（事实在这，IDE 里改）：                          │
+   │   profile.yml · publications.bib · bio.md · news.md             │
+   │   EXTRACTION_REVIEW.md（审 LLM 不确定的抽取项）                 │
+   └─────────────────────────┬───────────────────────────────────────┘
+                             ▼
+                  ┌────────────────────────┐
+                  │ render                 │
+                  │   --persona            │
+                  │     theory-minimal     │
+                  └───────────┬────────────┘
+                              │
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+        ┌──────────┐    ┌──────────┐    ┌──────────────┐
+        │ Layer-1  │    │ Layer-2  │    │ Layer-2      │
+        │ DBLP     │    │ Codex MCP│    │ Gemini       │
+        │ 事实审   │    │ 对抗 rev │    │ 视觉 critique│
+        │          │    │（可选）  │    │（可选）      │
+        │（默认）  │    │          │    │              │
+        └─────┬────┘    └──────────┘    └──────────────┘
+              │
+              ▼
+        ┌──────────────┐
+        │ index.html + │
+        │ audit-report │ ──▶ 🚀 部署：GitHub Pages · S3 · 邮箱 · 任意
+        │   .md        │
+        └──────────────┘
+
+   典型流程（7 步，~5 分钟）：
+     1. python tools/aris_homepage.py init --from-cv ./cv.pdf --out ./site
+     2.（调用方 agent）读 .aris-homepage/EXTRACTION_HANDOFF.md
+        → 填 .aris-homepage/extraction.json
+     3. cd ./site && python ../tools/aris_homepage.py finalize
+     4. $EDITOR profile.yml publications.bib bio.md news.md
+     5. python ../tools/aris_homepage.py check --strict   # 只做 fact-check
+     6. python ../tools/aris_homepage.py render --persona theory-minimal
+     7. 看 audit-report.md；修了 → 重 render 或 --override-all
+
+   最小运行时：Python + 调用方 LLM agent
+   Codex MCP 可选（跨模型对抗 review）
+   Gemini 可选（多模态视觉 critique）
+```
+
+- **Skill 契约**：[`skills/homepage-generator/SKILL.md`](skills/homepage-generator/SKILL.md)
+- **完整 schema**：[`skills/homepage-generator/PROFILE_SCHEMA.md`](skills/homepage-generator/PROFILE_SCHEMA.md)
+- **实现**：[`tools/aris_homepage.py`](tools/aris_homepage.py)（纯 stdlib Python，只需 `pip install pyyaml`）
+- **模板**：[`tools/templates/homepage-theory-minimal.html`](tools/templates/homepage-theory-minimal.html)
+
+---
+
+## 🤝 欢迎贡献
+
+一个人的力量有限，希望靠大家一起把这套教程做得更完善。
+
+完整贡献指南见 [**CONTRIBUTING.md**](CONTRIBUTING.md)（[English](CONTRIBUTING.md) · [中文](CONTRIBUTING_CN.md)）—— 含 ARIS workflow 调用、严格风格指南（headings / math / tables / callouts / 个人信息 banlist）、PR checklist。
+
+**TL;DR**：用 ARIS 的 [`/interview-cheatsheet`](skills/interview-cheatsheet/SKILL.md) + [`/render-html`](skills/render-html/SKILL.md) workflow 跑出来再提 PR；两个 skill 都内置跨模型 codex 5.5 xhigh 审查 gate（数学 / 代码 / 引用 / 渲染保真），过了就有质量底线。Skill 源码和 `tools/render_html.py` 都在这个仓库里，可以直接 fork。
+
+**坦白说**：现有教程把 HTML 基础结构（公式 / 代码 / 表格 / callout / TOC / 响应式）做扎实了，但某些主题最前沿（2025 下半年才出的方法、某些细分领域最新论文）大概率没全覆盖。发现哪里过时或有错，PR / issue 都欢迎。
+
+---
+
+## 💬 社区
+
+**与 [ARIS 主仓](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep) 共享一个社区** —— 同一个微信群既讨论 ARIS skill workflow，也讨论这份秋招 cheat sheet 合集。进群可以讨论面试准备、提新的 cheat sheet 主题需求、或反馈勘误 / 贡献：
+
+<p align="center">
+  <img src="assets/wechat_group.jpg" alt="WeChat 群二维码（与 ARIS 主仓共享）" width="300">
+</p>
+
+### 🔭 社区衍生
+
+社区基于这套教程做的二次创作（本仓库 MIT license，欢迎保留署名的转载与整合）：
+
+- **[大模型秋招教程 (ARIS-in-AI-Offer & Hello-Agents)](https://qizishi.github.io/Autumn-Recruitment-Tutorials-for-LLM/)** by [@QiZishi](https://github.com/QiZishi) —— 把这里的 23 篇中文教程与 [Datawhale Hello-Agents](https://github.com/datawhalechina/hello-agents) 的大模型面试问答整合成可跳转的教程卡片索引站，方便在线随时阅读（[仓库](https://github.com/QiZishi/Autumn-Recruitment-Tutorials-for-LLM) · 来自 [#3](https://github.com/wanshuiyin/ARIS-in-AI-Offer/issues/3)）。
+
+基于这套教程做了新东西？开个 issue，我们把它列在这里。
+
+---
+
+## 🌟 ARIS 是什么 — 顺便安利一下
+
+[**ARIS — Auto Research in Sleep**](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep) 是 2025-2026 年最受关注的 AI 科研 agent skill 平台之一。这个仓库生成所用的 `/interview-cheatsheet` + `/render-html` 是 ARIS 74+ 个 skill 中的两个。
+
+[![Stars](https://img.shields.io/github/stars/wanshuiyin/Auto-claude-code-research-in-sleep?style=flat&logo=github&logoColor=white&color=gold&label=Stars)](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep/stargazers) · [![arXiv](https://img.shields.io/badge/arXiv-2605.03042-b31b1b?style=flat&logo=arxiv)](https://huggingface.co/papers/2605.03042) · [![HF Daily #1](https://img.shields.io/badge/HF%20Daily%20Papers-%231-yellow?style=flat)](https://huggingface.co/papers/2605.03042) · [![PaperWeekly](https://img.shields.io/badge/Featured%20on-PaperWeekly-red?style=flat)](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep) · [![awesome-agent-skills](https://img.shields.io/badge/Featured%20in-awesome--agent--skills-blue?style=flat&logo=github)](https://github.com/VoltAgent/awesome-agent-skills) · [![Project of the Day](https://img.shields.io/badge/AI%20Digital%20Crew-Project%20of%20the%20Day-orange?style=flat)](https://aidigitalcrew.com)
+
+- ⭐ **~10k GitHub stars** — top trending AI agent repo
+- 🥇 **HuggingFace Daily Papers #1** — top of the day, paper [arXiv:2605.03042](https://huggingface.co/papers/2605.03042)
+- 🏆 **AI Digital Crew · Project of the Day** (2026.03.14)
+- 📰 **Featured on PaperWeekly** + **VoltAgent/awesome-agent-skills**
+- 🛠️ **74+ research skills** — 从找 idea → 跑实验 → 写论文 → rebuttal → 做 talk slides 的全流程
+- 🌐 **7+ 平台支持** — Claude Code · Codex CLI · Cursor · Trae · Antigravity · GitHub Copilot CLI · OpenClaw
+- 🔧 **ARIS-Code 独立 CLI** — 不想绑定 Claude Code 也行，自带 multi-provider runtime
+
+核心方法论：**跨模型对抗审查**——executor 和 reviewer 必须不同模型家族（Claude × GPT-5.5 xhigh × Gemini），不让 LLM 自己审自己。这套协议复用到面试 cheat sheet 生成上，就保证了每篇里的公式 / 代码 / 引用都过了一遍独立审查（详见每篇旁边的 `.review.json` 审计 trail）。
+
+👉 **ARIS 主仓库**：https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep
+
+---
+
+## 📖 引用 ARIS
+
+如果这份合集——或里面任何一篇 cheat sheet——对你的面试准备 / 科研 / 论文有帮助，欢迎引用底层 ARIS 方法论论文：
+
+```bibtex
+@article{yang2026aris,
+  title={ARIS: Autonomous Research via Adversarial Multi-Agent Collaboration},
+  author={Yang, Ruofeng and Li, Yongcan and Li, Shuai},
+  journal={arXiv preprint arXiv:2605.03042},
+  year={2026}
+}
+```
+
+本仓库每一篇教程都由 ARIS 的 `/interview-cheatsheet` + `/render-html` workflow 跑跨模型对抗审查（Claude × GPT-5.5 xhigh × Gemini）端到端生成。引用是为了支持 workflow 背后的方法论，不只是这份合集本身。
+
+---
+
+## License
+
+[MIT](LICENSE) — 用、改、传、二开都行。希望对正在准备秋招的你有帮助。加油 💪

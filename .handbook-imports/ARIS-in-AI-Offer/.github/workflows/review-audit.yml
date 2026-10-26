@@ -1,0 +1,45 @@
+name: review-audit
+
+# Enforces the ARIS cross-model review invariant on every shippable docs/ artifact:
+# each academic-template HTML must be a reviewed view with a traceable Codex thread
+# AND a recorded source hash that still matches its current source. Runs the repo's
+# own tools/verify_reviews.py in strict mode (see that script for the full rule set
+# and the explicit EXEMPTIONS allowlist for hand-authored, non-pipeline artifacts).
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'tools/verify_reviews.py'
+      - 'tools/render_html.py'
+      - 'tools/templates/**'
+      - 'tools/tutorials_render_manifest.json'
+      - '.github/workflows/review-audit.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'tools/verify_reviews.py'
+      - 'tools/render_html.py'
+      - 'tools/templates/**'
+      - 'tools/tutorials_render_manifest.json'
+      - '.github/workflows/review-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify the review audit chain (strict + reproduce)
+        run: python3 tools/verify_reviews.py --mode strict --reproduce

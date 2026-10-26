@@ -1,0 +1,124 @@
+{
+  "skill": "interview-cheatsheet",
+  "source": "docs/tutorials/vlm_multimodal_tutorial.md",
+  "source_sha256_prefix": "247c88185218c0dd",
+  "output": "docs/tutorials/vlm_multimodal_tutorial.html",
+  "topic": "VLM / Multimodal (CLIP / ViT / LLaVA / Qwen-VL / DeepSeek-VL)",
+  "effort": "max",
+  "byline": "Ruofeng Yang (杨若峰), Shanghai Jiao Tong University",
+  "math_code_review": {
+    "verdict": "WARN",
+    "reviewer": "codex gpt-5.5 xhigh, fresh thread per run (never codex-reply)",
+    "rounds": [
+      {
+        "run": 1,
+        "verdict": "FAIL",
+        "thread_id": "019e3ea8-748a-7543-b3e3-fa0379f82476",
+        "issue": "(a) M-RoPE explanation said 'd_t:d_h:d_w = 16:24:24, rotating 64 dims and leaving 64 dims unrotated' — wrong; mrope_section is in half-dim pair units and all 128 head_dim rotate. (b) M-RoPE code only rotated q (not k) and used wrong section convention. (c) §6.1 said 'N=256 for 336^2 input' — wrong; 336/14=24, 24^2=576. (d) LLaVA-1.0 mislabeled as 336^2 single resolution. (e) Qwen2-VL attribution should be Wang et al. 2024 not Bai. (f) Video-MME is CVPR 2025 not ACL 2024. (g) EVA-CLIP attribution conflated Fang/Sun.",
+        "fix": "Rewrote §10.2 / §10.5 / Q14 / Q23 with correct Qwen2-VL M-RoPE semantics (mrope_section=[16,24,24] in half-dim pairs, full head_dim rotates, 6-segment alternating t/h/w/t/h/w); rewrote M-RoPE code to rotate both q and k via LLaMA-style rotate_half, matching HF implementation. Fixed §6.1 patch count, LLaVA-1.0 resolution, Qwen2-VL/Video-MME/EVA-CLIP attributions."
+      },
+      {
+        "run": 2,
+        "verdict": "FAIL",
+        "thread_id": "019e3eb6-2aea-75f3-8902-58f1a04d26e2",
+        "issue": "(a) §A sanity output still said 'rot dims=64 / identity dims=64' (inconsistent with corrected M-RoPE). (b) Q19 SigLIP claim '256k batch 仍稳' overstated. (c) Q22 BLIP-2 written as '3 stage', actual is 2 stage with stage 1 containing 3 losses. (d) Q25 vision tower attribution errors: Molmo doesn't use SigLIP; Qwen2-VL not 'self-trained from scratch'; OpenAI CLIP is open not closed.",
+        "fix": "Updated §A sanity to '2 × sum(mrope_section) = 128 = head_dim, full rotation'. Softened Q19 SigLIP claim to '32k typical, 256k experiments scanned'. Q22 corrected to '2 stage (representation + generation)'. Q25 rewritten: removed Molmo from SigLIP list, corrected Qwen2-VL as DFN-derived init, noted OpenAI CLIP is open."
+      },
+      {
+        "run": 3,
+        "verdict": "FAIL",
+        "thread_id": "019e3ebc-ea73-7f31-941b-c893146e5aca",
+        "issue": "(a) §8.2 Perceiver Resampler described as 'single layer cross-attention' — incorrect; Flamingo paper Sec 3.1 uses stacked depth (default ~6 layers). (b) §7.4 ⚠️ note claimed missing kdim/vdim would 'truncate image features' — wrong; PyTorch raises shape mismatch error. (c) Q7 BLIP-2 stages mislabeled as 'two-stage representation + one-stage generation' — should be 2 stage total.",
+        "fix": "§8.2 rewritten: Perceiver Resampler is multi-layer (Flamingo Sec 3.1 default ~6 layers) with per-layer CrossAttn + FFN update rule. §7.4 ⚠️ note corrected: PyTorch raises shape mismatch error, does not silently truncate. Q7 + §7.5 table corrected: 2 stage total, stage 1 includes ITC + ITM + ITG."
+      },
+      {
+        "run": "B2",
+        "date": "2026-05-31",
+        "reviewer": "codex gpt-5.5 xhigh, fresh thread (B2 audit-chain re-review)",
+        "thread_id": "019e7c8b-3529-7a11-9c7c-5ed67df6fc62",
+        "verdict": "FAIL",
+        "scope": "math/code re-review (prior FAIL_AFTER_3_ROUNDS patched)",
+        "summary": "Fresh Codex re-review FAIL: 5 concrete defects remain (cross-checked vs Qwen2-VL/Molmo/BLIP-2/LLaVA sources).",
+        "issues": [
+          "§10.5 M-RoPE build_mrope_cos_sin defaults base=10000 but Qwen2-VL-7B HF rope_theta=1000000 -> wrong angles",
+          "§A.1 CLIP sanity-check loss wrong: at init_tau=0.07 expected ~2.25, not ≈log(8)=2.08 (loss≈logN only holds for very small 1/τ)",
+          "§5.4 vs §14 Q25 contradict: Molmo main model uses OpenAI CLIP ViT-L/14@336, not SigLIP-So400M (SigLIP only in ablation)",
+          "§0 TL;DR: 'lightweight MLP projector' attributed to LLaVA-1.0 — LLaVA-1.0 uses a single linear W; the 2-layer MLP is LLaVA-1.5",
+          "§12.1 BLIP-2 Q-Former Stage-1 mischaracterized as LLM-prefix captioning — Stage-1 is representation learning (ITC+ITM+ITG); LLM connects in Stage-2"
+        ]
+      },
+      {
+        "run": "B2-fix-verify",
+        "date": "2026-05-31",
+        "reviewer": "codex gpt-5.5 xhigh, fresh thread (B2 fix-verify)",
+        "thread_id": "019e7cac-ff9d-7690-9614-64fb007070da",
+        "verdict": "WARN",
+        "note": "Round-1 (M-RoPE base 1e6; Molmo=CLIP not SigLIP; LLaVA-1.0 linear not MLP; BLIP-2 Stage-1 repr-learning; CLIP loss~2.25) + Round-2 (projector label 1.0/1.5; AnyRes formula (1+nm)*576) verified. WARN: §7.5 '576-2880 token' range can read as a cap (cosmetic, separate section, not the corrected false-cap).",
+        "issues": [
+          "§7.5 trade-off table '大（576–2880 token）' reads as upper bound; optional polish to '典型范围；AnyRes 高分辨率可达 4032+'"
+        ]
+      },
+      {
+        "run": "2026-07-12-resweep",
+        "date": "2026-07-12",
+        "reviewer": "codex gpt-5.6-sol ultra (candidate errors, full-collection sweep) + independent Claude fresh-thread adversarial verification (tried to overturn every candidate)",
+        "verdict": "FIXED",
+        "scope": "full-collection re-scan; this file's slice = 17 candidate findings adjudicated as 11 CONFIRMED + 6 NEEDS_NUANCE, all applied to source",
+        "summary": "2026-07-12 全集重扫复审：Codex GPT-5.6-sol 找候选错误，独立 Claude 对抗验证逐条尝试推翻 → 11 CONFIRMED + 6 NEEDS_NUANCE，均已按对应力度修复（CONFIRMED 整段改写，NEEDS_NUANCE 只加限定/软化不改核心结论）。",
+        "issues": [
+          "CONFIRMED §1: BLIP-2's cross-attn wrongly grouped with Flamingo/Llama-3.2-V as an LLM-internal cross-attn layer — it lives only inside the Q-Former, LLM interface is prefix-token like LLaVA",
+          "CONFIRMED §2.3 table: ViT-L/14 misattributed to Dosovitskiy 2021 — original ViT never trained patch=14 at Large scale; CLIP (Radford 2021) first trained it",
+          "CONFIRMED §3.5/3.6: DDP note said gradient checkpointing handles cross-GPU gradient propagation — it doesn't; needs differentiable all-gather or OpenCLIP local_loss",
+          "CONFIRMED §3.7/Q9: attributed CLIP's weak spatial-relation understanding to POPE — POPE measures object hallucination, not spatial relations; corrected to Winoground/ARO",
+          "CONFIRMED §6.4/Q13: AnyRes described as inference-only tiling on a fixed-336² trained model, with exact (1+nm)·576 token count — LLaVA-NeXT trains on AnyRes from the start; real token count is approximate (unpad + image_newline)",
+          "CONFIRMED §7.3: Q-Former ITM interaction said to happen inside cross-attention — it happens in the shared self-attention layer via task-switched attention masks (bi-directional/uni-modal/causal)",
+          "CONFIRMED §10.1: Qwen2-VL patch count for 1024×768 computed via plain P=14 division (73×54≈3942) — smart_resize rounds to multiples of 28 first, giving 74×54=3996 patches / 999 tokens post-merge",
+          "CONFIRMED §11.3: LongVA said to pair long-context QA with Qwen2-VL's M-RoPE — LongVA uses standard 1D position-encoding extension on a long-context Qwen2 LLM + CLIP tower, not M-RoPE",
+          "CONFIRMED §13.2: VLM2Vec described as mean-pooling the last hidden state with only a trained contrastive head — it takes the last-token hidden state and LoRA fine-tunes the whole VLM",
+          "CONFIRMED Q18: GPT-4 said to see the raw image + caption to generate LLaVA-Instruct-158K — GPT-4 was text-only at the time, prompted only with caption + detection bounding boxes",
+          "CONFIRMED Q25: SigLIP's batch-independent loss claimed to stabilize stage-1 vision-tower fine-tuning — stage-1 alignment freezes the vision tower and uses next-token loss, no contrastive loss involved at that stage",
+          "NEEDS_NUANCE §1/§6/Q7: original Qwen-VL grouped with Qwen2-VL's MLP+pixel-shuffle patch merger — original Qwen-VL uses a cross-attention resampler, only Qwen2-VL switched to the MLP merger",
+          "NEEDS_NUANCE §3.1/§3.4: said τ itself is clipped to [0,100] — only exp(logit_scale)=1/τ has an upper clamp at 100 (τ lower-bounded at 0.01), aligned with the tutorial's own max-only clamp code",
+          "NEEDS_NUANCE §3.3/Q1: symmetric CLIP loss framed as preventing mathematical 'one-sided collapse' — a one-directional loss already backprops into both encoders since S_ij depends on both u_i and v_j; symmetry's real value is optimizing both retrieval directions",
+          "NEEDS_NUANCE §3.4: InfoNCE MI-bound callout implied larger batch size automatically tightens the bound — L_N generally rises with N too; bound only tightens if representation quality improves enough to offset the harder task",
+          "NEEDS_NUANCE Q22: rank inequalities (LLaVA projector rank≤r, Q-Former rank≤min(r,32)) stated as rigorous — LLaVA's MLP+GELU is a nonlinear map with no linear-algebra rank bound; reframed as an intuitive capacity analogy",
+          "NEEDS_NUANCE §10.2/Q14: mrope_section=[16,24,24]'s slow-time/fast-space rationale presented as confirmed Qwen2-VL design motivation — softened to a plausible but unconfirmed interpretation"
+        ]
+      }
+    ],
+    "note": "After 3 review rounds all flagged issues received targeted fixes; per the 3-round-FAIL stop rule, no 4th review was run. Each round's issues were addressed by direct edits in source MD before stopping."
+  },
+  "render_review": {
+    "verdict": "PASS",
+    "reviewer": "codex gpt-5.5 xhigh, fresh thread per run (never codex-reply)",
+    "rounds": [
+      {
+        "run": 1,
+        "verdict": "PASS",
+        "thread_id": "019e3ec3-faa9-77f1-9636-963ad7709e09",
+        "issue": null,
+        "fix": null,
+        "checks": {
+          "information_fidelity": "pass",
+          "structure": "pass",
+          "math_code_tables": "pass",
+          "callouts": "pass",
+          "details_inner_markdown_rendered": "pass",
+          "safety_escaping": "pass",
+          "placeholder_leak": "pass",
+          "author_byline_rendered": "pass",
+          "eyebrow_subtitle_title": "pass",
+          "no_absolute_local_path_leak": "pass",
+          "no_personal_info_leak": "pass",
+          "heading_glue_fix": "pass",
+          "toc_sidebar_links_resolve": "pass"
+        }
+      }
+    ]
+  },
+  "summary": "3-round math/code review (FAIL → FAIL → FAIL, each round's blocking issues fixed in place; stopped per 3-round rule); 1-round render review PASS on all 13 checks. Length is 1446 lines vs target 1000 (+44.6%, warn-only). 2026-07-12 full-collection resweep: Codex GPT-5.6-sol + independent Claude adversarial verification found 17 candidate findings (11 CONFIRMED + 6 NEEDS_NUANCE), all fixed in place — see math_code_review.rounds[\"2026-07-12-resweep\"].",
+  "rendered_at": "2026-07-12",
+  "source_sha256": "1846758ab564aa3874d446fdf198d41d7333829beddcb8f10a4be7d0158b75b2",
+  "source_sha256_prefix": "1846758ab564aa38",
+  "thread_id": "019e7cac-ff9d-7690-9614-64fb007070da"
+}

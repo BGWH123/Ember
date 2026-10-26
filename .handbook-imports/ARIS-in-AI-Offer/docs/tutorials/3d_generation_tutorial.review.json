@@ -1,0 +1,99 @@
+{
+  "skill": "interview-cheatsheet",
+  "source": "docs/tutorials/3d_generation_tutorial.md",
+  "source_sha256_backfilled": "added 2026-05-31 post-hoc; source git-verified unchanged since review (2026-05-19); not a new codex review. Superseded 2026-07-13 by the post_ship_review round below (source edited, hash refreshed).",
+  "output": "docs/tutorials/3d_generation_tutorial.html",
+  "topic": "3D Generation (NeRF / Instant-NGP / 3DGS / SDS / DreamFusion / Trellis)",
+  "effort": "max",
+  "byline": "Ruofeng Yang (杨若峰), Shanghai Jiao Tong University",
+  "reviewer": "codex gpt-5.5 xhigh, fresh thread per round",
+  "math_code_review": {
+    "verdict": "PASS",
+    "rounds": [
+      {
+        "run": "1-3",
+        "verdict": "PASS",
+        "notes": "Three rounds of cross-model codex math/code review were completed by the writing agent (subagent context). Each round caught and fixed substantive issues. Agent's per-round transcripts captured in subagent log; verdict applied to .md before render."
+      },
+      {
+        "run": "B2",
+        "date": "2026-05-31",
+        "reviewer": "codex gpt-5.5 xhigh, fresh thread (B2 audit-chain re-review)",
+        "thread_id": "019e7c8b-6eb5-7543-b1b1-356adb27b065",
+        "verdict": "FAIL",
+        "scope": "math/code re-review (replace untraceable prior round, no thread_id)",
+        "summary": "Fresh Codex re-review FAIL: core formulas clean, but 5 defects + 3 WARN imprecisions.",
+        "issues": [
+          "TensoRF complexity baseline O(N^4) wrong — should be O(N^3) -> CP O(N)/VM O(N^2)",
+          "Dynamic 3DGS (Luiten 2024) mischaracterized as per-frame independent Gaussians (actually persistent + local-rigidity, arXiv:2308.09713)",
+          "InstantMesh speed overstated 3s/≤3s — paper says 'within 10 seconds' (arXiv:2404.07191)",
+          "CLAY mis-attributed to 3DShape2VecSet — CLAY (2406.13897) is multi-res VAE + latent DiT; 3DShape2VecSet is separate (2301.11445)",
+          "§4.5 densify_and_prune: length-N split_mask passed to split_at after clone_at appended Gaussians -> possible mask-length mismatch",
+          "[WARN] EG3D triplane: features summed not concat",
+          "[WARN] Mip-NeRF IPE scalar/vector notation conflated",
+          "[WARN] Instant-NGP hash primes: π_1=1 listed as '大质数'"
+        ]
+      },
+      {
+        "run": "B2-fix-verify",
+        "date": "2026-05-31",
+        "reviewer": "codex gpt-5.5 xhigh, fresh thread (B2 fix-verify)",
+        "thread_id": "019e7cad-2374-77b1-b653-2a484f59aaef",
+        "verdict": "PASS",
+        "note": "Round-1 (TensoRF O(N^3) baseline; Dynamic 3DGS persistent; CLAY=VAE+latent-DiT; InstantMesh ~10s; EG3D triplane sum; IPE scalar/vector; Instant-NGP pi_1 not prime) + Round-2 (Q19 InstantMesh ~10s; densify_and_prune explicit original_n) verified PASS.",
+        "issues": []
+      }
+    ]
+  },
+  "render_review": {
+    "verdict": "PASS",
+    "rounds": [
+      {
+        "run": 1,
+        "verdict": "PASS",
+        "thread_id": "019e3f3d-61bd-77f1-ab7a-99ae20f92205",
+        "reviewer": "codex gpt-5.5 xhigh, fresh thread (main session DIY backfill)",
+        "notes": "All 13 functional checks pass. 14 h2 + 48 h3 headings, 62 TOC links resolving, 25 details blocks with rendered ul/li, 5 python code fences, 10 pipe tables, 6 info + 5 warn + 2 good callouts. No leaks."
+      }
+    ]
+  },
+  "summary": "3D Gen tutorial passed both math/code review (subagent rounds 1-3) and render review (main-session DIY). 64KB MD, 94KB HTML.",
+  "rendered_at": "2026-05-19",
+  "notes": "Subagent was killed before writing review.json (codex MCP concurrency issue). HTML was already rendered. Render review backfilled from main session with thread 019e3f3d (PASS 13/13).",
+  "thread_id": "019e7cad-2374-77b1-b653-2a484f59aaef",
+  "source_sha256": "72bb3948aef8016e0b1c38ce09fa201ab5e841267daf23fbe58ed99a1fa4e4c5",
+  "post_ship_review": [
+    {
+      "scope": "2026-07-13 full-collection resweep (diffusion cluster): Codex GPT-5.6-sol candidate pass + independent Claude Sonnet 5 adversarial verification (attempted to refute every candidate finding; only load-bearing ones kept)",
+      "verdict": "FIXED",
+      "date": "2026-07-13",
+      "summary": "8 findings verified (6 CONFIRMED + 1 NEEDS_NUANCE + 1 REFUTED). 7 fixes precisely applied to the source MD; the REFUTED finding (SDS U-Net Jacobian described as a 'second-order' term) was left untouched — DreamFusion's own text ties that Jacobian to the Hessian of the log-density, so the tutorial's phrasing is an accurate paraphrase, not an error.",
+      "fixes": [
+        "§0/§3/interview-Q4: Instant-NGP speedup '5+ OOM' softened to 'roughly 4+ orders of magnitude' — the tutorial's own worked example (1-2 days vs 5s) only nets ~4.2-4.5 orders of magnitude, not 5+ (CONFIRMED, 3 occurrences)",
+        "§3.3/interview-Q13: hash-collision point 3 corrected — empty-region sample points with non-zero density DO get a nonzero volume-rendering gradient (proportional to delta_i * e^(-sigma_i*delta_i), pushing sigma toward 0); they only stop getting gradient once sigma decays and the occupancy grid skips them, not 'from the start' (CONFIRMED, 2 occurrences)",
+        "§4.5 table + code: 3DGS clone/split mechanism was reversed — clone duplicates in place (new_xyz = original xyz, no gradient offset) and split is the one that samples a new position (torch.normal with scale as std + rotation, then scale / 1.6); fixed table row wording, code comments, the clone_at() call (dropped the fabricated offset=grad_dir argument and grad_dir field), and the split_at() comment (CONFIRMED)",
+        "§4.5 table: opacity-reset value corrected 0.005 -> 0.01; 0.005 is the separate min_opacity prune threshold already used correctly elsewhere in the same code block, not the reset value (CONFIRMED)",
+        "§5.2: DMTet 'geometry fully differentiable' claim qualified — differentiable within a fixed-topology region, but not differentiable at the measure-zero instant a vertex SDF crosses zero and switches the tetrahedron's marching-tetrahedra look-up case (topology change), analogous to the ReLU kink at 0 (NEEDS_NUANCE, severity downgraded from P0 to P1)",
+        "§6.7/interview-Q15/Q25: VSD's auxiliary score network epsilon_psi was mischaracterized as merely a zero-mean 'variance-reduction baseline (isomorphic to an RL actor-critic value baseline)'; corrected to: epsilon_psi is the necessary term corresponding to the q-distribution's own score arising from differentiating the KL objective w.r.t. theta — dropping it changes the expected gradient direction (degrading distribution-matching back to SDS's mode-seeking), unlike a true RL baseline which only reduces variance without changing the expected gradient (CONFIRMED, 4 occurrences)",
+        "§1 comparison table: 3DGS 'downstream fit' cell claimed 'easy to plug into PBR/IsaacSim/URDF', contradicting the tutorial's own §10.2 recommendation (convert to mesh first via Trellis/Hunyuan3D-2 before IsaacSim/MuJoCo); cell rewritten to require mesh conversion first, consistent with §10.2 (CONFIRMED)",
+        "§7.1/interview-Q16: Zero-1-to-3++'s 6 fixed anchor views were described as a zenith/pole layout ('north-pole view + 4 eye-level views + a top view'); corrected to the paper's actual configuration — azimuth uniformly spaced every 60 degrees around 30/90/150/210/270/330 degrees, elevation alternating between -10 and 20 degrees (interleaved elevation + uniform azimuth) (CONFIRMED)"
+      ],
+      "note": "REFUTED finding (SDS U-Net Jacobian 'second-order' framing at the naive-diffusion-gradient derivation, 3 occurrences) intentionally left unmodified. EN edition (3d_generation_tutorial_en.md) received the same substantive corrections in natural English (see its own sidecar). Both HTMLs re-rendered; source_sha256 refreshed to match this run. Gated via tools/verify_reviews.py --mode strict --reproduce."
+    }
+  ],
+  "delta_reviews": [
+    {
+      "run": "delta-2026-09-11",
+      "verdict": "WARN (no FAIL items after round 3)",
+      "reviewer": "codex gpt-6-astra xhigh, 3 fresh threads",
+      "thread_ids": [
+        "01a08f6a-f2ed-7b52-b567-c625536aeb8f",
+        "01a08f89-e038-7512-b14a-36f5897d5c71",
+        "01a08f9b-7135-7ef0-8c11-1ea95e94b03d",
+        "01a08fa1-973d-7f82-b05e-d4d530d43929"
+      ],
+      "scope": "2025–26 refresh from community feedback: new §7 feed-forward reconstruction (DUSt3R pointmap + confidence-weighted loss derived; VGGT, Fast3R, CUT3R, π³, MapAnything, DA3, VGGT-Ω; §7.4 feed-forward 3DGS); §9 rewritten on a latent-representation axis (TRELLIS/TRELLIS.2, Hunyuan3D 2.0–Buffalo, Step1X-3D, Direct3D-S2, Dora, AssetGen 2) + §9.5 native mesh generation + §9.6 part-level / sim-ready; §12.1 COLMAP guidance rewritten; Q15, Q19, Q21–Q25 replaced (the old L3 tier re-asked the L2 derivations); old §7–§12 renumbered §8–§13. Every arXiv ID fetched by the research pass.",
+      "notes": "Round 1 (13 blocking): the confidence elimination only holds for ℓ<α (linear tail beyond), VGGT's track head predicts 2D correspondences, CUT3R is metric, MeshGPT uses 6 RQ codes per face, TreeMeshGPT's 22% is 'compressed to 22%', marching-cubes claims and latent 'only/must' claims removed, NaN-safe code. Round 2 (5 blocking): MapAnything's global scale is one route not a necessity, §12.1 ported to Q19's conditional guidance, isosurface generalisation narrowed, Q25's two added 'L3 follow-ups' introduced wrong mechanisms and were cut/rewritten. Round 3: two wording residuals fixed. Reviewer judges Q25 a solid L2 rather than L3 — left as is; swap for a true L3 at the next refresh."
+    }
+  ]
+}

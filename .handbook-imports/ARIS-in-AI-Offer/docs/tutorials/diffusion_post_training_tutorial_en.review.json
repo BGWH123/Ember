@@ -1,0 +1,49 @@
+{
+  "skill": "interview-cheatsheet (EN translation-fidelity)",
+  "source": "docs/tutorials/diffusion_post_training_tutorial_en.md",
+  "source_sha256": "12c54a302b5ccff5e9bb956c3574d66697e1775ee0768297975671da9f34a6f4",
+  "output": "docs/tutorials/diffusion_post_training_tutorial_en.html",
+  "zh_source": "docs/tutorials/diffusion_post_training_tutorial.md",
+  "reviewer": "codex gpt-5.5 xhigh, fresh thread",
+  "verdict": "PASS",
+  "thread_id": "019e7d10-3701-78a1-9d47-95af2d5a4049",
+  "translation_fidelity_review": {
+    "verdict": "PASS",
+    "thread_id": "019e7d10-3701-78a1-9d47-95af2d5a4049",
+    "phase": "B3 re-verify (post fix)",
+    "date": "2026-05-31",
+    "issues": [],
+    "summary": "Fresh independent Codex (GPT-5.5 xhigh) cross-model TRANSLATION-FIDELITY verify returned PASS. Files audited (all absolute under /Users/yangruofeng/Desktop/ARIS-in-秋招): docs/tutorials/diffusion_post_training_tutorial.md (ZH source of truth), docs/tutorials/diffusion_post_training_tutorial_en.md (just-fixed EN edition), docs/tutorials/diffusion_post_training_tutorial_en.html (EN HTML render). (a) The Q22 AlignProp O(K) memory fix LANDED with correct polarity in BOTH the EN .md and EN .html: in theory the O(K) memory CAN be bypassed but is expensive/impractical in practice — matching the ZH 理论上可"
+  },
+  "rendered_at": "2026-05-31",
+  "post_ship_review": [
+    {
+      "scope": "2026-07-13 full-collection re-sweep (diffusion cluster): Codex GPT-5.6-sol candidate pass + independent Claude Sonnet 5 adversarial verification (attempted to refute every candidate finding; only load-bearing ones kept)",
+      "verdict": "FIXED",
+      "date": "2026-07-13",
+      "summary": "8 findings verified against the ZH source (6 CONFIRMED + 2 NEEDS_NUANCE, 0 REFUTED); EN edition mirrors the ZH fixes with natural (non-machine-translated) phrasing, code logic kept identical.",
+      "fixes": [
+        "§2.5 DPOK: KL identity '=' corrected to '<=' between per-step trajectory-KL sum and the endpoint marginal KL DPOK actually wants to regularize, with a data-processing-inequality caveat",
+        "§4.1.1 ELBO surrogate + boxed Diffusion-DPO loss + Q3 + Q21: added the omega(lambda_t) SNR-weight caveat and inserted omega(lambda_t) into the boxed loss formula",
+        "§4.1.2 paired-noise warning box + code comment + Q10: softened 'must share epsilon or beta incomparable / variance explodes' to 'shared noise is a variance-reduction (common random numbers) technique, not a correctness requirement'",
+        "§6.2 docstring + beta-magnitude warning box + Q5: rephrased 'beta*T is the true temperature' as implementation-dependent (mean vs sum MSE reduction; DDPM 1000-step training schedule vs the tutorial's own 20-50-step inference schedule)",
+        "§6.1 DDPO code: fixed a real NaN/Inf bug at the deterministic t=0 terminal transition (std=0) — added std.clamp(min=1e-6) guards in the policy-gradient recompute and KL terms, plus a matching prose note in the implementation-footguns box",
+        "§6.1 footgun box + Q7: corrected 'DDIM-eta=0 -> policy gradient equals 0' to 'REINFORCE/score-function estimators degenerate under deterministic transitions, but the true gradient is not zero — DRaFT/AlignProp's pathwise gradient still exists'",
+        "§6.5 Flow-GRPO code: the 'first-step divide-by-zero' sub-claim was refuted (existing sigma+1e-6 guard + sigma^2 cancellation already prevent NaN) so left un-'fixed' as a bug; sharpened the placeholder disclaimer and added a note that sigma_fn(t)=sqrt(1-t) gives zero noise at the trajectory start and maximal noise at the end — backwards from the usual explore-early intuition",
+        "§8 production-landscape table + §8.2 bullet + Q24: corrected 'DALL-E 3 explicitly used caption-faithful RLHF' to 'DALL-E 3's public report is centered on synthetic recaptioning; it does not describe an RLHF post-training mechanism'",
+        "Appendix A.4 footgun checklist: two duplicate restatements of the paired-noise and DDIM-eta=0 overreaches softened for internal consistency"
+      ],
+      "note": "Re-rendered diffusion_post_training_tutorial_en.html and refreshed source_sha256 (this run); gated via tools/verify_reviews.py --mode strict --reproduce."
+    }
+  ],
+  "delta_reviews": [
+    {
+      "run": "delta-2026-09-10",
+      "scope": "§5 Flow-GRPO collapsed to a summary + pointer to modern_diffusion_post_training_tutorial; §6.5 code moved out (pointer); Q9/Q16/Q23 replaced with DPOK-vs-DDPO KL bound, ReFL vs DRaFT/AlignProp, DRaFT-1 vs REINFORCE estimators (count stays 25); §7.4 'K3 KL' → closed-form Gaussian KL; §0 item 8 and cross-refs updated. No other content touched.",
+      "verdict": "PASS",
+      "reviewer": "codex gpt-6-astra xhigh",
+      "thread_id": "01a08b15-ca04-7af1-b3a7-7cc5b8e000a0",
+      "notes": "Render gate: pointers render as prose with working language-matched relative links, replaced questions render like the others, §6–§A numbering unchanged. The replaced answers restate facts already in §2.5 / §3.2 / §3.4 of this tutorial."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/
+.idea/
+*.log
+node_modules/
+
+# Claude Code: local skills symlinks + per-user overrides (keep settings.json tracked)
+.claude/skills/
+.claude/settings.local.json
+.aris/
+
+# Local research, update reports and agent instructions
+/notes/update-*/
+/docs/updates/
+/AGENTS.md

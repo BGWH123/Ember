@@ -1,0 +1,36 @@
+{
+  "skill": "interview-cheatsheet (EN translation-fidelity)",
+  "source": "docs/tutorials/rlhf_dpo_grpo_ppo_tutorial_en.md",
+  "source_sha256": "334b1fcd066ec1395adc06be5e805dce9b80488d53fddecab9544e12538331d6",
+  "output": "docs/tutorials/rlhf_dpo_grpo_ppo_tutorial_en.html",
+  "zh_source": "docs/tutorials/rlhf_dpo_grpo_ppo_tutorial.md",
+  "reviewer": "codex gpt-5.5 xhigh, fresh thread",
+  "verdict": "WARN",
+  "thread_id": "019e7d10-1dfa-7223-a583-32c92247fac4",
+  "translation_fidelity_review": {
+    "verdict": "WARN",
+    "thread_id": "019e7d10-1dfa-7223-a583-32c92247fac4",
+    "phase": "B3 re-verify (post fix)",
+    "date": "2026-05-31",
+    "issues": [
+      "Minor (no factual impact): docs/tutorials/rlhf_dpo_grpo_ppo_tutorial_en.md:1071 and the HTML render omit the explicit 'GRPO' qualifier from the ZH phrase 'DAPO / VAPO / CISPO 等 GRPO 后续工作'. The Q25 context is already GRPO, so meaning is preserved — wording-only, drives WARN not FAIL."
+    ],
+    "summary": "Fresh cross-model Codex (GPT-5.5 xhigh) translation-fidelity verify of the EN edition vs its ZH source of truth. Verdict: WARN. Both targeted fixes LANDED: (1) the dropped code-framework sentence is restored in the EN appendix — it lists TRL / OpenRLHF / verl (ByteDance Seed) / Axolotl / LLaMA-Factory / SimplePO and states verl is mainstream for GRPO/RLOO/DAPO; (2) §8.1 now uses the exact \"70\" (no \"~70\" / \"approximately 70\") in both the markdown and the HTML render. The EN is otherwise faithful: numbers, formulas, code logic, tensor/shape notation, citations, model/framework names, headings, a"
+  },
+  "rendered_at": "2026-05-31",
+  "post_ship_review": [
+    {
+      "scope": "content-audit fix (holistic per-tutorial review + Codex adjudication)",
+      "verdict": "FIXED",
+      "date": "2026-06-29",
+      "fix": "Section 9.2 RLHF memory table corrected: included the omitted gradient term and fixed Adam m,v (28 GB each, not 14), so each trainable 7B model = 16 B/param = 112 GB and total ~252 GB (was an inconsistent ~170 GB that contradicted the repo distributed-training tutorial). (EN edition mirrors the ZH fix.)",
+      "note": "Content-audit fix (2026-06-29): a full-collection per-tutorial content review (5 skeptical-expert subagents reading all 28 ZH tutorials) flagged this; Codex GPT-5.5 xhigh cross-model adjudication (threads 019f127e / 019f127f) confirmed it from training knowledge. Factual/citation/number correction — core math/derivations were verified CORRECT across the collection; original gating reviews remain valid; source re-rendered, sidecar hash refreshed."
+    },
+    {
+      "scope": "full-collection resweep + adversarial cross-model verification (EN mirrors ZH)",
+      "verdict": "FIXED",
+      "date": "2026-07-12",
+      "fix": "2026-07-12 full-collection resweep: Codex GPT-5.6-sol proposed candidate errors, then an independent Claude thread adversarially tried to overturn each one -> 10 CONFIRMED + 3 NEEDS_NUANCE, all fixed and mirrored from the ZH source. Summary: (1) PPO-Clip intuition clarified (crossing 1+eps zeroes the surrogate gradient, not a hard numeric cap); (2) GAE degeneration formula in §2.3 corrected to include the per-token KL term in tilde-r_t; (3) GRPO shared-advantage claim scoped to outcome-supervision + process-supervision variant formula added; (4) DPO-variant table's beta relabeled from 'inverse temperature' to 'temperature parameter / KL regularization coefficient'; (5) SimPO margin language changed from hard hinge cutoff to softplus-style asymptotic decay (§6.3 and Q14); (6) Q13's 'reward is bounded' for IPO replaced with accurate margin-divergence-prevention language; (7) §8.1 'rule part cannot be hacked' softened to 'usually harder to hack (not absolute)'; (8) §9.2 memory-table prose reconciled to the table's 112GB-per-model figures (DPO 126GB, GRPO neural-RM 140GB), and Q14's 'SimPO halves memory' corrected to ~11%; (9) Q18's 'loss placement loses token-level resolution' replaced with the accurate GRPO K3 per-token counterexample; (10) R1 itself clarified as a 671B MoE model, with 32B/70B referring to R1-Distill; (11) Q25's DAPO 'adaptive group size' replaced with the accurate dynamic-sampling filtering mechanism; (12) SimPO-advantages paragraph's DPO length-bias mechanism corrected from raw log-prob to summed log-ratio; (13) GRPO vs RLOO vs ReMax conclusion 'differ only in baseline form' expanded to list std-normalization and PPO-clip vs REINFORCE as additional differences. Source re-rendered, sidecar hash refreshed."
+    }
+  ]
+}

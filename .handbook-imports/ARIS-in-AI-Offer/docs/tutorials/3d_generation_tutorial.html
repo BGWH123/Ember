@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Generation 面试 Cheat Sheet</title>
+
+<meta name="generator" content="ARIS render-html (academic, v1)">
+<meta name="aris:source-path" content="docs/tutorials/3d_generation_tutorial.md">
+<meta name="aris:source-sha256" content="72bb3948aef8016e0b1c38ce09fa201ab5e841267daf23fbe58ed99a1fa4e4c5">
+<meta name="aris:generated-at" content="2026-09-16 06:00 UTC">
+
+<!-- MathJax 3 -->
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], processEscapes: true },
+  options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+<!-- highlight.js -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-light.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+<script>document.addEventListener('DOMContentLoaded', () => hljs.highlightAll());</script>
+
+
+<style>
+:root {
+  --bg: #fdfcf7;
+  --bg-soft: #f4f1ea;
+  --bg-code: #f8f5ec;
+  --ink: #1a1a1a;
+  --ink-soft: #4a4a4a;
+  --ink-muted: #6b6b6b;
+  --primary: #1a4a8c;
+  --primary-soft: #2d6cb8;
+  --accent: #b8390e;
+  --warn: #b45309;
+  --warn-bg: #fef3c7;
+  --info-bg: #dbeafe;
+  --good-bg: #d1fae5;
+  --good: #065f46;
+  --bad-bg: #fee2e2;
+  --bad: #991b1b;
+  --border: #d6d0c0;
+  --border-soft: #e8e3d5;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: "Source Serif Pro", "Source Serif 4", "Crimson Pro", "Georgia", "Songti SC", "STSong", serif;
+  line-height: 1.65;
+  color: var(--ink);
+  background: var(--bg);
+  margin: 0;
+  padding: 0;
+  font-size: 16px;
+}
+
+.layout {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 48px;
+  padding: 40px 32px;
+}
+
+nav.toc {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  font-size: 13px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  border-right: 1px solid var(--border-soft);
+  padding-right: 16px;
+}
+nav.toc h3 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+nav.toc ol { list-style: none; padding: 0; margin: 0; counter-reset: toc; }
+nav.toc ol li { margin: 5px 0; counter-increment: toc; }
+nav.toc ol li::before { content: counter(toc) ". "; color: var(--ink-muted); margin-right: 4px; }
+nav.toc a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-bottom: 1px dotted transparent;
+}
+nav.toc a:hover { color: var(--primary); border-bottom-color: var(--primary); }
+nav.toc ul { list-style: none; padding-left: 14px; margin: 3px 0; font-size: 12px; }
+nav.toc ul li::before { content: "→ "; color: var(--border); }
+
+main { min-width: 0; }
+
+header.hero {
+  border-bottom: 3px double var(--primary);
+  padding-bottom: 24px;
+  margin-bottom: 32px;
+}
+header.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 10px 32px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+  font-size: 14px;
+}
+header.top a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+header.top a:hover { border-color: var(--primary); color: var(--primary); }
+header.top a small { color: var(--ink-muted); font-size: 12px; }
+html:lang(en) .l-cn { display: none; }
+html:not(:lang(en)) .l-en { display: none; }
+header.hero .eyebrow {
+  font-family: inherit;
+  color: var(--ink-muted);
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-weight: 400;
+  margin-bottom: 8px;
+}
+header.hero h1 {
+  font-size: 32px;
+  line-height: 1.2;
+  margin: 0 0 12px;
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+header.hero .subtitle {
+  font-size: 16px;
+  color: var(--ink-soft);
+  margin: 0 0 8px;
+  font-style: italic;
+}
+header.hero .byline {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: 0 0 20px;
+}
+header.hero .byline strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+header.hero .meta {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--ink-muted);
+  border-top: 1px solid var(--border-soft);
+  padding-top: 14px;
+}
+header.hero .meta span strong { color: var(--ink-soft); }
+header.hero .meta code {
+  font-family: "JetBrains Mono", "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 11px;
+  background: var(--bg-soft);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border-soft);
+}
+
+h2 {
+  font-size: 24px;
+  margin: 44px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink);
+  font-weight: 700;
+}
+h2 .num { color: var(--primary); font-weight: 600; margin-right: 8px; }
+h3 { font-size: 19px; margin: 28px 0 10px; color: var(--primary); font-weight: 600; }
+h4 { font-size: 16px; margin: 20px 0 8px; color: var(--ink); font-weight: 600; }
+
+p { margin: 10px 0; }
+ul, ol { padding-left: 22px; margin: 10px 0; }
+ul li, ol li { margin: 4px 0; }
+ul li::marker { color: var(--primary); }
+
+strong { color: var(--accent); font-weight: 600; }
+em { color: var(--ink-soft); }
+
+a { color: var(--primary); }
+a:hover { color: var(--accent); }
+
+code:not(.hljs) {
+  font-family: "JetBrains Mono", "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 0.86em;
+  background: var(--bg-code);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border-soft);
+  color: var(--accent);
+}
+
+pre {
+  background: #fafaf6;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  padding: 0;
+  overflow-x: auto;
+  border-radius: 4px;
+  margin: 14px 0;
+}
+pre code, pre code.hljs {
+  background: transparent !important;
+  display: block;
+  padding: 14px 18px !important;
+  font-size: 13px;
+  line-height: 1.55;
+  font-family: "JetBrains Mono", "SF Mono", "Menlo", monospace;
+  color: var(--ink);
+}
+pre.diagram {
+  background: #f9f6ed;
+  border-left: 4px solid var(--accent);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.callout {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-radius: 4px;
+  border-left: 4px solid;
+  font-size: 15px;
+}
+.callout-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.callout-info { background: var(--info-bg); border-left-color: var(--primary); }
+.callout-info .callout-title { color: var(--primary); }
+.callout-warn { background: var(--warn-bg); border-left-color: var(--warn); }
+.callout-warn .callout-title { color: var(--warn); }
+.callout-good { background: var(--good-bg); border-left-color: var(--good); }
+.callout-good .callout-title { color: var(--good); }
+.callout-bad { background: var(--bad-bg); border-left-color: var(--bad); }
+.callout-bad .callout-title { color: var(--bad); }
+
+.table-wrap {
+  overflow-x: auto;
+  margin: 16px 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.table-wrap table {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+thead { background: var(--primary); color: white; }
+th, td {
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: top;
+}
+th { font-weight: 600; font-size: 13px; letter-spacing: 0.02em; }
+tr:last-child td { border-bottom: none; }
+tbody tr:nth-child(even) { background: var(--bg-soft); }
+
+details.qa, details {
+  background: white;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  margin: 10px 0;
+  padding: 0;
+}
+details summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--primary);
+  list-style: none;
+  user-select: none;
+}
+details summary::-webkit-details-marker { display: none; }
+details summary::before {
+  content: "▸ ";
+  margin-right: 4px;
+  display: inline-block;
+  transition: transform 0.15s;
+}
+details[open] summary::before { transform: rotate(90deg); }
+details[open] summary { border-bottom: 1px solid var(--border-soft); }
+details > :not(summary) { padding: 10px 14px; }
+details p:first-of-type { margin-top: 8px; }
+
+mjx-container[display="true"] { margin: 12px 0 !important; }
+
+footer.aris-footer {
+  margin-top: 60px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+footer.aris-footer a { color: var(--ink-muted); border-bottom: 1px dotted var(--border); }
+
+@media (max-width: 900px) {
+  header.top { padding: 10px 16px 0; }
+  header.top a small { display: none; }
+  .layout { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px; }
+  nav.toc {
+    position: static;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--border-soft);
+    padding-right: 0;
+    padding-bottom: 14px;
+  }
+  header.hero h1 { font-size: 24px; }
+  h2 { font-size: 20px; }
+}
+@media print {
+  header.top { display: none; }
+  nav.toc { display: none; }
+  .layout { grid-template-columns: 1fr; padding: 0; }
+  body { background: white; }
+  header.hero { border-bottom-color: var(--ink); }
+  #cite-pop, dialog.lightbox { display: none !important; }
+}
+
+/* --- P0 polish: TOC scrollspy active state ---------------------------- */
+nav.toc a.active {
+  color: var(--accent);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+/* --- P0 polish: Long-code auto-collapse ------------------------------- */
+details.code-card {
+  margin: 14px 0;
+  background: #fafaf6;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: 4px;
+}
+details.code-card > summary {
+  cursor: pointer;
+  padding: 8px 14px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  list-style: none;
+  user-select: none;
+}
+details.code-card > summary::-webkit-details-marker { display: none; }
+details.code-card > summary::before { content: none; }
+details.code-card > pre {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-left: none;
+  border-radius: 0;
+}
+@media print {
+  details.code-card { border: 1px solid #ccc; background: white; }
+  details.code-card > summary { display: none !important; }
+  details.code-card > pre { border: 1px solid #ddd; border-radius: 4px; background: white; }
+}
+
+/* --- P0 polish: Paper popover ([[ref]] popups) ------------------------ */
+[data-ref] {
+  color: var(--primary);
+  border-bottom: 1px dotted var(--primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+[data-ref]:hover { background: rgba(26, 74, 140, 0.08); }
+#cite-pop {
+  position: fixed;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  font-size: 13px;
+  line-height: 1.5;
+  z-index: 1000;
+}
+#cite-pop[hidden] { display: none; }
+#cite-pop .cp-title {
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+  padding-right: 24px;
+}
+#cite-pop .cp-meta {
+  color: var(--ink-muted);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+#cite-pop .cp-key {
+  color: var(--accent);
+  font-style: italic;
+  margin-bottom: 8px;
+}
+#cite-pop .cp-link {
+  display: inline-block;
+  color: var(--primary);
+  font-weight: 500;
+}
+#cite-pop .cp-close {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--ink-muted);
+}
+
+/* --- P0 polish: Figure lightbox (native <dialog>) --------------------- */
+dialog.lightbox {
+  border: none;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.92);
+  width: 96vw;
+  height: 96vh;
+  max-width: 96vw;
+  max-height: 96vh;
+}
+dialog.lightbox::backdrop { background: rgba(0, 0, 0, 0.92); }
+dialog.lightbox .lb-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  position: relative;
+}
+dialog.lightbox img {
+  max-width: 90vw;
+  max-height: 84vh;
+  object-fit: contain;
+  cursor: zoom-out;
+}
+dialog.lightbox figcaption {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  text-align: center;
+  max-width: 700px;
+}
+dialog.lightbox .lb-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+/* --- P0 polish: blog/talk mode active-H2 highlight (opt-in) ----------- */
+body.aris-blog h2 { scroll-margin-top: 24px; }
+body.aris-blog h2.aris-active-h2 {
+  background: linear-gradient(to right, rgba(26, 74, 140, 0.06), transparent);
+  border-radius: 4px;
+  padding-left: 12px;
+  margin-left: -12px;
+}
+
+/* --- Focus-dim reading mode (B1) + floating toggle (B2) + ↑/↓ nav (B4) -----
+   Blog opt-in. Everything is scoped under body.aris-blog(.aris-focus-dim) so
+   the 46 non-blog tutorials are completely unaffected (no .aris-blog → button
+   hidden, dim rule never matches). While ON, dims every <main> child except
+   the current section and the intro (header.hero stays bright). F7's io2 is
+   paused while ON; the scroll listener is bound only while ON. */
+body.aris-blog.aris-focus-dim main > *:not(.aris-in-focus) {
+  opacity: 0.28;
+  transition: opacity 0.25s ease;
+}
+body.aris-blog.aris-focus-dim main > .aris-in-focus { opacity: 1; }
+.aris-focus-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1100;
+  display: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 6px 13px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+body.aris-blog .aris-focus-toggle { display: inline-block; }
+.aris-focus-toggle:hover { color: var(--primary); }
+.aris-focus-toggle.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.aris-focus-hint {
+  position: fixed;
+  bottom: 18px;
+  right: 16px;
+  z-index: 1100;
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.aris-focus-hint.show { opacity: 1; }
+@media print {
+  .aris-focus-toggle, .aris-focus-hint { display: none !important; }
+  body.aris-focus-dim main > * { opacity: 1 !important; }
+}
+</style>
+</head>
+<body class="">
+<header class="top">
+  <a href="https://easyaioffer.github.io/"><span class="l-cn">⌂ 全部教程</span><span class="l-en">⌂ All tutorials</span><small>easyaioffer.github.io</small></a>
+  <a href="https://github.com/wanshuiyin/ARIS-in-AI-Offer">⭐ Star</a>
+</header>
+<div class="layout">
+
+<nav class="toc">
+  <h3>Contents</h3>
+  <ol>
+<li><a href="#0-tldr-cheat-sheet">§0 TL;DR Cheat Sheet</a>
+</li>
+<li><a href="#1-三大表示的直觉对比">§1 三大表示的直觉对比</a>
+</li>
+<li><a href="#2-nerf体渲染原理推导必考">§2 NeRF：体渲染原理推导（必考）</a>
+<ul>
+<li><a href="#21-连续体渲染公式">2.1　连续体渲染公式</a></li>
+<li><a href="#22-为什么是这个形式-从物理推导">2.2　为什么是这个形式？— 从物理推导</a></li>
+<li><a href="#23-离散化alpha-compositing必考推导">2.3　离散化：$\alpha$-compositing（**必考推导**）</a></li>
+<li><a href="#24-位置编码-gammap表示高频细节">2.4　位置编码 $\gamma(p)$：表示高频细节</a></li>
+<li><a href="#25-hierarchical-sampling粗--细">2.5　Hierarchical Sampling：粗 → 细</a></li>
+<li><a href="#26-nerf-训练代码核心-30-行">2.6　NeRF 训练代码（核心 30 行）</a></li>
+<li><a href="#27-mip-nerf--mip-nerf-360抗锯齿">2.7　Mip-NeRF / Mip-NeRF 360（抗锯齿）</a></li>
+<li><a href="#28-neus--volsdf体渲染--sdf导出-mesh-的关键">2.8　NeuS / VolSDF：体渲染 + SDF（导出 mesh 的关键）</a></li>
+</ul>
+</li>
+<li><a href="#3-instant-ngp约-4-个数量级加速必考">§3 Instant-NGP：约 4+ 个数量级加速（必考）</a>
+<ul>
+<li><a href="#31-核心-idea多分辨率-hash-网格">3.1　核心 idea：多分辨率 hash 网格</a></li>
+<li><a href="#32-hash-function">3.2　Hash function</a></li>
+<li><a href="#33-hash-collision-怎么消歧l3-高频追问">3.3　Hash collision 怎么消歧？（**L3 高频追问**）</a></li>
+<li><a href="#34-instant-ngp-训练公式">3.4　Instant-NGP 训练公式</a></li>
+<li><a href="#35-plenoxels--tensorf同期的-explicit-派">3.5　Plenoxels / TensoRF（同期的 explicit 派）</a></li>
+</ul>
+</li>
+<li><a href="#4-3d-gaussian-splatting显式可微光栅化当前主力">§4 3D Gaussian Splatting：显式可微光栅化（**当前主力**）</a>
+<ul>
+<li><a href="#41-场景表示">4.1　场景表示</a></li>
+<li><a href="#42-3d--2d-投影-jacobianl3-必考推导">4.2　3D → 2D 投影 Jacobian（**L3 必考推导**）</a></li>
+<li><a href="#43-可微光栅化tile-based-front-to-back-alpha-blending">4.3　可微光栅化：tile-based front-to-back alpha-blending</a></li>
+<li><a href="#44-3dgs-前向pytorch-reference-实现">4.4　3DGS 前向（PyTorch reference 实现）</a></li>
+<li><a href="#45-自适应密度控制面试常问">4.5　自适应密度控制（**面试常问**）</a></li>
+<li><a href="#46-2dgs--surfelssurface-aligned">4.6　2DGS / Surfels（surface-aligned）</a></li>
+<li><a href="#47-动态-4dgs">4.7　动态 4DGS</a></li>
+</ul>
+</li>
+<li><a href="#5-mesh-提取marching-cubes--dmtet">§5 Mesh 提取：Marching Cubes / DMTet</a>
+<ul>
+<li><a href="#51-marching-cubes经典必考">5.1　Marching Cubes（**经典必考**）</a></li>
+<li><a href="#52-differentiable-dmtet--flexicubes端到端学-mesh">5.2　Differentiable: DMTet / FlexiCubes（端到端学 mesh）</a></li>
+</ul>
+</li>
+<li><a href="#6-sds-loss用-2d-diffusion-监督-3ddreamfusion-系列">§6 SDS Loss：用 2D Diffusion 监督 3D（DreamFusion 系列）</a>
+<ul>
+<li><a href="#61-问题设置">6.1　问题设置</a></li>
+<li><a href="#62-setup">6.2　Setup</a></li>
+<li><a href="#63-sds-gradient-推导l3-必考">6.3　SDS gradient 推导（**L3 必考**）</a></li>
+<li><a href="#64-为什么扔掉-jacobian-反而-work">6.4　为什么扔掉 Jacobian 反而 work？</a></li>
+<li><a href="#65-sds-副作用over-saturation--mode-collapse--janus">6.5　SDS 副作用：over-saturation / mode collapse / Janus</a></li>
+<li><a href="#66-sds-代码核心-30-行">6.6　SDS 代码（核心 30 行）</a></li>
+<li><a href="#67-vsd变分-sdsprolificdreamer-neurips-2023-spotlight">6.7　VSD：变分 SDS（**ProlificDreamer**, NeurIPS 2023 Spotlight）</a></li>
+<li><a href="#68-sds-衍生家族mesh--3dgs--sds">6.8　SDS 衍生家族：mesh / 3DGS + SDS</a></li>
+</ul>
+</li>
+<li><a href="#7-feed-forward-重建从-colmap-到-pointmap-regression">§7 Feed-forward 重建：从 COLMAP 到 pointmap regression</a>
+<ul>
+<li><a href="#71-dust3rpointmap-与置信度加权损失必考推导">7.1　DUSt3R：pointmap 与置信度加权损失（**必考推导**）</a></li>
+<li><a href="#72-共通配方与-vggt-的四个-head">7.2　共通配方与 VGGT 的四个 head</a></li>
+<li><a href="#73-分支结构这一族在往哪几个方向长">7.3　分支结构：这一族在往哪几个方向长</a></li>
+<li><a href="#74-feed-forward-3dgs">7.4　Feed-forward 3DGS</a></li>
+</ul>
+</li>
+<li><a href="#8-single-image--few-view-3d-生成">§8 Single-Image / Few-View 3D 生成</a>
+<ul>
+<li><a href="#81-zero-1-to-3-范式novel-view-via-diffusion">8.1　Zero-1-to-3 范式（novel view via diffusion）</a></li>
+<li><a href="#82-one-2-3-45--instantmesh--triposr--stable-fast-3d">8.2　One-2-3-45 / InstantMesh / TripoSR / Stable Fast 3D</a></li>
+<li><a href="#83-lrm-triplane-表示面试高频">8.3　LRM Triplane 表示（**面试高频**）</a></li>
+</ul>
+</li>
+<li><a href="#9-3d-foundation-models202426-开源浪潮">§9 3D Foundation Models（2024–26 开源浪潮）</a>
+<ul>
+<li><a href="#91-trellisslat-与两阶段-rectified-flow">9.1　TRELLIS：SLAT 与两阶段 rectified flow</a></li>
+<li><a href="#92-hunyuan3d-家族20--21--25--omni--studio--buffalo">9.2　Hunyuan3D 家族：2.0 → 2.1 → 2.5 → Omni / Studio / Buffalo</a></li>
+<li><a href="#93-latent-表示这条轴clay--direct3d--dora--step1x-3d">9.3　latent 表示这条轴：CLAY / Direct3D / Dora / Step1X-3D</a></li>
+<li><a href="#94-对比表latent-表示才是那条轴">9.4　对比表：latent 表示才是那条轴</a></li>
+<li><a href="#95-原生-mesh-生成为什么美术不要等值面提取的输出">9.5　原生 mesh 生成：为什么美术不要等值面提取的输出</a></li>
+<li><a href="#96-部件级与-sim-ready从缺部件的整体到能用的资产">9.6　部件级与 sim-ready：从&quot;缺部件的整体&quot;到能用的资产</a></li>
+</ul>
+</li>
+<li><a href="#10-复杂度--资源对比">§10 复杂度 / 资源对比</a>
+</li>
+<li><a href="#11-与相关方法对比--embodied-ai-应用">§11 与相关方法对比 &amp; Embodied AI 应用</a>
+<ul>
+<li><a href="#111-3d-vs-2d-生成关键区别">11.1　3D-vs-2D 生成关键区别</a></li>
+<li><a href="#112-embodied-ai--ar--vr-实战路线">11.2　Embodied AI / AR / VR 实战路线</a></li>
+</ul>
+</li>
+<li><a href="#12-工程实战--易踩坑">§12 工程实战 &amp; 易踩坑</a>
+<ul>
+<li><a href="#121-colmap-还是-feed-forward">12.1　COLMAP 还是 feed-forward？</a></li>
+<li><a href="#122-数值稳定nerf3dgs-通用">12.2　数值稳定（NeRF/3DGS 通用）</a></li>
+<li><a href="#123-多机分布式--评测指标">12.3　多机分布式 &amp; 评测指标</a></li>
+</ul>
+</li>
+<li><a href="#13-25-高频面试题">§13 25 高频面试题</a>
+<ul>
+<li><a href="#l1-必会题任何-3d--vision-岗都会问">L1 必会题（任何 3D / vision 岗都会问）</a></li>
+<li><a href="#l2-进阶题research-oriented-岗位">L2 进阶题（research-oriented 岗位）</a></li>
+<li><a href="#l3-顶级-lab-题顶会--industry-研究岗">L3 顶级 lab 题（顶会 / industry 研究岗）</a></li>
+</ul>
+</li>
+<li><a href="#a-附录代码完整骨架--参考文献">§A 附录：代码完整骨架 + 参考文献</a>
+<ul>
+<li><a href="#a1-完整-from-scratch-代码包含">A.1　完整 from-scratch 代码包含</a></li>
+<li><a href="#a2-关键论文-reading-list">A.2　关键论文 reading list</a></li>
+<li><a href="#a3-embodied-ai--ar--vr-常见追问">A.3　Embodied AI / AR / VR 常见追问</a></li>
+</ul>
+</li>
+</ol>
+</nav>
+
+<main>
+<header class="hero">
+  <div class="eyebrow">Interview Prep · 3D Generation / NeRF / Gaussian Splatting</div>
+  <h1>3D Generation 面试 Cheat Sheet</h1>
+  <p class="subtitle">NeRF / Instant-NGP / 3DGS / SDS / DreamFusion / Trellis + 25 高频题（L1 必会 · L2 进阶 · L3 顶级 lab）</p>
+  
+  <div class="meta">
+    <span><strong>Source:</strong> <code>docs/tutorials/3d_generation_tutorial.md</code></span>
+    <span><strong>SHA256:</strong> <code>72bb3948aef8</code></span>
+    <span><strong>Rendered:</strong> 2026-09-16 06:00 UTC</span>
+    
+  </div>
+</header>
+
+<h2 id="0-tldr-cheat-sheet">§0 TL;DR Cheat Sheet</h2>
+<div class="callout callout-info"><div class="callout-title">11 句话搞定 3D Generation</div><p>Embodied AI / AR / VR 面试核心要点（详见后文 §1–§12 推导）。</p></div>
+<ol><li><strong>三大表示</strong>：<strong>NeRF</strong>（隐式神经场 + 体渲染）、<strong>3DGS</strong>（显式 Gaussian 点云 + 光栅化）、<strong>Mesh / SDF</strong>（显式表面 / 隐式距离场）。重建质量与速度的 sweet spot：3DGS（Kerbl 2023 SIGGRAPH Best Paper）。</li><li><strong>NeRF 核心公式</strong>：$C(\mathbf{r}) = \int_{t_n}^{t_f} T(t)\sigma(\mathbf{r}(t))\mathbf{c}(\mathbf{r}(t),\mathbf{d})\,dt$，其中 $T(t) = \exp\!\left(-\int_{t_n}^{t}\sigma(\mathbf{r}(s))\,ds\right)$ 是 transmittance。离散化得到 $\alpha$-compositing：$C \approx \sum_i T_i (1-e^{-\sigma_i\delta_i})\mathbf{c}_i$。</li><li><strong>Instant-NGP</strong> (Müller 2022 SIGGRAPH)：<strong>多分辨率 hash 网格</strong> + tiny MLP，约 4+ 个数量级加速；hash collision 由 MLP 在含碰撞表项上自动学习消歧（被 loss + 多尺度冗余共同压制）。</li><li><strong>3DGS 核心</strong>：场景表示为一组 3D Gaussian $\{\mu_i, \Sigma_i, \alpha_i, c_i(\mathbf{d})\}$，<strong>可微光栅化</strong>通过将 3D 协方差用 Jacobian $J$ 投影到 2D：$\Sigma' = J W \Sigma W^\top J^\top$，按深度排序后做 front-to-back alpha-blending。</li><li><strong>DreamFusion SDS</strong> (Poole et al. 2022 arXiv → ICLR 2023 Outstanding)：用 pretrained 2D diffusion 监督 3D 表示：$\nabla_\theta \mathcal{L}_\text{SDS} = \mathbb{E}_{t,\epsilon}[w(t)(\epsilon_\phi(x_t;y,t)-\epsilon)\,\partial x/\partial \theta]$，<strong>故意去掉 U-Net 对 $x_t$ 求导的 Jacobian 项</strong>，使得训练 simulation-free。代价：mode-seeking → over-saturation / Janus。</li><li><strong>VSD</strong> (Wang 2023 NeurIPS, ProlificDreamer)：把 3D 参数 $\theta$ 视为 random variable $\mu(\theta)$，<strong>最小化的是渲染加噪图像分布</strong>之间的 KL：$\mathbb{E}_t\big[D_\text{KL}\big(q_\mu^t(x_t|y)\,\|\,p_\phi^t(x_t|y)\big)\big]$。梯度形式为 <strong>relative score</strong> $\nabla_\theta \approx (\epsilon_\phi(x_t;y,t) - \epsilon_\psi(x_t;y,t,\pi))\,\partial x/\partial\theta$，其中 $\epsilon_\psi$ 是 LoRA 微调的辅助 score。CFG 可从 100 降至 7.5。</li><li><strong>Single-image / Few-view 3D</strong>：Zero-1-to-3 (Liu 2023 ICCV) 用 viewpoint conditioned diffusion；SyncDreamer / MVDream 学多视图联合一致性；TripoSR / InstantMesh / Stable Fast 3D 把 image-to-mesh 推到秒级（TripoSR ~0.5 秒、InstantMesh ~10 秒）。</li><li><strong>Feed-forward 重建</strong>：<strong>DUSt3R</strong> (arXiv:2312.14132) 把 SfM 换成一次前向——直接回归 pointmap，两张图的 3D 点都落在第一张图的相机系里，<strong>位姿成了输出而不是输入</strong>；损失除以有效点到原点的平均距离，所以默认 up-to-scale。<strong>VGGT</strong> (2503.11651, CVPR 2025 Best Paper) 一个 backbone 引出四个 head（相机 / depth / point map / track）。COLMAP 由此从"必经"降级为"精度基准"（§7、§12.1）。</li><li><strong>3D Foundation Models (2024-26 开源)</strong>：<strong>TRELLIS</strong> 的 <strong>SLAT</strong> = 稀疏体素坐标 + per-voxel latent（$N=64$，$L\approx 20\text{K}$ active voxel），两阶段 rectified flow，一份 latent 解码成 3DGS / 场 / mesh；<strong>Hunyuan3D</strong> 沿 2.0 → 2.1 → 2.5 → Omni / Studio / Buffalo 迭代（<strong>没有 3.0</strong>），shape→texture 两阶段；<strong>CLAY</strong> (arXiv:2406.13897) 多分辨率 VAE + latent DiT。</li><li><strong>原生 mesh 与 latent 表示这条轴</strong>：无论是从场里提等值面（marching cubes、FlexiCubes）还是像 TRELLIS.2 那样从 O-Voxel 直接转 mesh，<strong>这些输出都不保证具有适合编辑、绑骨和形变的边流</strong>——这才是美术不收货的原因。<strong>MeshGPT → MeshAnything V2 (AMT) → BPT → TreeMeshGPT</strong> 这条线在压 token（基线是朴素序列的 9 token / 面），<strong>Meshtron 则换成用架构扛长序列</strong>（hourglass + 滑动窗口）。latent 表示（SLAT / 稀疏体素 / VecSet / triplane）都能按坐标查询解码，它决定的不是"能出几种格式"，而是<strong>计算与显存摆在哪里</strong>。</li><li><strong>Embodied AI 关键应用</strong>：Sim2Real 资产生成、NeRF/3DGS 作为可微 simulator、language-conditioned 3D affordance。<strong>面试常见交叉</strong>：NeRF SLAM、Gaussian-Splat scene editing、3D 物理一致性。</li></ol>
+<h2 id="1-三大表示的直觉对比">§1 三大表示的直觉对比</h2>
+<p>3D 生成的第一选择题是 <strong>representation</strong>——选错了下游全废。</p>
+<div class="table-wrap"><table><thead><tr><th></th><th>NeRF (Implicit Field)</th><th>3DGS (Explicit Point)</th><th>Mesh / SDF</th></tr></thead><tbody><tr><td><strong>存储</strong></td><td>MLP 权重 $f_\theta(\mathbf{x},\mathbf{d}) \to (\sigma, \mathbf{c})$</td><td>一堆 3D Gaussian $\{\mu_i, \Sigma_i, \alpha_i, c_i\}$</td><td>三角网格 / signed distance</td></tr><tr><td><strong>渲染</strong></td><td>Ray marching + 体积分（GPU 数百 ms/帧）</td><td>Differentiable rasterization（GPU 数 ms/帧）</td><td>Rasterization（实时）</td></tr><tr><td><strong>训练</strong></td><td>数百视图，数小时 (vanilla)</td><td>数十视图，10-30 分钟</td><td>需要 mesh + texture optim</td></tr><tr><td><strong>质量</strong></td><td>视图合成 SOTA</td><td>与 NeRF 持平甚至更好（PSNR 高）</td><td>受多边形分辨率制约</td></tr><tr><td><strong>编辑</strong></td><td>困难（神经场不可解释）</td><td>容易（点可移动、删除、合并）</td><td>容易（标准 DCC 流程）</td></tr><tr><td><strong>导出 mesh</strong></td><td>难（需 NeuS / Poisson）</td><td>中等（2DGS / GSDF / SuGaR）</td><td>自身就是 mesh</td></tr><tr><td><strong>下游适配</strong></td><td>物理仿真不友好</td><td>需先转 mesh（无碰撞体/材质/物理参数）；标准 robot/物理仿真管线仍以 mesh 为主</td><td>标准 robot / AR/VR pipeline</td></tr></tbody></table></div>
+<div class="callout callout-info"><div class="callout-title">面试直觉</div><p>Embodied AI 倾向 mesh / 3DGS（仿真器友好）；AR/VR 看场景规模（前景小物 mesh，大场景 3DGS）；视觉重建 SOTA 用 3DGS。NeRF 现在偏 research baseline，工业落地以 3DGS 为主。</p></div>
+<h2 id="2-nerf体渲染原理推导必考">§2 NeRF：体渲染原理推导（必考）</h2>
+<h3 id="21-连续体渲染公式">2.1　连续体渲染公式</h3>
+<p>NeRF (Mildenhall 2020 ECCV <strong>Best Paper Honorable Mention</strong>) 把场景表示为 <strong>5D 神经场</strong> $f_\theta : (\mathbf{x}, \mathbf{d}) \to (\sigma, \mathbf{c})$：</p>
+<ul><li>输入：3D 位置 $\mathbf{x} \in \mathbb{R}^3$ + 视角方向 $\mathbf{d} \in \mathbb{S}^2$</li><li>输出：体密度 $\sigma \ge 0$（与方向无关）+ 颜色 $\mathbf{c} \in \mathbb{R}^3$（依赖方向，捕捉镜面反射）</li></ul>
+<p>对相机射线 $\mathbf{r}(t) = \mathbf{o} + t\mathbf{d}$，沿 $t \in [t_n, t_f]$ 体积分得到像素颜色：</p>
+<p>$$\boxed{\;C(\mathbf{r}) = \int_{t_n}^{t_f} T(t)\,\sigma(\mathbf{r}(t))\,\mathbf{c}(\mathbf{r}(t),\mathbf{d})\,dt\;}$$</p>
+<p>其中 <strong>transmittance</strong>（光线从 $t_n$ 到 $t$ 没被遮挡的概率）：</p>
+<p>$$\boxed{\;T(t) = \exp\!\left(-\int_{t_n}^{t}\sigma(\mathbf{r}(s))\,ds\right)\;}$$</p>
+<h3 id="22-为什么是这个形式-从物理推导">2.2　为什么是这个形式？— 从物理推导</h3>
+<p>考虑光线穿过参与介质（participating medium）。在 $[t, t+dt]$ 段内：</p>
+<ul><li>被吸收 / 散射出射线的概率：$\sigma(\mathbf{r}(t))\,dt$</li><li>介质在该点发射的颜色贡献：$\mathbf{c}(\mathbf{r}(t),\mathbf{d})$</li></ul>
+<p>令 $T(t)$ 为光线从 $t_n$ 到 $t$ 仍存活的概率。从 $t \to t + dt$，存活概率变化：</p>
+<p>$$T(t+dt) = T(t)\,(1 - \sigma\,dt) \;\Rightarrow\; \frac{dT}{dt} = -\sigma(t)\,T(t)$$</p>
+<p>这是一个一阶 ODE，初值 $T(t_n) = 1$，解出：</p>
+<p>$$T(t) = \exp\!\left(-\int_{t_n}^{t}\sigma(\mathbf{r}(s))\,ds\right)$$</p>
+<p>每个深度 $t$ 处贡献到像素的颜色 = <strong>存活概率 × 该处吸收概率 × 该处颜色</strong>：</p>
+<p>$$dC = T(t)\,\sigma(t)\,\mathbf{c}(t)\,dt$$</p>
+<p>积分即得 $C(\mathbf{r})$。</p>
+<h3 id="23-离散化alpha-compositing必考推导">2.3　离散化：$\alpha$-compositing（<strong>必考推导</strong>）</h3>
+<p>实际无法做连续积分，把 $[t_n, t_f]$ 切成 $N$ 段，每段间距 $\delta_i = t_{i+1} - t_i$，假设段内 $\sigma, \mathbf{c}$ 为常数 $\sigma_i, \mathbf{c}_i$。</p>
+<p><strong>段内 transmittance 衰减</strong>：在 $[t_i, t_{i+1}]$ 上 $T$ 满足 $dT/dt = -\sigma_i T$，所以</p>
+<p>$$\frac{T(t_{i+1})}{T(t_i)} = e^{-\sigma_i \delta_i}$$</p>
+<p>由此<strong>段间 transmittance</strong>：</p>
+<p>$$T_i := T(t_i) = \prod_{j=1}^{i-1} e^{-\sigma_j \delta_j} = \exp\!\Big(\!-\!\sum_{j=1}^{i-1}\sigma_j\delta_j\Big)$$</p>
+<p><strong>段内颜色贡献</strong>（积分而非简单矩形）：</p>
+<p>$$\int_{t_i}^{t_{i+1}} T(t)\sigma_i\mathbf{c}_i\,dt = T_i\,\mathbf{c}_i \int_0^{\delta_i} \sigma_i e^{-\sigma_i s}\,ds = T_i\,\mathbf{c}_i\,(1 - e^{-\sigma_i\delta_i})$$</p>
+<p>记 $\alpha_i := 1 - e^{-\sigma_i \delta_i}$（<strong>段不透明度</strong>），合并得 NeRF 离散公式：</p>
+<p>$$\boxed{\;C(\mathbf{r}) \approx \sum_{i=1}^{N} T_i\,\alpha_i\,\mathbf{c}_i,\quad T_i = \prod_{j&lt;i}(1-\alpha_j),\quad \alpha_i = 1 - e^{-\sigma_i\delta_i}\;}$$</p>
+<p>这正是图形学 <strong>front-to-back alpha-compositing</strong> 公式。<strong>关键</strong>：$\alpha_i = 1 - e^{-\sigma_i\delta_i}$ 而非 $\sigma_i\delta_i$；当 $\sigma_i\delta_i$ 小时近似相等（一阶 Taylor），但大时差异显著（饱和到 1 vs 线性发散）。</p>
+<div class="callout callout-good"><div class="callout-title">物理一致性</div><p>$\sigma \ge 0$ 与 $\alpha = 1 - e^{-\sigma\delta} \in [0, 1)$ 保证颜色合成 <strong>永远在 [0, 1] 内</strong>；且无论 ray 怎么穿，$\sum T_i\alpha_i \le 1$（剩余 $T_{N+1}$ 给背景）。</p></div>
+<h3 id="24-位置编码-gammap表示高频细节">2.4　位置编码 $\gamma(p)$：表示高频细节</h3>
+<p>MLP 默认是低频偏置（NTK 分析），直接拟合 $f(\mathbf{x})$ 会糊。NeRF 用 <strong>positional encoding</strong> 提频：</p>
+<p>$$\gamma(p) = \big(\sin(2^0\pi p),\cos(2^0\pi p),\sin(2^1\pi p),\cos(2^1\pi p),\dots,\sin(2^{L-1}\pi p),\cos(2^{L-1}\pi p)\big)$$</p>
+<p>对 $\mathbf{x}$ 用 $L=10$（60 维），对 $\mathbf{d}$ 用 $L=4$（24 维）。后续 Tancik et al. 2020 "Fourier Features" 给了 NTK 解释：高频 $\sin/\cos$ 让 kernel 衰减更慢，使 MLP 可学高频。</p>
+<h3 id="25-hierarchical-sampling粗--细">2.5　Hierarchical Sampling：粗 → 细</h3>
+<ul><li><strong>Coarse 网络</strong>：均匀采样 $N_c = 64$ 点，渲染得到 weights $w_i = T_i \alpha_i$</li><li><strong>Fine 网络</strong>：归一化 $w$ 为 PDF，按重要性采 $N_f = 128$ 新点（<strong>重要性采样</strong>：表面附近权重大，应密集采样）</li><li>用 coarse + fine 总共 $N_c + N_f$ 点合成最终颜色</li><li>Loss：$\mathcal{L} = \|C_c - C_\text{gt}\|^2 + \|C_f - C_\text{gt}\|^2$（两个网络都监督，coarse 提供 sampler 的 well-defined 梯度）</li></ul>
+<h3 id="26-nerf-训练代码核心-30-行">2.6　NeRF 训练代码（核心 30 行）</h3>
+<pre><code class="language-python">import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+def positional_encoding(x: torch.Tensor, L: int) -&gt; torch.Tensor:
+    &quot;&quot;&quot; x: [..., D];  返回 [..., D*2*L]，NeRF γ(p) 不含原始 x &quot;&quot;&quot;
+    freqs = 2.0 ** torch.arange(L, device=x.device, dtype=x.dtype) * torch.pi
+    args = x.unsqueeze(-1) * freqs                # [..., D, L]
+    pe = torch.stack([torch.sin(args), torch.cos(args)], dim=-1)  # [..., D, L, 2]
+    return pe.flatten(-3)                          # [..., D*2*L]
+
+def volume_render(sigma: torch.Tensor, color: torch.Tensor, t_vals: torch.Tensor,
+                  ray_d: torch.Tensor):
+    &quot;&quot;&quot;
+    NeRF 离散 α-compositing
+        sigma:   [B, N]        体密度 (&gt;= 0; 通常已经过 softplus / ReLU)
+        color:   [B, N, 3]     颜色
+        t_vals:  [B, N]        ray 上采样点的 t 值（单调递增）
+        ray_d:   [B, 3]        ray 方向（用于把 Δt → 真实距离）
+    返回 C: [B, 3], weights: [B, N], depth: [B]
+    &quot;&quot;&quot;
+    # δ_i = t_{i+1} - t_i ；最后一段补 1e10（吸收掉远端到无穷的剩余）
+    deltas = t_vals[..., 1:] - t_vals[..., :-1]
+    delta_far = torch.full_like(deltas[..., :1], 1e10)
+    deltas = torch.cat([deltas, delta_far], dim=-1)            # [B, N]
+    deltas = deltas * torch.norm(ray_d[:, None, :], dim=-1)    # 把 t-间距换成真实欧氏距离
+
+    alpha = 1.0 - torch.exp(-sigma * deltas)                   # [B, N]
+    # T_i = ∏_{j&lt;i} (1 - α_j) —— 用 cumprod，shift 一位让 T_1 = 1
+    T = torch.cumprod(torch.cat([torch.ones_like(alpha[..., :1]),
+                                 1.0 - alpha + 1e-10], dim=-1), dim=-1)[..., :-1]
+    weights = T * alpha                                        # [B, N]
+    C = (weights[..., None] * color).sum(dim=-2)               # [B, 3]
+    depth = (weights * t_vals).sum(dim=-1)                     # [B]
+    return C, weights, depth</code></pre>
+<div class="callout callout-warn"><div class="callout-title">数值陷阱</div><p><code>1 - alpha</code> 在 alpha 接近 1 时会下溢到 0，连乘后 T 整体被 zeroed；加 <code>+ 1e-10</code> 防止 backward 时 <code>log(0)</code>。最后一段 <code>δ → 1e10</code> 强行把背景的 transmittance 推到 0，否则不可见区域的 ray 颜色会受未采样段污染。</p></div>
+<h3 id="27-mip-nerf--mip-nerf-360抗锯齿">2.7　Mip-NeRF / Mip-NeRF 360（抗锯齿）</h3>
+<p>vanilla NeRF 在低分辨率 / 缩放下走样严重（同一像素对应不同尺度的 cone，但 NeRF 当作 ray 处理）。</p>
+<ul><li><strong>Mip-NeRF</strong> (Barron 2021 ICCV)：把 ray 视为 cone（视锥），用 <strong>Integrated Positional Encoding (IPE)</strong>——对 cone 段内的 PE 做闭式 Gaussian 期望 $\mathbb{E}_{\mathbf{x}\sim\mathcal{N}(\mu,\Sigma)}[\gamma(\mathbf{x})]$。对频率向量 $\boldsymbol{\omega} = 2^k\pi\,\mathbf{e}$ 而言，$\mathbb{E}_{\mathbf{x}\sim\mathcal{N}(\boldsymbol{\mu},\Sigma)}[\sin(\boldsymbol{\omega}^\top\mathbf{x})] = \sin(\boldsymbol{\omega}^\top\boldsymbol{\mu})\,e^{-\frac{1}{2}\boldsymbol{\omega}^\top\Sigma\,\boldsymbol{\omega}}$（标量情形即 $e^{-\frac{1}{2}\omega^2\sigma^2}$）；<strong>高频系数被 cone 协方差 $\Sigma$ 通过 $e^{-\frac{1}{2}\boldsymbol{\omega}^\top\Sigma\boldsymbol{\omega}}$ 自动衰减</strong>，自然实现 multi-scale。</li><li><strong>Mip-NeRF 360</strong> (Barron 2022 CVPR)：unbounded scene 用 contraction $f(x) = (2 - 1/\|x\|)\,x/\|x\|$ for $\|x\| &gt; 1$，把无穷远压缩到 ball；加 distortion / proposal MLP 损失。</li></ul>
+<h3 id="28-neus--volsdf体渲染--sdf导出-mesh-的关键">2.8　NeuS / VolSDF：体渲染 + SDF（导出 mesh 的关键）</h3>
+<p>NeRF 是 density-based，提取 mesh 需选 $\sigma$ 阈值（不稳）。<strong>NeuS</strong> (Wang 2021 NeurIPS) 用 <strong>SDF $d(\mathbf{x})$</strong> 替换 density：</p>
+<p>$$\sigma(t) = \max\!\left(\frac{-\frac{d}{dt}\Phi_s(d(\mathbf{r}(t)))}{\Phi_s(d(\mathbf{r}(t)))},\; 0\right),\quad \Phi_s(d) = (1 + e^{-sd})^{-1}$$</p>
+<p>其中 $\Phi_s$ 是 sigmoid，$s$ 是可学习"sharpness"。性质：表面处（$d=0$）权重峰值；可直接 Marching Cubes 提 mesh（mesh 是 $\{d = 0\}$）。</p>
+<p><strong>VolSDF</strong> (Yariv 2021 NeurIPS) 用 Laplace CDF $\sigma = \alpha\,\Phi(-d/\beta)$，思想类似。</p>
+<h2 id="3-instant-ngp约-4-个数量级加速必考">§3 Instant-NGP：约 4+ 个数量级加速（必考）</h2>
+<p>NeRF (vanilla) 训练一个场景要 1-2 天。<strong>Instant-NGP</strong> (Müller 2022 SIGGRAPH <strong>Best Paper</strong>) 5 秒就能拟合一个简单场景。</p>
+<h3 id="31-核心-idea多分辨率-hash-网格">3.1　核心 idea：多分辨率 hash 网格</h3>
+<p>把"密集网格 vs 大 MLP"换成"<strong>稀疏 hash 网格 + tiny MLP</strong>"。</p>
+<ul><li>$L$ 层分辨率（如 $L = 16$），第 $\ell$ 层格点数 $N_\ell = \lfloor N_\min \cdot b^\ell \rfloor$，几何级数（$b \approx 1.38$；论文典型取值 $N_\min = 16$，$N_\max \in [512, 2048]$ 视场景大小而定）</li><li>每层用 <strong>hash function</strong> 把格点坐标映到固定大小的特征表（$T = 2^{14}$–$2^{24}$，<strong>典型 $T = 2^{19} = 524288$</strong>）</li><li>查询点 $\mathbf{x}$：对每层做 8 角点三线性插值 → 拼成 $L \times F$ 维特征（$F = 2$）</li><li>喂给 <strong>tiny MLP</strong> ($2$ 层, hidden 64) 输出 $\sigma, \mathbf{c}$</li></ul>
+<h3 id="32-hash-function">3.2　Hash function</h3>
+<p>$$\text{hash}(\mathbf{x}) = \bigg(\bigoplus_{i=1}^{d} x_i \cdot \pi_i\bigg) \bmod T$$</p>
+<p>$\pi_i$ 是互质的大常数（论文取 $\pi_1 = 1, \pi_2 = 2654435761, \pi_3 = 805459861$——注意 $\pi_1 = 1$ 并非质数，是论文有意设的，使第一维直接映射不打散）。 $\oplus$ 是 XOR。这是一种 <strong>spatial hash</strong>：常用于物理仿真的 BVH。</p>
+<h3 id="33-hash-collision-怎么消歧l3-高频追问">3.3　Hash collision 怎么消歧？（<strong>L3 高频追问</strong>）</h3>
+<p>当 $N_\ell^d &gt; T$（fine level 必然发生），多个格点映到同一表项 → 冲突。Why does it still work?</p>
+<ol><li><strong>Multi-resolution 冗余</strong>：粗 level 的特征 unique（$N_\ell^d \le T$），细 level 提供补充。MLP 可从粗特征恢复结构，细 level 只负责 detail。</li><li><strong>稀疏性优先</strong>：大部分空间是空（NeRF 场景多数 voxel 是 background），有意义的 query 集中在表面附近，冲突的"有效格点对"很少。</li><li><strong>梯度自动消歧</strong>：训练早期空白区采样点若密度非零，仍会通过体渲染 photometric loss 获得梯度（梯度幅度 $\propto \delta_i e^{-\sigma_i\delta_i}$，方向是把 $\sigma$ 压向 0）；随着 $\sigma\to 0$ 该梯度幅度自然衰减，且 occupancy grid 更新后会跳过该处后续采样，才真正不再产生梯度信号——不是"从一开始就得不到梯度"。</li><li><strong>MLP 后处理</strong>：tiny MLP 在 $L \times F$ 拼接特征上学一个分类/回归，遇到冲突的表面点可用 <strong>其他 level 不冲突的特征</strong> disambiguate。</li></ol>
+<div class="callout callout-info"><div class="callout-title">面试高分回答</div><p>"Hash collision 看似破坏 unique 性，但<strong>实际生效区域是稀疏的</strong>（场景的 thin surface 仅占 voxel 总数极小比例），冲突区域大概率是无监督信号的 background；即便表面也有冲突，多分辨率层的非冲突特征 + tiny MLP 也能学到一致输出。这是个 <strong>'lazy collision resolution'</strong>：与其代价昂贵地搞 perfect hash，不如用冗余 + 数据驱动消歧。"</p></div>
+<h3 id="34-instant-ngp-训练公式">3.4　Instant-NGP 训练公式</h3>
+<p>参数：hash table $\theta_\text{hash} \in \mathbb{R}^{L \times T \times F}$ + MLP weights $\theta_\text{MLP}$。Loss 仍是 photometric MSE，但训练 5 秒 vs NeRF 1 天的差别来自：</p>
+<ul><li><strong>Tiny MLP</strong>：参数少 100×，前向快 ~50×</li><li><strong>Hash 表</strong>：稀疏激活，cache friendly</li><li><strong>CUDA kernel fuse</strong>：tiny-cuda-nn 把 forward + backward 融合</li><li><strong>Occupancy grid</strong>：粗占用网格 skip 空白区采样，避免无效 query</li></ul>
+<h3 id="35-plenoxels--tensorf同期的-explicit-派">3.5　Plenoxels / TensoRF（同期的 explicit 派）</h3>
+<p><strong>Plenoxels</strong> (Fridovich-Keil 2022 CVPR)：纯 voxel 网格 + 球谐 SH 系数 + density，<strong>完全没 MLP</strong>，直接梯度下降到 voxel；速度类似 Instant-NGP 但显存大。<strong>TensoRF</strong> (Chen 2022 ECCV)：把 3D grid field 用 <strong>VM / CP 分解</strong> 压缩，参数量从 $O(N^3)$ 降到 CP 的 $O(N)$ 或 VM 的 $O(N^2)$。</p>
+<h2 id="4-3d-gaussian-splatting显式可微光栅化当前主力">§4 3D Gaussian Splatting：显式可微光栅化（<strong>当前主力</strong>）</h2>
+<p><strong>3DGS</strong> (Kerbl 2023 SIGGRAPH <strong>Best Paper</strong>) 解决了 NeRF 的两大痛：渲染慢、editing 难。</p>
+<h3 id="41-场景表示">4.1　场景表示</h3>
+<p>场景 = 一组 3D Gaussian $\{G_i\}$，每个：</p>
+<ul><li><strong>均值</strong> $\mu_i \in \mathbb{R}^3$（位置）</li><li><strong>协方差</strong> $\Sigma_i \in \mathbb{R}^{3\times 3}$（形状），分解为 $\Sigma = R S S^\top R^\top$（rotation $R$ + diag scaling $S$）</li><li><strong>不透明度</strong> $\alpha_i \in [0, 1]$</li><li><strong>颜色</strong> $c_i(\mathbf{d})$ 用 SH 系数（$\ell = 3$，每色 16 系数，共 48 参数）</li></ul>
+<p>为什么用 $R S S R^\top$ 而不直接学 $\Sigma$？— 要保证 $\Sigma$ 正定。直接学 $\Sigma$ 矩阵在梯度下会跑出半正定锥；分解后只需保证 $R$ 正交（用四元数 $q$ 参数化）+ $S$ 正（用 $\exp(s)$ 参数化），自然满足。</p>
+<h3 id="42-3d--2d-投影-jacobianl3-必考推导">4.2　3D → 2D 投影 Jacobian（<strong>L3 必考推导</strong>）</h3>
+<p>把 3D Gaussian splat 到屏幕上做光栅化，需要把 3D 协方差 $\Sigma$ 投影到 2D 协方差 $\Sigma'$。</p>
+<p><strong>Step 1</strong>：World → Camera：刚体变换 $W \in SE(3)$。$\Sigma_\text{cam} = W \Sigma W^\top$（这里 $W$ 取旋转部分；平移不影响协方差）。</p>
+<p><strong>Step 2</strong>：Camera → Screen：透视投影<strong>非线性</strong>：</p>
+<p>$$\pi(\mathbf{x}) = \begin{pmatrix} f_x\,x/z \\ f_y\,y/z \end{pmatrix}$$</p>
+<p>非线性映射的协方差近似用一阶 Taylor。在均值 $\mu_\text{cam} = (x, y, z)$ 处求 Jacobian：</p>
+<p>$$J = \frac{\partial \pi}{\partial \mathbf{x}}\bigg|_{\mu_\text{cam}} = \begin{pmatrix}\dfrac{f_x}{z} &amp; 0 &amp; -\dfrac{f_x\,x}{z^2}\\[2pt] 0 &amp; \dfrac{f_y}{z} &amp; -\dfrac{f_y\,y}{z^2}\end{pmatrix} \in \mathbb{R}^{2\times 3}$$</p>
+<p><strong>Step 3</strong>：2D 协方差（<strong>核心公式</strong>）：</p>
+<p>$$\boxed{\;\Sigma' = J\,W\,\Sigma\,W^\top\,J^\top \in \mathbb{R}^{2\times 2}\;}$$</p>
+<p>推导：若 $\mathbf{x} \sim \mathcal{N}(\mu, \Sigma)$，则一阶近似 $\pi(\mathbf{x}) \approx \pi(\mu) + J(\mathbf{x} - \mu)$，所以 $\text{Cov}[\pi(\mathbf{x})] \approx J\,\Sigma_\text{cam}\,J^\top = J W \Sigma W^\top J^\top$。这就是 EWA splatting (Zwicker 2001) 的经典推论。</p>
+<h3 id="43-可微光栅化tile-based-front-to-back-alpha-blending">4.3　可微光栅化：tile-based front-to-back alpha-blending</h3>
+<p>像素 $\mathbf{p}$ 的颜色：</p>
+<p>$$C(\mathbf{p}) = \sum_{i \in \mathcal{N}(\mathbf{p})}\,c_i\,\alpha_i\,G_i'(\mathbf{p}) \prod_{j &lt; i}\big(1 - \alpha_j\,G_j'(\mathbf{p})\big)$$</p>
+<p>其中 $G_i'(\mathbf{p}) = \exp\!\big(-\tfrac{1}{2}(\mathbf{p} - \mu_i')^\top \Sigma_i'^{-1} (\mathbf{p} - \mu_i')\big)$ 是 2D Gaussian 在像素的值，$\mathcal{N}(\mathbf{p})$ 是覆盖 $\mathbf{p}$ 的 Gaussian 按深度排序。</p>
+<p><strong>关键工程</strong>：</p>
+<ol><li><strong>Tile 划分</strong>：屏幕分成 $16\times 16$ tile，每 tile 内 Gaussian 按深度排序，并行渲染</li><li><strong>GPU sort</strong>：用 radix sort，按 <code>(tile_id, depth)</code> 复合键</li><li><strong>Front-to-back early stop</strong>：当累计 $\prod(1 - \alpha G') &lt; 10^{-4}$ 时退出</li><li><strong>CUDA kernel</strong>：作者公开 <code>diff-gaussian-rasterization</code>，前向 + 反向都是 manual derivative</li></ol>
+<h3 id="44-3dgs-前向pytorch-reference-实现">4.4　3DGS 前向（PyTorch reference 实现）</h3>
+<pre><code class="language-python">def quat_to_rot(q: torch.Tensor) -&gt; torch.Tensor:
+    &quot;&quot;&quot; q: [N, 4] (w, x, y, z) already normalized;  返回 R: [N, 3, 3] &quot;&quot;&quot;
+    w, x, y, z = q.unbind(-1)
+    R = torch.stack([
+        1 - 2*(y*y + z*z),   2*(x*y - w*z),     2*(x*z + w*y),
+        2*(x*y + w*z),       1 - 2*(x*x + z*z), 2*(y*z - w*x),
+        2*(x*z - w*y),       2*(y*z + w*x),     1 - 2*(x*x + y*y),
+    ], dim=-1).reshape(-1, 3, 3)
+    return R
+
+def gaussian_splat_forward(
+    means3D: torch.Tensor,        # [N, 3]  Gaussian 中心 (world)
+    scales: torch.Tensor,          # [N, 3]  log-scale (取 exp 得真实 scale)
+    quats: torch.Tensor,           # [N, 4]  四元数 (会归一化)
+    opacities: torch.Tensor,       # [N, 1]  σ(logit) → α
+    colors: torch.Tensor,          # [N, 3]  (这里简化为 RGB，不展 SH)
+    viewmat: torch.Tensor,         # [4, 4]  world→camera
+    K: torch.Tensor,               # [3, 3]  内参 (fx, fy, cx, cy)
+    H: int, W: int,
+):
+    &quot;&quot;&quot; 教学版前向：不做 tile sort / CUDA，仅展示数学。
+        实际生产用 gsplat / diff-gaussian-rasterization。 &quot;&quot;&quot;
+    N = means3D.shape[0]
+    device = means3D.device
+
+    # --- 1. World → Camera ---
+    homo = torch.cat([means3D, torch.ones(N, 1, device=device)], dim=-1)
+    mu_cam = (homo @ viewmat.T)[:, :3]                          # [N, 3]
+    z = mu_cam[:, 2].clamp(min=1e-4)                            # 防除零
+
+    # --- 2. 协方差 (3D) ---
+    q = quats / quats.norm(dim=-1, keepdim=True)
+    R = quat_to_rot(q)                                          # [N, 3, 3]
+    S = torch.diag_embed(torch.exp(scales))                     # [N, 3, 3]
+    cov3D = R @ S @ S.transpose(-1, -2) @ R.transpose(-1, -2)   # [N, 3, 3]
+
+    # World→Cam 旋转部分 W_rot (3x3) 应用到协方差
+    W_rot = viewmat[:3, :3]
+    cov_cam = W_rot @ cov3D @ W_rot.T                           # [N, 3, 3]
+
+    # --- 3. 投影 Jacobian J (2x3) ---
+    fx, fy = K[0, 0], K[1, 1]
+    x_c, y_c, z_c = mu_cam[:, 0], mu_cam[:, 1], z
+    J = torch.zeros(N, 2, 3, device=device)
+    J[:, 0, 0] = fx / z_c
+    J[:, 0, 2] = -fx * x_c / z_c**2
+    J[:, 1, 1] = fy / z_c
+    J[:, 1, 2] = -fy * y_c / z_c**2
+
+    # --- 4. 2D 协方差 Σ&#x27; = J W Σ W^T J^T ---
+    cov2D = J @ cov_cam @ J.transpose(-1, -2)                   # [N, 2, 2]
+    cov2D = cov2D + 0.3 * torch.eye(2, device=device)           # low-pass filter (anti-aliasing)
+
+    # --- 5. 2D 中心 (像素坐标) ---
+    cx, cy = K[0, 2], K[1, 2]
+    mu2D = torch.stack([fx * x_c / z_c + cx, fy * y_c / z_c + cy], dim=-1)  # [N, 2]
+
+    # --- 6. 深度排序 (front to back) ---
+    depth = z_c
+    order = depth.argsort()                                     # ascending z
+    mu2D, cov2D = mu2D[order], cov2D[order]
+    colors_o = colors[order]
+    alphas = torch.sigmoid(opacities[order]).squeeze(-1)        # [N]
+
+    # --- 7. 像素遍历 (教学版用全图 loop；真实实现 tile + CUDA) ---
+    yy, xx = torch.meshgrid(torch.arange(H, device=device),
+                            torch.arange(W, device=device), indexing=&#x27;ij&#x27;)
+    pix = torch.stack([xx, yy], dim=-1).float()                 # [H, W, 2]
+
+    img = torch.zeros(H, W, 3, device=device)
+    T_acc = torch.ones(H, W, device=device)
+    inv_cov = torch.linalg.inv(cov2D)                           # [N, 2, 2]
+
+    for i in range(mu2D.shape[0]):
+        diff = pix - mu2D[i]                                    # [H, W, 2]
+        # 2D Gaussian: exp(-0.5 (diff)^T Σ^-1 (diff))
+        G = torch.exp(-0.5 * (diff @ inv_cov[i] * diff).sum(-1))  # [H, W]
+        contrib = alphas[i] * G                                 # [H, W]
+        contrib = contrib.clamp(max=0.99)                       # 数值
+        img = img + (T_acc * contrib).unsqueeze(-1) * colors_o[i]
+        T_acc = T_acc * (1 - contrib)
+        if (T_acc &lt; 1e-4).all():                                # early stop
+            break
+
+    return img</code></pre>
+<div class="callout callout-warn"><div class="callout-title">教学版 vs 生产版差距</div><p>上面是 $O(N \cdot HW)$，30k Gaussian + 800×800 图就要好几秒。真实 <code>gsplat</code> 是 (a) tile-based: 每 tile 只处理"接触此 tile"的 Gaussian；(b) GPU radix sort 复合键；(c) 整个 forward / backward 全 manual CUDA，1080p ≤ 10ms。</p></div>
+<h3 id="45-自适应密度控制面试常问">4.5　自适应密度控制（<strong>面试常问</strong>）</h3>
+<p>3DGS 初始用 SfM (COLMAP) 稀疏点云，但训练过程要"撒"出更多 Gaussian。</p>
+<div class="table-wrap"><table><thead><tr><th>触发条件</th><th>操作</th><th>直觉</th></tr></thead><tbody><tr><td><strong>梯度大 + scale 小</strong></td><td><strong>clone</strong>（原地复制一份：new_xyz = 原 xyz，无显式沿梯度偏移；两个重合 Gaussian 靠后续独立梯度下降自然分开）</td><td>"under-reconstruction"——这块区域缺细节</td></tr><tr><td><strong>梯度大 + scale 大</strong></td><td><strong>split</strong>（真正采样新位置的一步：以原 Gaussian 的 scale 当标准差做 torch.normal 采样 + 旋转，再把 scale ÷ 1.6，拆成 2 个小 Gaussian）</td><td>"over-reconstruction"——一个大 Gaussian 覆盖了不该覆盖的区域</td></tr><tr><td><strong>opacity 接近 0</strong></td><td><strong>prune</strong>（删除）</td><td>该 Gaussian 没贡献，浪费显存</td></tr><tr><td><strong>每 3k iter</strong></td><td>reset opacities to 0.01（0.005 是下面 prune 用的 min_opacity 阈值，两者不是同一个数）</td><td>让 model 重新学透明度，防止 floater</td></tr></tbody></table></div>
+<p>启发式条件：<code>gradient norm &gt; τ_pos</code>（如 $2 \times 10^{-4}$），<code>scale &gt; τ_scale</code>（场景尺度 1%）。</p>
+<pre><code class="language-python">def densify_and_prune(gaussians, grad_thresh=2e-4, scale_thresh=0.01,
+                      max_screen_size=None):
+    &quot;&quot;&quot; 教学版 densify 决策（简化；真实 gsplat 还有 screen-size 触发）。
+        假设 gaussians 暴露以下 1D 形状的字段（N = 当前 Gaussian 数量）:
+          xyz_grad_accum: [N]  ‖累积 xyz 梯度范数‖
+          denom:          [N]  累积次数（防 /0）
+          scales:         [N, 3]  log-scale
+          opacities:      [N]  sigmoid 后 ∈ (0, 1)
+          screen_size:    [N]  最近一次渲染的屏幕投影大小（可选）
+    &quot;&quot;&quot;
+    grad_norm  = gaussians.xyz_grad_accum / gaussians.denom.clamp(min=1)      # [N]
+    mean_scale = gaussians.scales.exp().max(dim=-1).values                    # [N]
+
+    # ⚠️ 先在原始 N 个 Gaussian 上把 clone / split 两个 mask 都算出来，
+    #    再做任何 append/删除——否则 clone_at append 之后数组变长，原 N 长度的
+    #    split_mask 会与新数组错位（mask-length mismatch / 作用到错误对象）。
+    clone_mask = (grad_norm &gt; grad_thresh) &amp; (mean_scale &lt;= scale_thresh)     # [N]
+    split_mask = (grad_norm &gt; grad_thresh) &amp; (mean_scale &gt;  scale_thresh)     # [N]
+
+    # CLONE：高梯度 + 小 scale —— 原地复制一份（new_xyz = 原 xyz，不做位置偏移）；
+    # 原始保留（append 到末尾），两个重合的 Gaussian 靠后续独立梯度下降自然分开
+    gaussians.clone_at(clone_mask)
+
+    # SPLIT：高梯度 + 大 scale —— 才是真正采样新位置的一步：以原 Gaussian 的 scale 为
+    # 标准差做 torch.normal 采样 + 旋转得到新位置，再把 scale ÷ 1.6，拆成 2 个子高斯，
+    # 并在末尾删除原始
+    # split_at 显式只作用于原始 N 个：传 original_n，不依赖 append 后的数组长度隐式对齐
+    gaussians.split_at(split_mask, n=2, scale_div=1.6, original_n=split_mask.shape[0])
+
+    # PRUNE：低 opacity / 屏幕过大 / 已被 split 标记
+    # ⚠️ 注意：clone 增加的新 Gaussian 已 append 到末尾，长度变了；这里的 mask 仅作用于原 N 个
+    prune_mask = (gaussians.opacities[:split_mask.shape[0]] &lt; 0.005) | split_mask
+    if max_screen_size is not None:
+        prune_mask = prune_mask | (gaussians.screen_size[:split_mask.shape[0]] &gt; max_screen_size)
+    gaussians.remove_original(prune_mask)   # 只删除原始 N 个里被标记的
+
+    gaussians.reset_grad_accum()
+    return gaussians</code></pre>
+<div class="callout callout-info"><div class="callout-title">典型超参数</div><p>Kerbl 2023 paper: densify every 100 iters；最大 Gaussian 数 5e6；总训练 30k iter；约 30 分钟到几小时。</p></div>
+<h3 id="46-2dgs--surfelssurface-aligned">4.6　2DGS / Surfels（surface-aligned）</h3>
+<p>3DGS 的 ellipsoid 不是 surface-aware；提 mesh 需 SuGaR / GSDF 后处理。<strong>2DGS</strong> (Huang 2024 SIGGRAPH) 把 3D ellipsoid <strong>退化成 2D disk</strong>（一个 axis = 0），直接对齐表面，更适合 normal / depth 监督，提 mesh 时质量明显更好。</p>
+<h3 id="47-动态-4dgs">4.7　动态 4DGS</h3>
+<p><strong>Dynamic 3DGS</strong> (Luiten 2024 3DV, arXiv:2308.09713) 用一组<strong>持续存在的 Gaussian</strong>：颜色 / 不透明度 / 大小跨帧保持不变，只让位置 $\mu(t)$ 与旋转随时间运动，并用 <strong>local-rigidity</strong> 正则约束邻域刚性；<strong>4DGS</strong> (Wu 2024 CVPR / Yang 2024 ICLR) 把 $\mu(t), \Sigma(t)$ 写成时间函数（MLP 或 spline）；<strong>SC-GS</strong> (Huang 2024) 用 sparse control points 驱动密集 Gaussian（类似 LBS）。</p>
+<h2 id="5-mesh-提取marching-cubes--dmtet">§5 Mesh 提取：Marching Cubes / DMTet</h2>
+<p>NeRF / 3DGS 重建后，下游（仿真器、AR、3D 打印）经常需要 mesh。</p>
+<h3 id="51-marching-cubes经典必考">5.1　Marching Cubes（<strong>经典必考</strong>）</h3>
+<p>输入：3D 标量场 $f(\mathbf{x})$（density / SDF）+ 阈值 $\tau$。输出：水平集 $\{f = \tau\}$ 的三角网格。</p>
+<p><strong>算法骨架</strong>：</p>
+<ol><li>把空间 voxel 化（每 voxel 8 角点）</li><li>对每个 voxel，<strong>8 角点二值化</strong>（$f &gt; \tau$ 为 1, 否则 0）→ 256 种可能配置</li><li>查 lookup table：每个配置预定义了几条等值面三角片 + edge 上的顶点位置</li><li><strong>线性插值</strong> 找精确顶点：在 edge 两端 $\mathbf{a}, \mathbf{b}$ 之间，插值 $t = (\tau - f(\mathbf{a})) / (f(\mathbf{b}) - f(\mathbf{a}))$，顶点 $= \mathbf{a} + t(\mathbf{b} - \mathbf{a})$</li><li>合并所有 voxel 三角片 → 完整 mesh</li></ol>
+<pre><code class="language-python">def marching_cubes_sketch(density: torch.Tensor, threshold: float):
+    &quot;&quot;&quot; 真实实现用 mcubes / scikit-image / pytorch3d；这里写思路 &quot;&quot;&quot;
+    from skimage.measure import marching_cubes
+    # density: [Nx, Ny, Nz]；detach() 切断 autograd 图，cpu().numpy() 转 host
+    verts, faces, normals, _ = marching_cubes(
+        density.detach().cpu().numpy(),
+        level=threshold,
+        spacing=(1.0, 1.0, 1.0),
+        gradient_direction=&#x27;descent&#x27;,  # 法线方向；descent = surface 朝低密度
+    )
+    return verts, faces, normals</code></pre>
+<div class="callout callout-warn"><div class="callout-title">NeRF 提 mesh 坑</div><p>vanilla NeRF 没有"表面"概念，提 mesh 时阈值 $\tau$ 难选，且 floater 会被一起提出来。<strong>用 NeuS / VolSDF 提 mesh 才稳</strong>（SDF 0 等值面定义良好）。</p></div>
+<h3 id="52-differentiable-dmtet--flexicubes端到端学-mesh">5.2　Differentiable: DMTet / FlexiCubes（端到端学 mesh）</h3>
+<p>Marching Cubes 不可微（lookup table 离散）。</p>
+<ul><li><strong>DMTet</strong> (Shen 2021 NeurIPS / Munkberg 2022 CVPR)：用 <strong>deformable tetrahedral grid</strong>，每四面体 4 顶点 SDF + 位置 offset 可微。<strong>Marching Tetrahedra</strong> 替代 MC，topology 由 SDF sign 决定，几何由顶点位置决定：在拓扑不变的区域内，几何（顶点位置）对 SDF 值和偏移量<strong>可微</strong>；但顶点 SDF 跨越零点、引发该四面体 look-up case 切换的瞬间，拓扑本身<strong>不可微</strong>（测度零集合，类似 ReLU 在 0 点的 kink），不应无条件称"全程可微"。</li><li><strong>FlexiCubes</strong> (Shen 2023 SIGGRAPH)：泛化 dual marching cubes，引入额外可学参数（dual vertex offset / interpolation weight）解决 quality artifacts。</li></ul>
+<p><strong>典型用法</strong>：DreamFusion 之后的 Magic3D、Fantasia3D 用 DMTet 在 SDS 监督下学 mesh + texture。</p>
+<h2 id="6-sds-loss用-2d-diffusion-监督-3ddreamfusion-系列">§6 SDS Loss：用 2D Diffusion 监督 3D（DreamFusion 系列）</h2>
+<h3 id="61-问题设置">6.1　问题设置</h3>
+<p>我们想生成 3D 资产但 <strong>没有 3D 训练数据</strong>——3D 数据稀缺（ShapeNet ~5万件，Objaverse-XL 1000万件但质量参差）。<strong>Pretrained 2D diffusion</strong>（Stable Diffusion, Imagen）海量。能否用 2D diffusion 当老师 supervise 3D？</p>
+<p><strong>DreamFusion</strong> (Poole et al. 2022 arXiv → <strong>ICLR 2023 Outstanding Paper</strong>) 提出 <strong>Score Distillation Sampling (SDS)</strong>。</p>
+<h3 id="62-setup">6.2　Setup</h3>
+<ul><li>3D 表示 $\theta$（NeRF 参数 / DMTet vertices / 3DGS 点云）</li><li>可微渲染器 $g(\theta, \pi) \to x$，$x$ 是图像（$\pi$ 是相机视角）</li><li>Pretrained 2D diffusion $\epsilon_\phi(x_t; y, t)$（$y$ 是文本 prompt）</li></ul>
+<p><strong>目标</strong>：让 $g(\theta, \pi)$ 看起来像"$y$ 的 photo"，即 $g(\theta, \pi)$ 落在 diffusion 学到的数据流形上。</p>
+<h3 id="63-sds-gradient-推导l3-必考">6.3　SDS gradient 推导（<strong>L3 必考</strong>）</h3>
+<p>直觉：用 diffusion training loss 反传到 $\theta$。<strong>Naive 想法</strong>：把渲染图 $x = g(\theta, \pi)$ 当训练样本，最小化</p>
+<p>$$\mathcal{L}_\text{diff}(\theta) = \mathbb{E}_{t, \epsilon}\Big[w(t)\big\|\epsilon_\phi(x_t; y, t) - \epsilon\big\|^2\Big],\quad x_t = \alpha_t x + \sigma_t \epsilon$$</p>
+<p>对 $\theta$ 求梯度（链式法则）：</p>
+<p>$$\nabla_\theta \mathcal{L}_\text{diff} = \mathbb{E}\Big[w(t)\,2\big(\epsilon_\phi(x_t; y, t) - \epsilon\big)\,\underbrace{\frac{\partial \epsilon_\phi(x_t;y,t)}{\partial x_t}}_{\text{U-Net Jacobian}}\,\alpha_t\,\underbrace{\frac{\partial x}{\partial \theta}}_{\text{renderer Jacobian}}\Big]$$</p>
+<p><strong>问题</strong>：U-Net Jacobian $\partial \epsilon_\phi / \partial x_t$ 计算昂贵且数值差（diffusion 模型大且未训练 second-order 稳定）。</p>
+<p><strong>SDS trick：直接扔掉 U-Net Jacobian</strong>，得到：</p>
+<p>$$\boxed{\;\nabla_\theta \mathcal{L}_\text{SDS} \;=\; \mathbb{E}_{t, \epsilon}\Big[w(t)\,\big(\epsilon_\phi(x_t; y, t) - \epsilon\big)\,\frac{\partial x}{\partial \theta}\Big]\;}$$</p>
+<p>(原 DreamFusion 论文写成 $\partial L/\partial \theta$ 形式；$\alpha_t$ 与常数 2 被吸收到 $w(t)$ 里。)</p>
+<h3 id="64-为什么扔掉-jacobian-反而-work">6.4　为什么扔掉 Jacobian 反而 work？</h3>
+<p><strong>第一种解释（DreamFusion 原版，score 视角）</strong>：$\epsilon_\phi(x_t; y, t)/\sigma_t \approx -\nabla_{x_t}\log p_\phi(x_t|y)$（score）。 SDS gradient = <code>(predicted score - noise) × renderer Jacobian</code>，相当于把渲染图朝高概率方向推。</p>
+<p><strong>第二种解释（mode-seeking）</strong>：SDS 等价最小化 $\mathbb{E}_t[D_\text{KL}(q(x_t|\theta) \,\|\, p_\phi(x_t|y))]$ 的某种 mode-seeking 形式：往 $p_\phi(\cdot|y)$ 的高概率区跑。</p>
+<h3 id="65-sds-副作用over-saturation--mode-collapse--janus">6.5　SDS 副作用：over-saturation / mode collapse / Janus</h3>
+<ul><li><strong>Over-saturation</strong>：颜色饱和，对比度过高（"plastic-y look"）</li><li><strong>Over-smoothing</strong>：细节糊</li><li><strong>Mode collapse</strong>：物体趋于"canonical" 单一形式</li><li><strong>Janus problem</strong>：3D 物体在不同视角都长出一张"前脸"（人脸出现在头后；动物两边都是头）</li></ul>
+<p><strong>根因</strong>：SDS 等价 mode-seeking KL，加上<strong>大 CFG 系数（DreamFusion 默认 100）才能逃出 mean-mode</strong>。CFG=100 把分布锐化到极端 → over-saturation。</p>
+<div class="callout callout-warn"><div class="callout-title">面试高分点</div><p>SDS 公式形式上"丢掉 Jacobian"省了计算，但<strong>代价</strong>是隐式变成 mode-seeking KL，需要超大 CFG 来缓解 mean-seeking blur；超大 CFG 又导致 over-saturation。这是个<strong>信息论 trade-off</strong>：simulation-free + computationally cheap = mode-seeking artifact。</p></div>
+<h3 id="66-sds-代码核心-30-行">6.6　SDS 代码（核心 30 行）</h3>
+<pre><code class="language-python">def sds_loss(
+    renderer,                 # θ → x (B, 3, H, W)
+    theta,                    # 3D 参数 (NeRF / 3DGS / DMTet)
+    prompt_emb,               # 文本 embedding (cond) [B, L, D]
+    uncond_emb,               # 文本 embedding (uncond / null) [B, L, D]
+    unet,                     # frozen 2D diffusion U-Net (e.g. SD); 返回 noise pred Tensor
+    alpha_cumprod: torch.Tensor,  # [T_max] precomputed bar-alpha schedule
+    cfg_scale: float = 100.0,
+    t_range: tuple = (0.02, 0.98),
+):
+    &quot;&quot;&quot; Score Distillation Sampling loss (DreamFusion).
+        约定: unet(x_t, t, encoder_hidden_states=emb) -&gt; [B, 3, H, W] noise pred.
+        如果用 diffusers 的 UNet2DConditionModel, 包一层取 .sample 即可。
+        返回的是 grad surrogate, 直接 backward 即可。 &quot;&quot;&quot;
+    x = renderer(theta)                                  # [B, 3, H, W]
+    B = x.shape[0]
+    device, dtype = x.device, x.dtype
+    T_max = alpha_cumprod.shape[0]                       # 通常 1000
+
+    # 1. 采样 t 和 noise，forward 加噪
+    t = torch.randint(int(t_range[0] * T_max), int(t_range[1] * T_max),
+                      (B,), device=device)
+    noise = torch.randn_like(x)
+    abar = alpha_cumprod.to(device=device, dtype=dtype)[t].view(B, 1, 1, 1)
+    x_t = abar.sqrt() * x + (1 - abar).sqrt() * noise
+
+    # 2. U-Net 预测 noise (cond / uncond)，CFG 组合；关键：不对 diffusion 求导
+    with torch.no_grad():
+        eps_uncond = unet(x_t, t, encoder_hidden_states=uncond_emb)
+        eps_cond   = unet(x_t, t, encoder_hidden_states=prompt_emb)
+        eps_pred = eps_uncond + cfg_scale * (eps_cond - eps_uncond)
+
+    # 3. SDS gradient: w(t)(ε_pred - ε) · ∂x/∂θ; w(t) = σ_t² 是常见选择
+    grad = ((1 - abar) * (eps_pred - noise)).detach()
+    # backward of (grad · x) 给出 grad · ∂x/∂θ
+    return (grad * x).sum() / B</code></pre>
+<div class="callout callout-info"><div class="callout-title">训练 loop</div><p>每 iter 随机采视角 $\pi$，渲染 $x$，算 SDS loss，反传到 $\theta$。NeRF 表示要训 10k-100k 步（GPU 几小时）；3DGS 表示（GaussianDreamer / DreamGaussian）几分钟到一小时。</p></div>
+<h3 id="67-vsd变分-sdsprolificdreamer-neurips-2023-spotlight">6.7　VSD：变分 SDS（<strong>ProlificDreamer</strong>, NeurIPS 2023 Spotlight）</h3>
+<p><strong>VSD</strong> (Wang 2023 NeurIPS) 把 SDS 视为"对 single $\theta$ 做点估计"的特殊情况，泛化为<strong>对 $\theta$ 分布 $\mu(\theta)$ 做变分推断</strong>。</p>
+<h4 id="setup">Setup</h4>
+<ul><li>把 3D 参数 $\theta$ 当 latent random variable，$\mu(\theta)$ 是其分布</li><li>目标：让 rendered image distribution 与 diffusion 学到的 prior <strong>分布</strong>对齐（不是 mode 对齐）</li></ul>
+<h4 id="objective-and-gradient">Objective and gradient</h4>
+<p>ProlificDreamer 把目标写成 KL：</p>
+<p>$$\min_{\mu}\; D_\text{KL}\!\Big(q_\mu^t(x_t|y)\;\Big\|\;p_\phi^t(x_t|y)\Big),\quad t\sim\mathcal{U}[0,1]$$</p>
+<p>其中 $q_\mu^t$ 是 "从 $\theta\sim\mu$ 渲染 + 加噪到 $t$" 诱导的分布。<strong>变分梯度</strong>（Wang et al. 2023, Theorem 2 略写）给出关于 $\theta$ 的更新方向为 <strong>relative score</strong>：</p>
+<p>$$\boxed{\;\nabla_\theta \mathcal{L}_\text{VSD} \;=\; \mathbb{E}_{t,\epsilon}\Big[\,w(t)\,\big(\epsilon_\phi(x_t;y,t) \;-\; \epsilon_\psi(x_t;y,t,\pi)\big)\,\frac{\partial x}{\partial \theta}\,\Big]\;}$$</p>
+<p>对比 SDS：把 raw noise $\epsilon$ 替换成<strong>辅助 score</strong> $\epsilon_\psi$。$\epsilon_\psi$ 是 <strong>LoRA 微调</strong> 的 score network，在线最小化 score-matching loss 来跟踪当前 $q_\mu^t$ 的 score；它是 KL 目标 $D_\text{KL}(q_\mu^t\|p_\phi^t)$ 对 $\theta$ 求导后、$q$ 分布自身 score（entropy 项）对应的必要成分，<strong>不是</strong>零均值、只减方差的 variance-reduction control variate——丢弃它会把梯度目标从"分布匹配"退化为 SDS 的 mode-seeking（改变期望梯度方向，而非只增加噪声），因此不能等同于 RL actor-critic 中只减方差、不改变期望梯度的 value baseline。<strong>注意</strong>：上面是 gradient form，不是平方-loss form；论文没有"先写一个 $\|\epsilon_\phi-\epsilon_\psi\|^2$ 标量 loss 再求导"的可实现形式——$\epsilon_\psi$ 依赖 $\mu$，那样会丢掉 KL 的关键项。</p>
+<h4 id="直觉为什么缓解-over-saturation">直觉为什么缓解 over-saturation</h4>
+<ul><li>SDS：把 rendered $x$ 推向 prior $p_\phi(\cdot|y)$ 的 mode（mean-mode → 需 CFG=100 → over-saturation）</li><li>VSD：用辅助 score 学当前 rendered 分布的"自己的 mode"，更新方向 = 从"我现在在哪"指向"prior 在哪"（<strong>relative gradient</strong>），不需大 CFG 拉满。CFG 可降到 7.5（常规 diffusion 默认值），avoid extreme sharpening</li><li>实验上：VSD 颜色更自然，几何更复杂，可同时维护多个 mode（ProlificDreamer 给出 50k 步训练得 photorealistic Buddha 等）</li></ul>
+<div class="callout callout-good"><div class="callout-title">VSD vs SDS 的关键认知</div><p>SDS 是 "<strong>single-point + mode-seeking</strong>"；VSD 是 "<strong>particle / variational + relative score</strong>"。后者的 $\epsilon_\psi$ 是 KL 目标对 $\theta$ 求导后 $q$ 分布自身 score 对应的必要项，丢掉它会让梯度目标退化回 SDS 的 mode-seeking——不是只减方差、不改变期望梯度的 RL actor-critic value baseline。</p></div>
+<h3 id="68-sds-衍生家族mesh--3dgs--sds">6.8　SDS 衍生家族：mesh / 3DGS + SDS</h3>
+<div class="table-wrap"><table><thead><tr><th>方法</th><th>表示 / Stages</th><th>关键点</th></tr></thead><tbody><tr><td><strong>DreamFusion</strong></td><td>NeRF + SDS @ low-res</td><td>原版，提 mesh 难</td></tr><tr><td><strong>Magic3D</strong> (Lin 2023 CVPR)</td><td>Instant-NGP @ 64px → DMTet + SDS @ 512px</td><td><strong>两阶段</strong>：粗结构 → 高分辨率端到端 mesh</td></tr><tr><td><strong>Fantasia3D</strong> (Chen 2023 ICCV)</td><td>DMTet 几何 + PBR material</td><td>normal-as-input + 物理材质 BRDF</td></tr><tr><td><strong>DreamGaussian</strong> (Tang 2024 ICLR)</td><td>3DGS + SDS, ~2 分钟 / 物体</td><td>GPU 速度优势；mesh export + UV-Net texturing</td></tr><tr><td><strong>GaussianDreamer</strong> (Yi 2024 CVPR)</td><td>Point-E / Shap-E init → 3DGS + SDS</td><td>缓解 from-scratch 几何混乱</td></tr></tbody></table></div>
+<h2 id="7-feed-forward-重建从-colmap-到-pointmap-regression">§7 Feed-forward 重建：从 COLMAP 到 pointmap regression</h2>
+<p>2024 年之前，"多视图 → 3D" 的第一步几乎必然是 SfM：COLMAP 做 SIFT → matching → incremental SfM → bundle adjustment，几十分钟到几小时，而且 texture-less、低重叠、动态物体这几种情况经常失败。<strong>DUSt3R</strong> (Wang 2024 CVPR, arXiv:2312.14132, Naver) 把这整条管线换成一次网络前向：不做显式匹配、不三角化、不做 bundle adjustment，<strong>直接回归 pointmap</strong>。到 2025 年 VGGT 拿下 CVPR Best Paper，这条线已经是 3D 视觉岗位的默认提问方向。</p>
+<h3 id="71-dust3rpointmap-与置信度加权损失必考推导">7.1　DUSt3R：pointmap 与置信度加权损失（<strong>必考推导</strong>）</h3>
+<p><strong>Pointmap</strong> $X \in \mathbb{R}^{H\times W\times 3}$ 是"每个像素一个 3D 点"的稠密图，而且这些点的坐标<strong>写在某一个指定的相机系里</strong>。它同时约束了几何、内参和相机位姿，但取出来各有各的做法：</p>
+<ul><li><strong>内参</strong>：把 $X^{1,1}$ 的 3D 点与它们自己的像素坐标配对，拟合投影模型。</li><li><strong>位姿</strong>：把 $X^{2,1}$ 的 3D 点与 $I^2$ 的像素坐标配对，解 <strong>PnP</strong>——靠的是像素与 3D 点的对应关系。</li><li><strong>深度</strong>：$X^{2,1}$ 的 $z$ 分量<strong>不是</strong> $I^2$ 的深度，因为这些点写在 $I^1$ 系下；要拿 $I^2$ 的深度，得先把点变换回 $I^2$ 的相机系再取 $z$。</li></ul>
+<p>给两张图 $I^1, I^2$，DUSt3R 用共享权重的 ViT encoder 编码，两个 decoder 之间用 cross-attention 互看，输出两张 pointmap $X^{1,1}$ 和 $X^{2,1}$。<strong>上标是关键：两张 pointmap 都表达在 $I^1$ 的相机系下。</strong> 两张图的像素被放进了同一个坐标系，于是 <strong>位姿不再是输入，而是可以从输出解出来的量</strong>。这一句是整个 feed-forward 重建家族的原点。</p>
+<div class="callout callout-warn"><div class="callout-title">不要说&quot;把两张 pointmap 刚体对齐得到位姿&quot;</div><p>它们本来就在同一个系里，配准无从谈起。位姿来自 $X^{2,1}$ 与 $I^2$ 像素之间的 2D-3D 对应（PnP），这是两回事。</p></div>
+<p><strong>回归损失</strong>。对视图 $v \in \{1, 2\}$ 的有效像素 $i \in \mathcal{D}^v$（GT 有定义的像素），逐点欧氏误差：</p>
+<p>$$\ell_{\text{regr}}(v,i)=\Big\lVert \tfrac{1}{z}X^{v,1}_i-\tfrac{1}{\bar z}\bar X^{v,1}_i\Big\rVert$$</p>
+<p>$\bar X$ 是 GT。两边各除以一个 scale factor，$z$ 用预测、$\bar z$ 用 GT，二者定义相同：</p>
+<p>$$z=\text{norm}(X^1,X^2)=\frac{1}{\lvert\mathcal{D}^1\rvert+\lvert\mathcal{D}^2\rvert}\sum_{v}\sum_{i\in\mathcal{D}^v}\lVert X^v_i\rVert$$</p>
+<p>即<strong>所有有效点到原点的平均距离</strong>。除以它以后，损失对整体缩放不变——网络只被要求把形状学对，尺度自由。<strong>这正是"DUSt3R 式训练默认 up-to-scale"的技术来源。</strong></p>
+<p>想要绝对尺度，实际做法不止一种，<strong>MapAnything</strong> 是其中一种：保留这种尺度不变的几何监督，<strong>另外单独预测一个全局尺度并给它自己的损失</strong>。归一化本身也有不同做法——<strong>VGGT</strong> 只归一化 GT、不做 DUSt3R 这种预测侧的归一化，但它学的仍是归一化后的尺度，不是 metric 路线。下面代码里的 <code>use_metric</code>（令 $z=\bar z$）是最直接的教学变体，把绝对尺度直接压进回归项——它便于理解，但不是上面两篇的做法。</p>
+<p><strong>置信度加权</strong>。真实数据里有天空、反光、半透明、动态物体这些"GT 本身不可信"的像素。DUSt3R 让网络额外吐一张置信度图 $C^{v,1}$，损失变成：</p>
+<p>$$\boxed{\;\mathcal{L}_{\text{conf}}=\sum_{v}\sum_{i\in\mathcal{D}^v}\Big[\,C^{v,1}_i\,\ell_{\text{regr}}(v,i)\;-\;\alpha\log C^{v,1}_i\,\Big]\;},\qquad C=1+\exp(\check C)\gt 1$$</p>
+<p>其中 $\check C$ 是 confidence head 的原始输出，$1+\exp(\cdot)$ 的参数化保证 $C\gt 1$（每个像素至少被计入一次）。论文把 $-\alpha\log C$ 称为<strong>正则项</strong>。</p>
+<p><strong>为什么必须有 $-\alpha\log C$</strong>（面试就问这个）。把单个像素的损失看成 $C$ 的函数，定义域 $C\gt 1$：$f(C)=C\ell-\alpha\log C$。</p>
+<ul><li><strong>去掉 $\log$ 项</strong>：$f(C)=C\ell$ 对 $C$ 单调不减（$\ell\ge 0$），最优把 $C$ 推到定义域下界 $C\to 1$，逐像素损失退回普通回归损失 $\ell$。<strong>几何照样在学</strong>——退化的只是置信度 head：它变成常数，不再携带任何信息。正则项存在的意义就是挡住这个退化。</li><li><strong>加上 $\log$ 项</strong>：$f'(C)=\ell-\alpha/C$。$\ell\lt \alpha$ 时驻点 $C^\star=\alpha/\ell\gt 1$ 落在定义域内；$\ell\ge\alpha$ 时 $f'(C)\gt 0$ 恒成立，下确界仍在 $C\to 1^+$。</li><li><strong>把 $C$ 消掉</strong>（对 $C$ 取下确界的<strong>优化消元</strong>，不是概率意义上的边缘化）：</li></ul>
+<p>$$\inf_{C\gt 1} f(C)=\begin{cases}\alpha+\alpha\log(\ell/\alpha), &amp; 0\lt \ell\lt \alpha\\[2pt] \ell, &amp; \ell\ge\alpha\end{cases}$$</p>
+<ul><li><strong>所以它到底做了什么</strong>：$\ell\lt \alpha$ 的那一段被换成对数形状，$\ell\ge\alpha$ 的那一段<strong>仍然是线性的 $\ell$</strong>。它<strong>不是</strong>把大残差压成对数的 outlier 抑制器——大残差照常线性计入。$\alpha$ 是这条分界线的位置：只有当一个像素的残差小于 $\alpha$ 时，网络抬高 $C$ 才有收益（换来 $\alpha\log(\ell/\alpha)\lt 0$ 的负贡献）。于是 $C$ 学到的是"这个像素我算得准不准"，而天空、反光、动态物体这些算不准的地方，$C$ 就停在 1 附近拿不到奖励。</li></ul>
+<div class="callout callout-info"><div class="callout-title">$\alpha$ 是唯一的旋钮</div><p>它同时是"多小的残差才值得表态"的阈值和置信度奖励的强度。$\alpha$ 调大，更多像素进入对数段、置信度图更"敢说"；固定残差时，降低 $\alpha$ 会让更多像素落进 $C\to 1$ 的那一支，机制退回普通回归。答这题时能说出分界点在 $\ell=\alpha$，比背公式高一档。</p></div>
+<pre><code class="language-python">import torch
+
+def dust3r_conf_loss(pred_pts, gt_pts, conf_raw, valid, alpha=0.2, use_metric=False):
+    &quot;&quot;&quot; DUSt3R 置信度加权 pointmap 损失（教学版）。
+        pred_pts: [B, V, H, W, 3]  两个 head 的 pointmap，都在 I^1 相机系下
+        gt_pts:   [B, V, H, W, 3]  同一坐标系的 GT（V = 2），无效像素可以是 NaN
+        conf_raw: [B, V, H, W]     confidence head 原始输出 Ĉ（未激活）
+        valid:    [B, V, H, W]     bool，GT 有定义的像素集合 D^v
+        use_metric: 令 z = z̄ 的教学变体，把绝对尺度压进回归项（不是论文做法）
+        注意：论文的 L_conf 是在有效像素上求和；这里返回的是&quot;逐样本有效像素均值
+        再对 batch 取均值&quot;，便于不同 batch 之间比较。
+    &quot;&quot;&quot;
+    eps = 1e-8
+    vm = valid.unsqueeze(-1)                                       # [B, V, H, W, 1]
+    zero = torch.zeros((), dtype=pred_pts.dtype, device=pred_pts.device)
+    # 先选后算：GT 的无效深度常用 NaN 编码，NaN * 0 仍是 NaN，会污染整个样本
+    pred_v = torch.where(vm, pred_pts, zero)
+    gt_v = torch.where(vm, gt_pts, zero)
+
+    n = valid.flatten(1).sum(1).to(pred_pts.dtype).clamp(min=1.0)  # [B]  |D^1| + |D^2|
+    # norm(·) = 有效点到原点的平均距离；pred / gt 各算一个
+    z_bar = gt_v.norm(dim=-1).flatten(1).sum(1) / n                # [B]  z̄
+    z = z_bar if use_metric else pred_v.norm(dim=-1).flatten(1).sum(1) / n
+
+    bshape = (-1,) + (1,) * (pred_pts.dim() - 1)                   # [B, 1, 1, 1, 1]
+    l_regr = (pred_v / z.view(bshape).clamp(min=eps)
+              - gt_v / z_bar.view(bshape).clamp(min=eps)).norm(dim=-1)   # [B, V, H, W]
+
+    C = 1.0 + conf_raw.exp()                                       # C &gt; 1，保证每像素都计入
+    per_pix = C * l_regr - alpha * C.log()                         # 去掉 log 项 → C 全塌到 1
+    per_pix = torch.where(valid, per_pix, torch.zeros((), dtype=per_pix.dtype,
+                                                      device=per_pix.device))
+    return per_pix.flatten(1).sum(1).div(n).mean()</code></pre>
+<div class="callout callout-warn"><div class="callout-title">两处容易写错</div><p>一是 scale 归一化必须在<strong>两张图一起</strong>算（$\lvert\mathcal{D}^1\rvert+\lvert\mathcal{D}^2\rvert$ 是分母），分开归一化会把两张图之间的相对尺度关系抹掉；二是 $C$ 不能 detach，梯度必须流回 confidence head，否则"残差小于 $\alpha$ 才抬 $C$"这条机制根本形成不了。</p></div>
+<p><strong>MASt3R</strong> (2406.09756) 在 DUSt3R 上加了一个稠密局部特征 head，把"回归 pointmap"和"做像素级匹配"合成一个模型，匹配精度大幅提升，后续 MASt3R-SfM 用它替换 COLMAP 的 matching 前端。</p>
+<h3 id="72-共通配方与-vggt-的四个-head">7.2　共通配方与 VGGT 的四个 head</h3>
+<p>这一族的配方大体一致，但<strong>每一条都有例外，答题时要把例外说出来</strong>：</p>
+<ol><li><strong>视图之间靠 attention 交换信息</strong>，而不是先做手工特征匹配再解几何。但"一次前向吃掉所有视图"不是全族通性：DUSt3R 本身是<strong>成对</strong>模型，多视图仍要接一个全局对齐阶段（而且不必跑满所有图像对）；Fast3R 才是真的一次前向出全部 pointmap，不过它的<strong>相机参数是事后从 pointmap 恢复的</strong>。</li><li><strong>输出落在同一个公共坐标系</strong>，通常是某一张参考图的相机系。<strong>π³ 是例外</strong>：它的原始输出是每个视图<strong>各自相机系下的局部 pointmap</strong> 加上相应位姿，公共坐标系要由这些位姿拼出来。</li><li><strong>位姿通常是输出而不是必需输入</strong>——不需要先跑 SfM 初始化。</li><li><strong>尺度看训练方式</strong>：DUSt3R 式的预测 + GT 双边归一化 → up-to-scale；VGGT 只归一化 GT。metric 输出不止一条路——MapAnything 通过单独预测全局尺度获得 metric 输出，也可以直接采用 metric 几何监督（CUT3R 即如此，MASt3R 同样在 metric 数据上训）。</li></ol>
+<p><strong>VGGT</strong> (Wang 2025 CVPR <strong>Best Paper</strong>, arXiv:2503.11651, Oxford + Meta) 是这条线目前的参考实现。它用交替的 frame-wise / global attention 处理 N 张图，从<strong>同一个 backbone</strong> 引出四个 head：</p>
+<div class="table-wrap"><table><thead><tr><th>Head</th><th>输出</th><th>下游用途</th></tr></thead><tbody><tr><td><strong>Camera</strong></td><td>每张图的外参 + 内参（四元数 + 平移 + FOV）</td><td>替代 SfM 的位姿估计</td></tr><tr><td><strong>Depth</strong></td><td>每张图的稠密深度（DPT 式）</td><td>深度补全 / 融合</td></tr><tr><td><strong>Point map</strong></td><td>公共坐标系下的稠密 3D 点</td><td>直接出点云</td></tr><tr><td><strong>Track</strong></td><td>给定查询像素，预测<strong>同一物理点在每张图上的 2D 位置</strong></td><td>对应关系 / 跟踪与匹配</td></tr></tbody></table></div>
+<div class="callout callout-info"><div class="callout-title">VGGT 最反直觉的一条观察</div><p>论文报告：<strong>推理时把 depth head 和 camera head 的结果组合出点云，比直接用 point map head 的输出更准</strong>。注意这是一条实验观察，不等于证明了"多任务训练的收益不在 head 上"；但它至少说明，<strong>训练时用哪些监督目标</strong>和<strong>推理时走哪条路径</strong>是两个可以分开的决策。</p></div>
+<p><strong>为什么面试里 VGGT 取代了 "先 COLMAP" 的标准答案</strong>：秒级而非小时级；不依赖已标定内参，对重叠的要求也宽松得多；四种量一次输出，下游（3DGS 初始化、SLAM、机器人建图）拿来即用。但这不是"COLMAP 已死"——精度与基准 GT 的讨论见 §12.1。</p>
+<h3 id="73-分支结构这一族在往哪几个方向长">7.3　分支结构：这一族在往哪几个方向长</h3>
+<ul><li><strong>Fast3R</strong> (2501.13928, Meta, CVPR 2025)：DUSt3R 是成对模型，多视图要"跑若干图像对 + 全局对齐"两个阶段。Fast3R 把 <strong>N 张图一次前向</strong>全部送进 transformer 直接出 pointmap，论文示范到 1000+ 张，省掉全局对齐；相机参数则由 pointmap 在后处理里恢复。</li><li><strong>CUT3R</strong> (2501.12387, Berkeley)：改成<strong>循环式</strong>——维护一个持久状态，每读入一帧就更新状态并输出该帧的 pointmap。这让它变成 <strong>online / 流式</strong>方法，可以边采边建，也能读单张图；输出的 pointmap 与位姿是 <strong>metric</strong> 的。</li><li><strong>π³</strong> (2507.13347)：前面的方法都要指定一张<strong>参考视图</strong>当坐标原点，于是结果依赖"选了哪张"，参考图退化时整体跟着受累。π³ 做成<strong>置换等变</strong>（permutation-equivariant）：输出随输入顺序等变，<strong>不存在被特权化的那一张</strong>。</li><li><strong>MapAnything</strong> (2509.13414, Meta + CMU, 3DV 2026)：用<strong>因子化的 metric 表示</strong>（ray 方向 + 深度 + 位姿 + 尺度）统一一堆任务，并且<strong>输入是可选的</strong>——有内参就用内参，有位姿就用位姿，什么都没有也能跑。尺度由单独预测的全局因子给出。</li><li><strong>Depth Anything 3</strong> (2511.10647, ByteDance)：反向做减法——不要特制架构、不要四个 head，<strong>一个 plain transformer + 单一的 depth-ray 预测目标</strong>就够了。论文在作者自建的基准上报告相对 VGGT 的<strong>平均相对提升</strong>：相机位姿 44.3%、几何 25.1%。<strong>开源权重。</strong></li><li><strong>VGGT-Ω</strong> (2605.15195, CVPR 2026 Oral)：把 VGGT 的<strong>训练显存</strong>降到 30%，并把训练用的<strong>有监督数据</strong>扩到 15×（这是两件事，不是"同一预算下的等价交换"），能力扩到<strong>动态场景</strong>（VGGT 系原本假设静态）。它预测 depth 与相机。<strong>权重未确认。</strong></li></ul>
+<div class="table-wrap"><table><thead><tr><th>模型</th><th>输入视图</th><th>主要输出</th><th>需要位姿输入？</th><th>metric？</th><th>权重</th></tr></thead><tbody><tr><td><strong>DUSt3R</strong> (2312.14132)</td><td>2（多视图靠全局对齐拼）</td><td>pointmap + 置信度</td><td>否</td><td>否（up-to-scale）</td><td>开源权重</td></tr><tr><td><strong>MASt3R</strong> (2406.09756)</td><td>2</td><td>pointmap + 稠密局部特征</td><td>否</td><td>是（metric 数据训练）</td><td>开源权重</td></tr><tr><td><strong>VGGT</strong> (2503.11651)</td><td>N，一次前向</td><td>相机 / depth / pointmap / track</td><td>否</td><td>否</td><td>开源权重（非商用许可）</td></tr><tr><td><strong>Fast3R</strong> (2501.13928)</td><td>N，示范 1000+</td><td>pointmap（相机后处理恢复）</td><td>否</td><td>否</td><td>开源权重</td></tr><tr><td><strong>CUT3R</strong> (2501.12387)</td><td>流式逐帧（含单图）</td><td>pointmap + 位姿 + 持久状态</td><td>否</td><td>是</td><td>开源权重</td></tr><tr><td><strong>π³</strong> (2507.13347)</td><td>N，置换等变</td><td>pointmap + 相机</td><td>否</td><td>否</td><td>开源权重</td></tr><tr><td><strong>MapAnything</strong> (2509.13414)</td><td>N，其余输入可选</td><td>因子化 metric 表示</td><td>可选（有就用）</td><td>是</td><td>开源权重</td></tr><tr><td><strong>Depth Anything 3</strong> (2511.10647)</td><td>N</td><td>depth-ray → 位姿 / 几何</td><td>否</td><td>—</td><td>开源权重</td></tr><tr><td><strong>VGGT-Ω</strong> (2605.15195)</td><td>N，含动态场景</td><td>depth + 相机</td><td>否</td><td>否</td><td>权重未确认</td></tr></tbody></table></div>
+<p><strong>MV-DUSt3R+</strong> (2412.06974) 是 DUSt3R → 多视图的另一条过渡路线（multi-view decoder block + 跨参考视图融合）；这一族的系统梳理见综述 arXiv:2507.08448。</p>
+<h3 id="74-feed-forward-3dgs">7.4　Feed-forward 3DGS</h3>
+<p>上面这条线在回归几何，另一条线在回归<strong>可渲染的 3DGS</strong>——把 §4 里那 10-30 分钟的逐场景优化也换成一次前向。<strong>注意这条线对输入位姿的要求并不统一</strong>：</p>
+<ul><li><strong>LGM</strong> (2402.05054, Tang 2024 ECCV)：非对称 U-Net 吃 4 张多视图图像，<strong>每个像素直接吐一个 3D Gaussian</strong>，几秒出资产。这 4 张图来自<strong>预设的固定环绕相机位姿</strong>，由上游多视图生成模型按这套位姿出图。</li><li><strong>GS-LRM</strong> (2404.19702)：把 LRM 的 transformer 换成输出 Gaussian 参数——<strong>per-pixel Gaussians</strong>，输入 patch token 进、Gaussian 出，<strong>2-4 张已标定位姿的视图</strong>，A100 上 <strong>0.23 秒</strong>。这是"LRM 出 triplane"到"LRM 出 3DGS"的转折点（LRM 见 §8.3）。</li><li><strong>Long-LRM</strong> (2410.12781)：把输入推到 <strong>32 张 960×540 的已标定视图</strong>，在 A100 上约 <strong>1 秒</strong>内重建整个房间级场景——相对逐场景优化约 <strong>800×</strong> 加速，质量与优化方法相当甚至更好。后续 Long-LRM++ (2512.10267)。</li><li><strong>DepthSplat</strong> (2410.13862, CVPR 2025)：把预训练单目深度特征接进多视图 Gaussian 预测，让 depth 和 splatting 互相促进——深度先验补上了稀疏视图下最缺的那部分约束。输入同样是<strong>已标定</strong>的多视图。</li><li><strong>NoPoSplat</strong> (2410.24207)：<strong>Gaussian 网络本身不需要位姿输入</strong>——它把<strong>第一张输入图的相机系直接定义为 canonical space</strong>，所有 Gaussian 都吐在那里，内参以 token 注入。注意"pose-free"限定在这个网络上：要渲染目标视角、要评测，仍然有一个单独的位姿估计流程。</li><li><strong>AnySplat</strong> (2505.23716)：未标定图集进去，<strong>Gaussians + 内参 + 外参</strong>一起出来——几何回归那条线和 3DGS 回归这条线在这里合流。</li></ul>
+<div class="callout callout-warn"><div class="callout-title">别把 feed-forward 3DGS 当成 3DGS 的替代品</div><p>它换掉的是"逐场景优化"这一步，不是 3DGS 表示本身；输出仍然是 Gaussian，仍然按 §4.3 光栅化，<strong>也仍然可以接着优化</strong>。谁的质量更高要看设定：Long-LRM 在它的房间级设定下报告与逐场景优化相当或更好，视图很密时优化通常仍占优。取舍见 Q15。</p></div>
+<h2 id="8-single-image--few-view-3d-生成">§8 Single-Image / Few-View 3D 生成</h2>
+<p>更实用的设定：<strong>给一张图，生成 3D</strong>。</p>
+<h3 id="81-zero-1-to-3-范式novel-view-via-diffusion">8.1　Zero-1-to-3 范式（novel view via diffusion）</h3>
+<p><strong>Zero-1-to-3</strong> (Liu 2023 ICCV)：用 Objaverse 上 finetune Stable Diffusion，让它接收 (input view, target camera) → output novel view。</p>
+<ul><li>Input：单图 $x$ + 相对相机位姿 $\Delta R, \Delta T$</li><li>Diffusion conditioning：image embedding (CLIP) + camera embedding (sinusoidal)</li><li>Output：在 $\Delta R, \Delta T$ 视角下的图</li></ul>
+<p><strong>用法</strong>：给一个 input view，sample 16-32 个 novel view，再用 NeRF / 3DGS 重建。</p>
+<p><strong>衍生</strong>：</p>
+<ul><li><strong>Zero-1-to-3++</strong> (Shi 2023)：固定生成 6 个 anchor view（方位角在 30°/90°/150°/210°/270°/330° 每 60° 均匀环绕一周，仰角在 -10° 与 20° 之间交替排列，即 interleaved elevation + uniform azimuth，而非"一个北极视角 + 四个平视角 + 一个俯视角"），减少 randomness</li><li><strong>SyncDreamer</strong> (Liu 2024 ICLR)：在 latent 上<strong>联合</strong>预测多视图（cross-attention 让 views 看到彼此），保证 3D 一致</li><li><strong>MVDream</strong> (Shi 2024 ICLR)：text-to-multi-view，4 视图同时生成；后接 SDS 精化</li></ul>
+<h3 id="82-one-2-3-45--instantmesh--triposr--stable-fast-3d">8.2　One-2-3-45 / InstantMesh / TripoSR / Stable Fast 3D</h3>
+<div class="table-wrap"><table><thead><tr><th>方法</th><th>输入</th><th>输出</th><th>速度</th><th>关键</th></tr></thead><tbody><tr><td><strong>One-2-3-45</strong> (Liu 2023 NeurIPS)</td><td>单图</td><td>mesh</td><td>45 秒</td><td>Zero-1-to-3 → SparseNeuS</td></tr><tr><td><strong>One-2-3-45++</strong> (Liu 2024)</td><td>单图</td><td>mesh</td><td>60 秒</td><td>多视图 + SDF</td></tr><tr><td><strong>TripoSR</strong> (Tochilkin 2024, Stability+Tripo)</td><td>单图</td><td>NeRF/mesh</td><td>0.5-2 秒</td><td>LRM (Large Reconstruction Model) 风格 transformer</td></tr><tr><td><strong>InstantMesh</strong> (Xu 2024, arXiv:2404.07191)</td><td>单图</td><td>mesh</td><td>~10 秒</td><td>Zero-1-to-3++ 多视图 → sparse-view recon transformer</td></tr><tr><td><strong>Stable Fast 3D</strong> (SF3D, Stability 2024)</td><td>单图</td><td>textured mesh</td><td>~0.5 秒</td><td>TripoSR 后继；加 illumination disentangle + UV unwrap</td></tr></tbody></table></div>
+<p><strong>LRM (Hong et al. 2023 arXiv → ICLR 2024) 设定</strong>：把图当 token + Plucker ray embedding，transformer 输出 NeRF triplane。这是 TripoSR / InstantMesh 的母模型。</p>
+<h3 id="83-lrm-triplane-表示面试高频">8.3　LRM Triplane 表示（<strong>面试高频</strong>）</h3>
+<ul><li><strong>Triplane</strong> (Chan 2022 EG3D)：3 个轴对齐 2D 平面（XY, YZ, XZ），共 $3 \times C \times N \times N$ 维</li><li>查询 3D 点 $(x, y, z)$：在每个平面双线性插值 → <strong>三个平面特征逐元素相加</strong>（EG3D 是 sum，不是 concat）→ 小 MLP → $(\sigma, \mathbf{c})$</li><li>优点：比 voxel grid 显存少（$O(N^2)$ vs $O(N^3)$），比 hash grid 更 dense 适合 transformer 输出</li><li>LRM / TripoSR / InstantMesh 都让 transformer 直接 regress triplane tokens</li></ul>
+<h2 id="9-3d-foundation-models202426-开源浪潮">§9 3D Foundation Models（2024–26 开源浪潮）</h2>
+<h3 id="91-trellisslat-与两阶段-rectified-flow">9.1　TRELLIS：SLAT 与两阶段 rectified flow</h3>
+<p><strong>TRELLIS</strong> (Xiang 2024, arXiv:2412.01506, Microsoft) 是"3D 的 Stable Diffusion"这条路线上最完整的开源尝试，也是面试里最该讲清楚的那一个——因为它的 latent 设计直接决定了它的工程形态。</p>
+<p><strong>SLAT (Structured LATents)</strong> 的定义：</p>
+<p>$$\boldsymbol z=\{(\boldsymbol z_i,\boldsymbol p_i)\}_{i=1}^{L},\qquad \boldsymbol p_i\in\{0,1,\dots,N-1\}^3,\quad N=64$$</p>
+<p>即"<strong>latent 向量 + 它所在的体素坐标</strong>"的集合。$N=64$ 是体素分辨率（$64^3\approx 2.6\times10^5$ 个格子），而 $L\approx 20\text{K}$ 是<strong>被占用的 active voxel 数</strong>，约 8% 的占用率。</p>
+<p><strong>分工要说准</strong>：$\boldsymbol p_i$ 只确定<strong>稀疏支撑</strong>——资产的物质分布在哪些格子里，粒度就是 $64^3$；真正的<strong>细几何和外观都编码在 $\boldsymbol z_i$ 里</strong>，否则 64 分辨率的体素根本表达不出锐边和曲面。$\boldsymbol z_i$ 的来源是：把每个 active voxel 投影到多视图渲染图上，在 <strong>DINOv2 特征图</strong>里采样并聚合，再由一个 sparse VAE 压缩。所以 SLAT 从一开始就是<strong>几何与外观联合编码</strong>的。</p>
+<p><strong>两阶段 rectified flow</strong>（顺序不能反）：</p>
+<ol><li><strong>Structure 阶段</strong>：先生成"哪些体素是 active"，即稀疏结构 $\{\boldsymbol p_i\}$ 本身。</li><li><strong>Latent 阶段</strong>：在已确定的 active voxel 上生成 $\{\boldsymbol z_i\}$。</li></ol>
+<p>拆成两段的直接收益是第二阶段只在约 20K 个 token 上跑 flow，而不是 $64^3\approx262\text{K}$ 个格子上——<strong>先定骨架再填内容，省掉的是被跳过的那 92% 空格子的注意力与前向计算</strong>。</p>
+<p><strong>多 decoder</strong>：同一份 SLAT 训了三个 decoder，分别出 <strong>3DGS / Radiance Field / Mesh</strong>（mesh 走的是 FlexiCubes，不是朴素 marching cubes，见 §5.2）。</p>
+<p>模型规模 <strong>342M / 1.1B / 2B</strong>，训练数据是从四个公开数据集（Objaverse(-XL)、ABO、3D-FUTURE、HSSD）筛出的<strong>约 50 万件</strong>资产。<strong>开源权重。</strong></p>
+<p><strong>TRELLIS.2</strong> (2512.14692) 是它的后继。它的 Sparse Compression VAE 以 <strong>O-Voxel</strong> 为<strong>原生表示</strong>——稀疏体素同时携带几何与 PBR 材质；VAE 把 O-Voxel 压成更紧凑的 latent，<strong>三个 flow model</strong> 在压缩 latent 上分工生成，mesh 走自己的 dual-grid 转换。<strong>权重未确认。</strong></p>
+<h3 id="92-hunyuan3d-家族20--21--25--omni--studio--buffalo">9.2　Hunyuan3D 家族：2.0 → 2.1 → 2.5 → Omni / Studio / Buffalo</h3>
+<p>Hunyuan3D 走 <strong>shape-then-texture</strong> 两阶段路线，是国内开源生态里迭代最快的一条线。</p>
+<ul><li><strong>Hunyuan3D-1</strong> (Yang 2024)：stage 1 文/图 → 多视图（Zero-1-to-3 系），stage 2 多视图 → mesh（LRM-like）。</li><li><strong>Hunyuan3D 2.0</strong> (2501.12202)：<strong>Hunyuan3D-DiT</strong>——ShapeVAE 把点云编成 <strong>vecset 形状 latent</strong>，在这个 latent 上做 <strong>flow matching</strong>，解码出 SDF；<strong>Hunyuan3D-Paint</strong> 做多视图贴图 diffusion + UV 空间 refine，输出的是 RGB 贴图。<strong>开源权重。</strong></li><li><strong>Hunyuan3D 2.1</strong> (2506.15442)：<strong>PBR 材质生成是这一版才进主线的</strong>，同时公开<strong>训练代码</strong>——后一条对想复现的人比版本号重要得多。</li><li><strong>Hunyuan3D 2.5</strong> (2506.16504)：几何模型换成 <strong>LATTICE，10B 参数</strong>，细节和锐边明显改善。<strong>权重未确认。</strong></li><li><strong>Hunyuan3D-Omni</strong> (2509.21245)：可控生成——除了图像/文本，还接受 <strong>位姿 / bounding box / 体素</strong> 作为控制信号。<strong>权重未确认。</strong></li><li><strong>Hunyuan3D Studio</strong> (2509.12815)：面向生产管线的资产化工具链（重拓扑、UV、贴图整合）。<strong>权重未确认。</strong></li><li><strong>Hunyuan3D Buffalo 1.0</strong> (2608.02711)：把<strong>生成、理解、编辑</strong>统一进一个模型。<strong>权重未确认。</strong></li></ul>
+<div class="callout callout-warn"><div class="callout-title">没有 &quot;Hunyuan3D 3.0&quot;</div><p>这条线是 2.0 → 2.1 → 2.5 之后直接分叉成 Omni / Studio / Buffalo 的命名体系。面试里被问"最新版本"时说成 3.0，会当场暴露是从二手摘要里背的。</p></div>
+<h3 id="93-latent-表示这条轴clay--direct3d--dora--step1x-3d">9.3　latent 表示这条轴：CLAY / Direct3D / Dora / Step1X-3D</h3>
+<p>把这几个工作按发布时间排没有意义，按 <strong>latent 表示与解码目标</strong>排才是面试要的结构。</p>
+<ul><li><strong>CLAY</strong> (Zhang 2024 SIGGRAPH, 2406.13897)：<strong>多分辨率 VAE + latent DiT</strong>。它的 shape VAE 在 <strong>3DShape2VecSet</strong> (Zhang et al. 2023, arXiv:2301.11445) 的 vector-set 表示上扩展而来（属于 VecSet 谱系），DiT 在这个 latent 上做 diffusion，<strong>解码出 occupancy field</strong>，再 marching cubes 取表面，后面接 PBR 贴图阶段。</li><li><strong>Direct3D</strong> (2405.14832)：D3D-VAE 把 mesh 编到<strong>显式 triplane latent</strong>，D3D-DiT 在 triplane 上做 diffusion。triplane 的好处是 2D 卷积/注意力的整套工程直接复用，坏处是三个平面的投影歧义（细长结构在某个平面上会重叠）。</li><li><strong>Direct3D-S2</strong> (2505.17412)：换成<strong>稀疏体素 latent</strong> + <strong>spatial sparse attention (SSA)</strong>，把 <strong>1024³</strong> 分辨率的训练压到 <strong>8 张 GPU</strong> 上跑得动。论文报告的 3.9× 前向 / 9.6× 反向是 <strong>SSA 算子相对 FlashAttention-2 的加速</strong>，不是整个模型的端到端倍数。</li><li><strong>Dora</strong> (2412.17808, CVPR 2025)：走 <strong>VecSet</strong> 路线，改的是采样与注意力——<strong>Sharp Edge Sampling</strong> 把采样预算倾斜到几何锐边上，再配 <strong>dual cross-attention</strong>。结果是 Dora-VAE 只用 <strong>1,280 个 latent code</strong>，就在 Dora-bench 上达到与稠密的 XCube-VAE 相当的重建质量（后者需要 &gt;10,000）。<strong>latent 数量下降一个数量级，直接决定了后面 DiT 的序列长度。开源权重。</strong></li><li><strong>Step1X-3D</strong> (2505.07747)：几何走 <strong>VecSet latent，解码为 TSDF</strong> 的 hybrid VAE-DiT，配 <strong>200 万</strong>件清洗后的资产（从 500 万+筛出）；几何与贴图两阶段的代码、权重与训练流程全部开源（Apache-2.0）。<strong>开源权重。</strong></li><li><strong>Meta AssetGen 2</strong> (2605.26137)：闭源产品线，在其 H100 部署上把单资产生成压到约 <strong>30 秒</strong>，主打生产可用性而非论文指标。</li></ul>
+<p><strong>Rodin</strong> (Microsoft 2023, 商业)：早期 text-to-3D-avatar 产品级系统，diffusion on triplane，主打 character / avatar。</p>
+<h3 id="94-对比表latent-表示才是那条轴">9.4　对比表：latent 表示才是那条轴</h3>
+<div class="table-wrap"><table><thead><tr><th>方法</th><th><strong>latent 表示</strong></th><th>解码目标</th><th>Prior</th><th>权重</th></tr></thead><tbody><tr><td><strong>TRELLIS</strong></td><td><strong>SLAT</strong>（稀疏体素支撑 + per-voxel latent）</td><td>3DGS / 场 / mesh（FlexiCubes）</td><td>Rectified Flow ×2</td><td>开源权重</td></tr><tr><td><strong>TRELLIS.2</strong></td><td>SC-VAE 压缩 latent（原生表示为 <strong>O-Voxel</strong>，几何 + PBR）</td><td>mesh（dual-grid）+ PBR</td><td>Flow ×3</td><td>权重未确认</td></tr><tr><td><strong>Hunyuan3D 2.0 / 2.1</strong></td><td><strong>VecSet</strong>（ShapeVAE 形状 latent）</td><td>SDF → mesh；贴图另起一阶段</td><td>Flow matching</td><td>开源权重</td></tr><tr><td><strong>Hunyuan3D 2.5</strong></td><td>VecSet（LATTICE 10B）</td><td>SDF → mesh</td><td>Diffusion</td><td>权重未确认</td></tr><tr><td><strong>CLAY</strong></td><td><strong>VecSet 谱系</strong>（多分辨率，扩展自 3DShape2VecSet）</td><td>occupancy → mesh</td><td>Diffusion (DiT)</td><td>部分</td></tr><tr><td><strong>Direct3D</strong></td><td><strong>Triplane</strong></td><td>隐式场 → mesh</td><td>Diffusion (DiT)</td><td>—</td></tr><tr><td><strong>Direct3D-S2</strong></td><td><strong>稀疏体素</strong> + SSA</td><td>高分辨率隐式场 → mesh</td><td>Diffusion</td><td>—</td></tr><tr><td><strong>Dora</strong></td><td><strong>VecSet</strong>（1,280 codes，Sharp Edge Sampling）</td><td>隐式场 → mesh</td><td>VAE + DiT</td><td>开源权重</td></tr><tr><td><strong>Step1X-3D</strong></td><td><strong>VecSet</strong></td><td><strong>TSDF</strong> → mesh</td><td>Diffusion</td><td>开源权重</td></tr><tr><td><strong>TripoSR / SF3D / LRM</strong></td><td><strong>Triplane</strong>（前馈 regress，无 prior）</td><td>NeRF / mesh</td><td>无</td><td>开源权重</td></tr><tr><td><strong>Rodin</strong></td><td>Triplane</td><td>avatar</td><td>Diffusion</td><td>❌</td></tr></tbody></table></div>
+<p>「权重」列只在已核实处写"开源权重"，"权重未确认"表示没找到官方发布，"—"表示本文未核实。</p>
+<div class="callout callout-info"><div class="callout-title">这条轴真正决定什么</div><p>三种 latent <strong>都能按坐标查询解码</strong>：triplane 用投影 + 双线性插值 + 逐元素相加（§8.3），VecSet 用查询坐标对 latent 集合做 cross-attention，SLAT 按体素位置取。所以"能出几种格式"是<strong>各家训了哪些 decoder</strong> 的结果，不是表示本身的禁令——TRELLIS 一口气训了三个，别家只训了 mesh 那条路。表示真正决定的是<strong>计算和显存摆在哪里</strong>：SLAT / 稀疏体素把 latent 挂在显式稀疏支撑上，局部计算和按位置匹配的解码最顺手；VecSet 没有空间索引，但集合本身很小（Dora 压到 1,280），全连接注意力也不贵，代价是丢掉了局部性；triplane 复用 2D 工程最省事，代价是分辨率一上去平面显存就涨。<strong>稠密 token 一样可以上窗口化 / 稀疏注意力</strong>——Direct3D-S2 的收益来自稀疏支撑让被跳过的那部分计算真的不存在，而不是"只有稀疏表示配得上稀疏注意力"。</p></div>
+<h3 id="95-原生-mesh-生成为什么美术不要等值面提取的输出">9.5　原生 mesh 生成：为什么美术不要等值面提取的输出</h3>
+<p>上述方法的 mesh 输出主要来自<strong>两条不同的路</strong>：从场里提等值面——朴素的 marching cubes（§5.1）或 FlexiCubes 这类可微变体（§5.2，TRELLIS 用的就是它）；或者像 TRELLIS.2 那样从 <strong>O-Voxel 直接做 dual-grid 转换，根本不经过场</strong>。<strong>两条路的问题都不在提取质量而在拓扑</strong>：三角形的排布跟着提取网格或体素网格走，不跟着形状的结构走。UV 能展、能简化、能做 LOD——这些都不是做不到，FlexiCubes 这类方法也能相当程度地保住锐边。难受的是<strong>输出不保证具有适合编辑、绑骨和形变的边流</strong>：没有沿轮廓和折痕组织的 edge loop，手工改形和蒙皮都别扭，减面也得跟原有三角化对抗而不是顺着它走。美术手工建的 mesh（<strong>artist-created mesh</strong>）通常只有几百到几千面，每条边都贴着几何特征。</p>
+<p>于是有了<strong>原生 mesh 生成</strong>：不提等值面、不做体素转换，<strong>直接自回归地吐出面片序列</strong>。这条线的主线是 <strong>token 压缩</strong>——序列长度 = 面数 × 每面 token 数，而 transformer 是平方复杂度。基线是<strong>朴素序列的 9 个坐标 token / 面</strong>（3 顶点 × 3 坐标），下面几篇都在跟这个 9 比；到 Meshtron 则换了思路，用架构去扛长序列而不是继续压 token。</p>
+<ul><li><strong>MeshGPT</strong> (2311.15475)：开山之作。用图卷积编码 + <strong>残差量化</strong>把每个面压成 <strong>6 个码本 token</strong>，再用 decoder-only transformer 自回归生成。</li><li><strong>MeshAnything</strong> (2406.10163)：加<strong>形状条件</strong>——先用任意方法（重建、生成）得到一个粗形状，再让 AR 模型按这个形状"重新建模"成 artist-style mesh。面数相对等值面提取的输出少<strong>几百倍</strong>。</li><li><strong>MeshAnything V2</strong> (2408.02555)：提出 <strong>Adjacent Mesh Tokenization (AMT)</strong>——利用相邻面共享顶点，一个面在多数情况下只需编码<strong>一个新顶点</strong>而非三个，token 数<strong>约为朴素序列的一半</strong>，可生成面数上限翻倍。</li><li><strong>BPT</strong> (2411.07025)：Blocked and Patchified Tokenization，<strong>块索引</strong>（坐标拆成块号 + 块内偏移）加上<strong>patch 内的顶点共享</strong>，相对<strong>朴素序列</strong>缩短 <strong>约 75%</strong>，把可生成面数推过 <strong>8K</strong>。</li><li><strong>TreeMeshGPT</strong> (2503.11629, CVPR 2025)：把面片序列换成沿<strong>邻接树</strong>的自回归——解码时从一个"待扩展边"的栈里取边并向外长面。压缩后的序列长度<strong>约为原始的 22%</strong>（≈ 2 token / 面，而不是"少 22%"）。它还在序列构造里约束面的定向，<strong>明显减少法线翻转</strong>（不等于完全省掉后处理）。</li><li><strong>Meshtron</strong> (2412.09548)：不压 token，硬扛长序列——<strong>hourglass 架构 + 滑动窗口注意力</strong>，做到 <strong>64K 面 @ 1024 坐标分辨率</strong>。<strong>权重未确认。</strong></li><li><strong>DeepMesh</strong> (2503.15265)：在 AR mesh 生成上接 <strong>DPO</strong>，用偏好数据把"人类觉得好的拓扑"直接写进目标——mesh 生成里第一批 post-training 工作。</li></ul>
+<div class="callout callout-warn"><div class="callout-title">2026 年的反向潮流：Nexus</div><p>Nexus (2607.13563) 的批评针对自回归本身：<strong>逐 token 生成会让前面的错误顺着序列往后传</strong>，而这个任务天生要长序列，压缩只是把序列变短，没有消除这条传播路径。它改成<strong>由粗到细的顶点八叉树 diffusion</strong>先定出顶点集合，再用 <strong>topology embedding</strong> 恢复边与面，因此不存在逐 token 的误差传播。代价也要说：<strong>论文自己指出推理偏慢</strong>——所以被问"AR 做 mesh 的问题"时答"慢"并不算错，只是没答到误差传播这一层。</p></div>
+<h3 id="96-部件级与-sim-ready从缺部件的整体到能用的资产">9.6　部件级与 sim-ready：从"缺部件的整体"到能用的资产</h3>
+<p>生成出来的资产通常<strong>缺少显式的部件和关节结构</strong>。机器人要抓的抽屉、要转的轮子、要按的按钮，在输出里不是可以单独寻址的东西——仿真器没法给它们分配质量、摩擦、关节。这是 3D 生成离 Embodied AI 落地最近、也最卡的一环。</p>
+<p><strong>第一步：拆成部件。</strong> 这一簇的四个工作路线不同但目标一致：</p>
+<ul><li><strong>PartGen</strong> (2412.18608)：多视图 diffusion → 部件级分割 + <strong>补全被遮挡的部分</strong>（分割出来的部件本身是不完整的，必须生成式补全）。</li><li><strong>HoloPart</strong> (2504.07943)：把它形式化成 <strong>3D part amodal segmentation</strong>——把整体 mesh 分解成语义完整的部件，每个部件补成独立闭合体。</li><li><strong>PartCrafter</strong> (2506.05573)：不做"先整体再拆"，而是在生成时就<strong>联合去噪多个部件</strong>——部件之间的空间关系在联合训练里学到，而不是靠后处理对齐。</li><li><strong>PartPacker</strong> (2506.09980, NVIDIA)：<strong>dual volume packing</strong>，把多个部件打包进两个体积场里一次生成，避开了"部件数不定"给网络输出维度带来的麻烦。</li></ul>
+<p><strong>第二步：几何 → 部件 → 关节 → 材质 → URDF。</strong> 拆完部件只解决了几何，离 sim-ready 还差三步：部件之间是什么<strong>关节</strong>（revolute / prismatic / fixed）、轴在哪、限位多少；每个部件的<strong>物理材质</strong>（质量、摩擦、恢复系数）；最后打包成仿真器读得懂的 <strong>URDF / MJCF</strong>。</p>
+<ul><li><strong>EmbodiedGen</strong> (2506.10600)：目前把这条链路走得最完整的开源工作之一，直接产出带物理属性的 <strong>URDF 资产</strong>，接 IsaacSim / MuJoCo。</li><li><strong>Artiverse</strong> (2605.24403)：<strong>5.4K 件铰接物体 / 88 类</strong>。对照系是 PartNet-Mobility 的 <strong>2,346</strong> 件——铰接资产的规模仍在千级，Artiverse 把它推高了一倍多，但离几何那一层的百万级差着三个数量级。</li></ul>
+<div class="callout callout-info"><div class="callout-title">面试怎么答这一节</div><p>别背论文名。这一节的结构是"<strong>一个问题被切成五段，每段的数据供给差得很远</strong>"：几何有 Objaverse-XL 级的规模所以做得最好，部件级刚有 PartGen / HoloPart 这批方法，关节级的资产从 PartNet-Mobility 的 2,346 件到 Artiverse 的 5.4K 件都还是千级，物理材质基本还靠手工指定。<strong>说得出哪一段是瓶颈，比列出十篇论文有用。</strong></p></div>
+<h2 id="10-复杂度--资源对比">§10 复杂度 / 资源对比</h2>
+<div class="table-wrap"><table><thead><tr><th>方法</th><th>训练</th><th>推理耗时</th><th>运行显存（注明阶段）</th><th>模型 / 表示规模</th></tr></thead><tbody><tr><td>NeRF vanilla</td><td>1-2 天</td><td>数秒</td><td>8 GB</td><td>&lt;10 MB MLP</td></tr><tr><td>Instant-NGP</td><td>5 秒 - 5 分钟</td><td>30 fps+</td><td>4-12 GB</td><td>100-500 MB hash</td></tr><tr><td>3DGS</td><td>10-30 分钟</td><td>100 fps+</td><td>6-24 GB</td><td>100 MB - 1 GB Gaussian</td></tr><tr><td>2DGS</td><td>与 3DGS 接近</td><td>与 3DGS 接近</td><td>类似</td><td>类似</td></tr><tr><td>DreamFusion (NeRF+SDS)</td><td>2 hr / 物体</td><td>—</td><td>12 GB</td><td>NeRF 本身</td></tr><tr><td>DreamGaussian (3DGS+SDS)</td><td>2 分钟 / 物体</td><td>—</td><td>8-16 GB</td><td>—</td></tr><tr><td>ProlificDreamer (VSD)</td><td>3-6 hr / 物体</td><td>—</td><td>24 GB</td><td>—</td></tr><tr><td>TripoSR feedforward</td><td>训练 50 GPU 天</td><td>0.5 秒 (A100)</td><td>inference 6 GB</td><td>1.5 GB</td></tr><tr><td>GS-LRM / Long-LRM（前馈 3DGS）</td><td>大规模多视图训练</td><td>0.23 秒 / 约 1 秒（32 视图 960×540）</td><td>—</td><td>—</td></tr><tr><td>VGGT（前馈重建）</td><td>大规模多视图训练</td><td>秒级 / N 张图一次前向</td><td>—</td><td>~1B 参数</td></tr><tr><td>TRELLIS</td><td>训练 100+ GPU 天</td><td>数秒</td><td>inference 16 GB</td><td>数 GB</td></tr><tr><td>Hunyuan3D 2.0 / 2.1</td><td>训练大集群</td><td>数十秒</td><td>inference 24+ GB</td><td>多模型组合</td></tr></tbody></table></div>
+<h2 id="11-与相关方法对比--embodied-ai-应用">§11 与相关方法对比 &amp; Embodied AI 应用</h2>
+<h3 id="111-3d-vs-2d-生成关键区别">11.1　3D-vs-2D 生成关键区别</h3>
+<div class="table-wrap"><table><thead><tr><th>维度</th><th>2D 生成 (Stable Diffusion)</th><th>3D 生成</th></tr></thead><tbody><tr><td><strong>数据量</strong></td><td>LAION-5B 50亿图</td><td>Objaverse-XL (2307.05663) 1000万件（小 500×）</td></tr><tr><td><strong>数据格式</strong></td><td>图像（统一 RGB）</td><td>mesh / SDF / point cloud / NeRF / 3DGS（<strong>碎片化</strong>）</td></tr><tr><td><strong>训练 prior</strong></td><td>直接 train diffusion</td><td>用 2D diffusion 蒸馏 (SDS / Zero-1-to-3) <strong>或</strong> 用 3D-native diffusion (TRELLIS / CLAY) <strong>或</strong> 纯前馈 regression (LRM / VGGT)</td></tr><tr><td><strong>评测</strong></td><td>FID, CLIP score</td><td>Chamfer / IoU / PSNR (recon) + perceptual + user study</td></tr><tr><td><strong>下游</strong></td><td>直接出图</td><td>出资产 → 渲染 / 仿真 / 编辑</td></tr></tbody></table></div>
+<h3 id="112-embodied-ai--ar--vr-实战路线">11.2　Embodied AI / AR / VR 实战路线</h3>
+<div class="table-wrap"><table><thead><tr><th>任务</th><th>推荐表示</th><th>关键工具链 / 约束</th></tr></thead><tbody><tr><td><strong>Sim2Real 资产</strong></td><td>mesh (PBR)</td><td>TRELLIS / Hunyuan3D 2.1 → IsaacSim / MuJoCo；要能动的资产还差部件 / 关节 / 物理材质（§9.6）</td></tr><tr><td><strong>室内大场景</strong></td><td>3DGS</td><td>COLMAP → 3DGS（chunk-wise 用 VastGS / CityGS）；位姿也可由 VGGT 系给（§12.1）</td></tr><tr><td><strong>NeRF/3DGS as simulator</strong></td><td>NeRF / 3DGS + physics</td><td>DreamGaussian-Sim / Splatting Physics</td></tr><tr><td><strong>3D affordance / manipulation</strong></td><td>point cloud / 3DGS feature</td><td>OpenScene / LERF / RVT / 3D Diffuser Actor</td></tr><tr><td><strong>AR 物体扫描</strong></td><td>3DGS（光照真实 + 实时）</td><td>mobile 算力（PostShot / Luma），剪枝 / 量化</td></tr><tr><td><strong>VR 大场景</strong></td><td>3DGS (large-scale)</td><td>60 fps stereo + 6DoF</td></tr><tr><td><strong>Avatar</strong></td><td>mesh + LBS 或 3DGS avatar</td><td>实时表情 / 头发</td></tr><tr><td><strong>Object insertion</strong></td><td>mesh + PBR</td><td>环境光照一致（IBL）</td></tr></tbody></table></div>
+<div class="callout callout-warn"><div class="callout-title">Embodied AI 面试追问示例</div><p>"做 NeRF 物理仿真器最大挑战？" 要点：NeRF 是 radiance，没 mass / friction → 需手动叠物理 prior；mesh 提取有 floater → 碰撞检测难；可微但 backward 慢；<strong>业界更多用 3DGS / mesh 而非 vanilla NeRF</strong>。</p></div>
+<h2 id="12-工程实战--易踩坑">§12 工程实战 &amp; 易踩坑</h2>
+<h3 id="121-colmap-还是-feed-forward">12.1　COLMAP 还是 feed-forward？</h3>
+<p>COLMAP：输入多视图 → 输出内参 $K$ + 外参 $\{R_i, t_i\}$ + 稀疏点云；标准流程 SIFT → matching → incremental SfM → bundle adjustment。<strong>常见坑</strong>：texture-less / 镜面物体 SfM 失败；动态物体污染外参。</p>
+<p>§7 之后这一步不再是"重建必经"，但也远没到可以删掉。要点是几条<strong>条件性</strong>的判断，不是谁替代谁：</p>
+<ul><li><strong>精度看条件，不看牌子。</strong> COLMAP 在纹理和重叠都够的静态场景上很强；但<strong>单目 SfM 本身是 up-to-scale 的</strong>——绝对尺度要靠标定物、已知基线或其他传感器，COLMAP 不自带。</li><li><strong>基准的真值口径不统一。</strong> 有些重建基准的位姿确实由 COLMAP 生成，另一些用传感器真值或合成数据。想跟哪条基线比，就对齐它用的那套口径，别一概说成"基准就是 COLMAP"。</li><li><strong>Feed-forward 模型给的是秒级而不是小时级</strong>，而且在 COLMAP 吃力的地方仍然出结果：低重叠、视图很少、texture-less。注意<strong>内参未知不是 COLMAP 的失败条件</strong>——它可以自标定，只是更容易漂。</li><li><strong>两者对接是有工程量的。</strong> <strong>VGGT-X</strong> (2509.25191) 这篇存在本身就是证据：把 VGGT 的输出直接喂给大规模 3DGS 训练，需要额外处理显存、点云噪声与位姿精度才跑得动，不是"换个位姿来源"这么轻。</li></ul>
+<div class="callout callout-info"><div class="callout-title">实际怎么选</div><p>按拍摄条件、时间预算和<strong>实测精度</strong>选：静态、纹理够、离线、要对齐某个已有基准的口径 → COLMAP；在线、视图少或重叠差 → feed-forward；两个都想要 → feed-forward 出初值，再用 BA / COLMAP 精修。尺度要单独想：DUSt3R 式训练与 VGGT 都不保证是米，单目 COLMAP 同样不保证；要真实尺度就得引入标定物、已知基线或 metric 模型（§7.3），而<strong>学出来的 metric 尺度不等于测量级精度</strong>。</p></div>
+<h3 id="122-数值稳定nerf3dgs-通用">12.2　数值稳定（NeRF/3DGS 通用）</h3>
+<div class="table-wrap"><table><thead><tr><th>问题</th><th>症状</th><th>修复</th></tr></thead><tbody><tr><td>Sigma 爆炸</td><td>floater 充斥空间</td><td>$\sigma$ 用 softplus 或 truncated；occupancy grid skip</td></tr><tr><td>Alpha 饱和</td><td>1-α 下溢 → T 全 0</td><td><code>(1-α).clamp(min=1e-10)</code> 或 log-space cumprod</td></tr><tr><td>Gaussian 退化</td><td>极小 scale / 极大 anisotropy</td><td>clamp scale lower bound；regularize anisotropy</td></tr><tr><td>Densify 爆炸</td><td>Gaussian 数量飙到内存上限</td><td>加 max gaussian 数；周期 prune；reset opacity</td></tr><tr><td>SDS Janus</td><td>多视角脸 / 头</td><td>加 view-conditioning（"front view" / "back view"）；MVDream</td></tr><tr><td>SDS over-sat</td><td>颜色饱和</td><td>CFG 降低；改用 VSD；或 negative prompt</td></tr></tbody></table></div>
+<h3 id="123-多机分布式--评测指标">12.3　多机分布式 &amp; 评测指标</h3>
+<p><strong>分布式</strong>：NeRF / Instant-NGP / 3DGS 单 GPU 标准；大场景 3DGS 用 chunk-wise (VastGaussian, CityGaussian)；SDS/VSD 每 iter 跑 2 次 SD forward，8×A100 可显著提速；TRELLIS / Hunyuan3D 训练是大规模 multi-node DDP。</p>
+<div class="table-wrap"><table><thead><tr><th>评测指标</th><th>用途</th><th>算法</th></tr></thead><tbody><tr><td><strong>PSNR / SSIM / LPIPS</strong></td><td>视图合成（重建）</td><td>与真实视图对比</td></tr><tr><td><strong>Chamfer Distance</strong></td><td>mesh 几何</td><td>两点云最近邻距离平均</td></tr><tr><td><strong>F-Score (3D)</strong></td><td>mesh / point</td><td>precision + recall under threshold</td></tr><tr><td><strong>CLIP Score / CLIP-R-Prec</strong></td><td>text-to-3D 对齐</td><td>render → CLIP 相似度 / 区分干扰 prompt</td></tr><tr><td><strong>ULIP / ULIP-2 对齐分数</strong></td><td>3D ↔ 图像 ↔ 文本 语义对齐</td><td>在三模态共享空间里算相似度（ULIP 2212.05171 / ULIP-2 2305.08275；ULIP-2 用大模型自动生成语言描述，免掉人工标注）</td></tr><tr><td><strong>User study</strong></td><td>最终质量</td><td>MTurk / lab-internal</td></tr></tbody></table></div>
+<p><strong>常用评测集</strong>：<strong>GSO</strong> (Google Scanned Objects, 2204.11918) 1000+ 件真实扫描物体，是 single-image-to-3D 最常用的评测集；<strong>Toys4K</strong> (2101.07296) 约 4K 件 / 105 类，类别多样性好，常用于 few-shot 与部件级实验；<strong>Objaverse-XL</strong> (2307.05663) 1000 万+ 件，绝大多数工作把它当训练来源。<strong>数据集本身不自带"训练集/测试集"身份</strong>——同一批资产在这篇是训练数据、在那篇是评测数据都很常见，所以看到一个分数先问它的 split 是怎么切的，泛化结论只在那个 split 上成立。</p>
+<h2 id="13-25-高频面试题">§13 25 高频面试题</h2>
+<p>按难度分 3 档（L1 必会 / L2 进阶 / L3 顶级 lab）。每题点开看答案要点 + 易踩坑。</p>
+<h3 id="l1-必会题任何-3d--vision-岗都会问">L1 必会题（任何 3D / vision 岗都会问）</h3>
+<details>
+
+<summary>Q1.NeRF 体渲染公式？</summary>
+<ul><li>$C(\mathbf{r}) = \int T(t)\sigma(\mathbf{r}(t))\mathbf{c}(\mathbf{r}(t),\mathbf{d})dt$</li><li>$T(t) = \exp(-\int_{t_n}^t\sigma\,ds)$ 是透射率</li><li>离散化 → $\alpha$-compositing：$C \approx \sum T_i\alpha_i \mathbf{c}_i$，$\alpha_i = 1 - e^{-\sigma_i\delta_i}$</li></ul>
+<p>只写 $\sum \alpha_i \mathbf{c}_i$ 漏 $T_i$；或把 $\alpha_i$ 写成 $\sigma_i\delta_i$（一阶近似但严格错）。</p>
+</details>
+<details>
+
+<summary>Q2.为什么 NeRF 要 positional encoding？</summary>
+<ul><li>MLP 默认低频偏置（NTK 分析）</li><li>$\gamma(p) = (\sin 2^k\pi p, \cos 2^k\pi p)_{k=0}^{L-1}$ 提供高频 basis</li><li>直接学 $(x,y,z) \to (\sigma,\mathbf{c})$ 出来的图糊；加 PE 后高频细节恢复</li></ul>
+<p>误以为 PE 是给 MLP 加位置（其实是给空间频率谱），或弄反 $\mathbf{x}$ vs $\mathbf{d}$ 的频率级数（$L=10$ vs $L=4$）。</p>
+</details>
+<details>
+
+<summary>Q3.NeRF 的 hierarchical sampling 是什么？</summary>
+<ul><li>两个网络：coarse + fine</li><li>coarse 均匀采 64 点，渲染得 weights $w_i = T_i\alpha_i$</li><li>把 $w$ 归一化为 PDF，按重要性采 128 个 fine 点（密集采在表面）</li><li>Loss 同时监督两网络</li></ul>
+<p>说"只采一次更密集"——错过了 importance sampling 的核心。</p>
+</details>
+<details>
+
+<summary>Q4.Instant-NGP 为什么比 NeRF 快约 4+ 个数量级？</summary>
+<ul><li><strong>Hash 网格替代密集 grid</strong>：固定 $T$ 大小哈希表，cache-friendly</li><li><strong>Tiny MLP</strong> (2 层 hidden 64) 替代大 MLP（NeRF 8 层 256）</li><li><strong>多分辨率级联</strong> + <strong>occupancy grid</strong> skip 空白区采样</li><li><strong>CUDA fused kernel</strong>（tiny-cuda-nn）</li></ul>
+<p>只说"用了哈希"——漏了 multi-resolution + tiny-MLP + occupancy skip 的组合贡献。</p>
+</details>
+<details>
+
+<summary>Q5.3DGS 的"高斯"是怎么定义的？</summary>
+<ul><li>每个 Gaussian $G_i = (\mu_i, \Sigma_i, \alpha_i, c_i(\mathbf{d}))$</li><li>$\mu \in \mathbb{R}^3$ 位置，$\Sigma \in \mathbb{R}^{3\times 3}$ 协方差</li><li>$\Sigma = R S S^\top R^\top$ 分解（$R$ 用四元数，$S$ 用对角 + $\exp$），保证半正定</li><li>$c(\mathbf{d})$ 用球谐 SH 系数（$\ell = 3$，48 参数）</li></ul>
+<p>只说"高斯分布"——漏了协方差参数化技巧 + SH color。</p>
+</details>
+<details>
+
+<summary>Q6.3DGS 渲染怎么做？</summary>
+<ul><li>把 3D Gaussian 投影到 2D（$\Sigma' = JW\Sigma W^\top J^\top$）</li><li>按深度排序</li><li>Front-to-back alpha-blending（与 NeRF $\alpha$-compositing 同源）</li><li>实际是 tile-based + CUDA radix sort</li></ul>
+<p>只说"光栅化"，不提投影 Jacobian / 排序 / alpha-blend。</p>
+</details>
+<details>
+
+<summary>Q7.3DGS 的 densification 怎么做？</summary>
+<ul><li>高梯度 + 小 scale → <strong>clone</strong>（under-reconstruction）</li><li>高梯度 + 大 scale → <strong>split</strong>（over-reconstruction）</li><li>低 opacity 或过大 screen-size → <strong>prune</strong></li><li>周期性 reset opacity 防 floater</li></ul>
+<p>把 clone 和 split 弄反；忘了 reset 这步。</p>
+</details>
+<details>
+
+<summary>Q8.NeRF vs 3DGS 对比？</summary>
+<ul><li><strong>NeRF</strong>：隐式 (MLP)，渲染慢（ray march），editing 难</li><li><strong>3DGS</strong>：显式（点云），渲染快（rasterize），editing 易</li><li><strong>质量</strong>：3DGS PSNR 通常 ≥ NeRF；NeRF 在体积效应（烟雾 / 半透明）更好</li><li><strong>业界趋势</strong>：3DGS 主流，NeRF research-only</li></ul>
+<p>把两者当不可比较的不同事物——其实都是 volumetric scene rep，3DGS 是 explicit version of NeRF。</p>
+</details>
+<details>
+
+<summary>Q9.Marching Cubes 是什么？</summary>
+<ul><li>输入 3D 标量场 + 阈值，输出三角网格</li><li>每 voxel 8 角点二值化（高/低于阈值）→ 256 种 lookup table</li><li>Edge 上线性插值定顶点位置</li><li>不可微（lookup 离散）</li></ul>
+<p>说"找等高线"——MC 是 3D，等高线是 2D Marching Squares 的事。</p>
+</details>
+<details>
+
+<summary>Q10.SDS 大致是什么？</summary>
+<ul><li>用 pretrained 2D diffusion (Stable Diffusion) 监督 3D 表示</li><li>渲染 $x = g(\theta, \pi)$，加噪 $x_t$，问 diffusion "这是 $y$ 的图吗"</li><li>gradient $\propto (\epsilon_\phi(x_t; y) - \epsilon)\cdot \partial x/\partial \theta$</li><li>DreamFusion (Poole et al. 2022 arXiv → ICLR 2023 Outstanding Paper) 提出</li></ul>
+<p>只说"用 SD 训 NeRF"，漏了 SDS gradient 的特殊形式（去掉 U-Net Jacobian）。</p>
+</details>
+<h3 id="l2-进阶题research-oriented-岗位">L2 进阶题（research-oriented 岗位）</h3>
+<details>
+
+<summary>Q11.推导 NeRF 连续积分 → 离散 $\alpha$-compositing。</summary>
+<ul><li>$T$ 满足 $dT/dt = -\sigma T$，段内 $\sigma$ 常数 → $T(t_{i+1})/T(t_i) = e^{-\sigma_i\delta_i}$</li><li>段内颜色贡献 $\int_0^{\delta_i} T_i e^{-\sigma_i s}\sigma_i \mathbf{c}_i\,ds = T_i\mathbf{c}_i(1 - e^{-\sigma_i\delta_i})$</li><li>记 $\alpha_i = 1 - e^{-\sigma_i\delta_i}$，则 $C \approx \sum T_i\alpha_i \mathbf{c}_i$，$T_i = \prod_{j&lt;i}(1 - \alpha_j)$</li></ul>
+<p>把 $\alpha_i$ 写成 $\sigma_i\delta_i$ 而非 $1 - e^{-\sigma_i\delta_i}$；或省了 ODE 求解过程。</p>
+</details>
+<details>
+
+<summary>Q12.推导 3DGS 的 3D→2D 投影 Jacobian。</summary>
+<ul><li>透视投影 $\pi(\mathbf{x}) = (f_x x/z, f_y y/z)$ 非线性</li><li>一阶 Taylor：$\pi(\mathbf{x}) \approx \pi(\mu) + J(\mathbf{x}-\mu)$</li><li>$J = \partial\pi/\partial\mathbf{x}|_\mu = \begin{pmatrix} f_x/z &amp; 0 &amp; -f_x x/z^2 \\ 0 &amp; f_y/z &amp; -f_y y/z^2 \end{pmatrix}$</li><li>$\Sigma' = JW\Sigma W^\top J^\top$（$W$ 是 world→cam 旋转）</li></ul>
+<p>直接套 "covariance projection" 公式不推；或忘了 $W$ 这步（World→Cam 旋转）。</p>
+</details>
+<details>
+
+<summary>Q13.Instant-NGP 的 hash collision 如何消歧？</summary>
+<ul><li><strong>Multi-resolution 冗余</strong>：粗 level $N_\ell^d \le T$ 不冲突，细 level 才冲突；MLP 可从粗-fine 共同推</li><li><strong>稀疏激活</strong>：有效 supervision 集中在 surface 附近；空白区采样点密度非零时仍有梯度（把 $\sigma$ 压向 0），$\sigma\to 0$ 后梯度幅度自然衰减，occupancy grid 更新后才真正跳过该处采样</li><li><strong>MLP 后处理</strong>：在 $L\times F$ 拼接特征上学非线性融合，可 disambiguate</li><li>没有 explicit collision resolution；靠"lazy resolution by sparsity + redundancy"</li></ul>
+<p>以为有 hash chaining 之类的传统消歧——实际是数据驱动 implicit 消歧。</p>
+</details>
+<details>
+
+<summary>Q14.SDS gradient 漏了哪项 Jacobian？为什么？</summary>
+<ul><li>Naive diffusion training grad：$(\epsilon_\phi - \epsilon)\cdot \partial \epsilon_\phi/\partial x_t \cdot \alpha_t \cdot \partial x/\partial \theta$</li><li>SDS 把 $\partial \epsilon_\phi/\partial x_t$ <strong>U-Net Jacobian</strong> 扔掉</li><li>直觉：(1) 计算昂贵；(2) U-Net 没训练 second-order 稳定 → Jacobian 噪声大</li><li>代价：SDS 变成 mode-seeking KL，需要大 CFG (100) 才能逃 mean-mode → over-saturation</li></ul>
+<p>只说"为了简化"不说后果。或不知道 mode-seeking 是 KL 方向决定的。</p>
+</details>
+<details>
+
+<summary>Q15.Feed-forward 3DGS vs 逐场景 3DGS 优化：800× 什么时候不值得？</summary>
+<ul><li><strong>两条线各赢在哪</strong>：feed-forward（GS-LRM 2-4 张已标定视图 0.23 秒 / Long-LRM 32 视图 960×540 约 1 秒）赢在延迟和稀疏视图下的鲁棒性；逐场景优化（§4，10-30 分钟）赢在能把这一个场景的每一张观测都榨干。<strong>谁质量更高是条件性的</strong>——Long-LRM 在它的房间级设定下报告与逐场景优化相当甚至更好，视图很密时优化通常仍占优</li><li><strong>不值得的情况之一：视图密且离线</strong>——几十到上百张图、不赶时间，优化能持续收敛，而 feed-forward 的先验在观测不足处是"编"出来的</li><li><strong>不值得的情况之二：落在训练分布之外</strong>——这些模型多在物体级 / 房间级数据上训，遇到训练里没覆盖的拍摄条件（尺度、材质、光照）就要靠猜，优化则只信眼前这批图。注意"室外"本身不等于分布外，要看具体模型训过什么</li><li><strong>值得的情况</strong>：交互 / 在线；视图极少（2-8 张）时优化本身欠约束，先验是净收益；批量跑上万个场景时总吞吐比单场景画质重要</li><li><strong>工业界的实际做法</strong>：feed-forward 出初值 + 优化精修——前馈输出的 Gaussian 就是一组普通 Gaussian，<strong>可以接着训</strong>，等于拿掉了优化最慢的冷启动那一段</li><li><strong>换掉的是优化不是表示</strong>：输出仍然是 Gaussian，仍按 §4.3 光栅化</li></ul>
+<p>把 800× 当成通用倍数——那是 Long-LRM 在它自己的设定（32 视图 960×540、A100）下相对逐场景优化的加速，换个视图数、分辨率或硬件就不是这个数。</p>
+</details>
+<details>
+
+<summary>Q16.Zero-1-to-3 / SyncDreamer / MVDream 区别？</summary>
+<ul><li><strong>Zero-1-to-3</strong> (Liu 2023 ICCV)：input view + 相机 $\Delta R, \Delta T$ → single novel view；每次独立 sample</li><li><strong>Zero-1-to-3++</strong> (Shi 2023)：固定 6 个 anchor view，一次出多张（减 randomness）</li><li><strong>SyncDreamer</strong> (Liu 2024 ICLR)：在 latent 上<strong>联合</strong>预测多视图，cross-attention 让 views 互看 → 一致性更好</li><li><strong>MVDream</strong> (Shi 2024 ICLR)：text-to-multi-view（不需要 input image），4 视图同生成 + SDS 精化</li></ul>
+<p>只说"都是 novel view"——漏了独立 vs 联合 vs text-only 这条主线。</p>
+</details>
+<details>
+
+<summary>Q17.Mip-NeRF 怎么抗锯齿？</summary>
+<ul><li>Vanilla NeRF 把像素当 ray；不同分辨率下同像素对应不同尺度 → aliasing</li><li><strong>Mip-NeRF</strong> 把像素当 cone（视锥），cone 段近似 anisotropic Gaussian</li><li><strong>IPE (Integrated Positional Encoding)</strong>：$\mathbb{E}_{\mathbf{x}\sim\mathcal{N}(\mu,\Sigma)}[\gamma(\mathbf{x})]$ 有闭式解</li><li>高频系数被 $\Sigma$ 衰减 → multi-scale 自动平滑</li></ul>
+<p>只说"用 cone"，不讲 IPE 的高频衰减作用。</p>
+</details>
+<details>
+
+<summary>Q18.NeuS vs vanilla NeRF 提 mesh 的差别？</summary>
+<ul><li>vanilla NeRF：density 没明确 surface，提 mesh 要选 $\sigma$ 阈值（不稳）</li><li><strong>NeuS</strong> (Wang 2021 NeurIPS)：用 <strong>SDF $d(\mathbf{x})$</strong> 替换 density，定义 $\sigma$ via sigmoid 导数</li><li>表面 = $\{d = 0\}$，<strong>良好定义</strong></li><li>Marching Cubes 直接对 SDF 跑，质量明显更好</li></ul>
+<p>直接说"用 SDF"，但不讲 NeuS 怎么把 SDF 接到 NeRF 体渲染里。</p>
+</details>
+<details>
+
+<summary>Q19.新采集一批数据，用 COLMAP 还是 VGGT？</summary>
+<ul><li><strong>先问四件事</strong>：拍摄条件（纹理、重叠、有没有动态物体）、要多快出结果、下游要不要绝对尺度、要不要和某个已有基准的位姿口径对齐</li><li><strong>COLMAP</strong>：成熟、可控，在纹理和重叠都够的静态场景上精度高，失败模式集中在 texture-less / 强镜面 / 动态 / 低重叠。<strong>注意两点</strong>：内参未知不等于它就跑不动（它可以自标定，只是更容易漂）；而且它<strong>不是总能明显地失败</strong>——图全都注册上了、重投影误差也不大，位姿照样可能是错的，该做的一致性检查一样得做</li><li><strong>VGGT 系</strong>（§7）：秒级、不依赖已标定内参、对重叠宽容得多。失败模式是<strong>一直有输出但精度不保证</strong>，同样需要自己验</li><li><strong>尺度</strong>：DUSt3R 式训练（预测与 GT 双边归一化）默认 up-to-scale，VGGT 只归一化 GT——两者输出都不保证是米。<strong>单目 SfM 同样是 up-to-scale</strong>，COLMAP 本身也不自带绝对尺度。要真实尺度：外部标定物、已知基线的双目/多传感器，或 MapAnything (2509.13414) 这类单独预测全局尺度的模型——但<strong>学出来的 metric 尺度和测量级精度不是一回事</strong></li><li><strong>基准口径</strong>：有些重建基准的位姿确实来自 COLMAP，另一些用传感器真值或合成数据。想和哪条基线比，就对齐它用的那套口径</li><li><strong>组合解</strong>：feed-forward 出初值 → BA / COLMAP 精修；或先跑 VGGT 看能不能出结构，再决定值不值得等 COLMAP</li></ul>
+<p>答"VGGT 已经全面取代 COLMAP"，或反过来"COLMAP 精度总是更高"。该按拍摄条件、速度预算和<strong>实测精度</strong>来选。VGGT-X (2509.25191) 是个具体提醒：把 VGGT 输出接到大规模 3DGS 需要额外工程，衔接不是免费的。</p>
+</details>
+<details>
+
+<summary>Q20.3DGS 怎么提 mesh？</summary>
+<ul><li>vanilla 3DGS 不友好（ellipsoid 不是 surface）</li><li><strong>SuGaR</strong> (Guédon 2024 CVPR)：surface alignment loss + Poisson reconstruction</li><li><strong>2DGS</strong> (Huang 2024 SIGGRAPH)：把 ellipsoid 退化为 2D disk，对齐表面 → MC 提 mesh 更稳</li><li><strong>GSDF</strong> (Yu 2024)：joint train SDF head 与 3DGS</li></ul>
+<p>说"直接 MC"——3DGS 没有 density 场，直接 MC 不 work；必须先 surface-align。</p>
+</details>
+<h3 id="l3-顶级-lab-题顶会--industry-研究岗">L3 顶级 lab 题（顶会 / industry 研究岗）</h3>
+<details>
+
+<summary>Q21.推导 DUSt3R 的置信度加权损失，并解释 $-\alpha\log C$ 这一项。</summary>
+<ul><li><strong>输出约定</strong>：两个 head 都输出 pointmap $X^{1,1}, X^{2,1}$，<strong>都在 $I^1$ 的相机系下</strong>。位姿由 $X^{2,1}$ 与 $I^2$ 像素之间的 2D-3D 对应解 PnP 得到，<strong>不是"把两张 pointmap 配准"</strong>——它们本来就在同一个系里</li><li><strong>回归项</strong>：对有效像素 $i\in\mathcal{D}^v$，$\ell_{\text{regr}}(v,i)=\lVert \tfrac{1}{z}X^{v,1}_i-\tfrac{1}{\bar z}\bar X^{v,1}_i\rVert$——是欧氏范数，<strong>不是平方误差</strong></li><li><strong>尺度归一化</strong>：$z=\text{norm}(X^1,X^2)=\frac{1}{\lvert\mathcal{D}^1\rvert+\lvert\mathcal{D}^2\rvert}\sum_v\sum_{i}\lVert X^v_i\rVert$，所有有效点到原点的平均距离，两张图<strong>一起</strong>算。除以它 → 损失对整体缩放不变 → DUSt3R 式训练默认 up-to-scale。要绝对尺度有别的做法，MapAnything 是一种：保留这种尺度不变的几何监督、<strong>另外单独预测一个全局尺度</strong>。归一化方式另论——VGGT 只归一化 GT，学的仍是归一化后的尺度</li><li><strong>置信度形式</strong>：$\mathcal{L}_{\text{conf}}=\sum_v\sum_i\big[\,C^{v,1}_i\,\ell_{\text{regr}}(v,i)-\alpha\log C^{v,1}_i\,\big]$，$C=1+\exp(\check C)\gt 1$。论文把 $-\alpha\log C$ 称为<strong>正则项</strong></li><li><strong>去掉 $\log$ 项</strong>：$f(C)=C\ell$ 对 $C$ 单调不减，最优把 $C$ 推到定义域下界 $C\to 1$，<strong>逐像素损失退回普通回归损失 $\ell$</strong>。几何照样在学，退化的只是置信度 head——它变成常数、不携带信息</li><li><p><strong>保留 $\log$ 项、对 $C$ 取下确界</strong>（优化消元，不是概率意义的边缘化）：$f'(C)=\ell-\alpha/C$，$\ell\lt \alpha$ 时驻点 $C^\star=\alpha/\ell\gt 1$ 落在定义域内，$\ell\ge\alpha$ 时 $f'\gt 0$、下确界仍在 $C\to1^+$：</p>
+<p>$$\inf_{C\gt 1}f(C)=\begin{cases}\alpha+\alpha\log(\ell/\alpha), &amp; 0\lt \ell\lt \alpha\\[2pt] \ell, &amp; \ell\ge\alpha\end{cases}$$</p></li><li><strong>结论要说准</strong>：只有 $\ell\lt \alpha$ 那一段被换成对数形状，<strong>$\ell\ge\alpha$ 的大残差仍然线性计入</strong>——它不是把 outlier 压下去的鲁棒损失。$\alpha$ 就是这条分界线：残差小于 $\alpha$ 时抬高 $C$ 才划算（换来负的 $\alpha\log(\ell/\alpha)$），所以 $C$ 学到的是"这个像素我算得准不准"；天空、反光、动态物体这些算不准的地方，$C$ 停在 1 附近拿不到奖励</li></ul>
+<p>答成"边缘化掉置信度就得到对数鲁棒损失"：一是这是取下确界的优化消元不是积分边缘化，二是只有 $\ell\lt \alpha$ 半段是对数，大残差那半段是线性的。另一个失分点是说"去掉 log 项几何就学不动了"——去掉之后 $C\to 1$，损失正好退回普通回归损失。</p>
+</details>
+<details>
+
+<summary>Q22.VGGT 用一个 backbone 预测四种量——联合训练为什么赢过专才？DA3 的"一个 depth-ray 目标就够"又说明了什么？</summary>
+<ul><li><strong>四个 head 要说准</strong>：camera（外参 + 内参）、depth（每张图的稠密深度）、point map（公共系下的 3D 点）、track（<strong>给定查询像素，预测同一物理点在每张图上的 2D 位置</strong>——是 2D 对应，不是"跨视图 3D 轨迹"）</li><li><strong>联合训练的理由</strong>：四个目标共享同一套几何——depth 加 camera 就能得到点云，点的跨图 2D 投影就是 track。它们互相约束，backbone 被逼着学一个自洽的 3D 表示；单任务模型没有别的 head 来暴露它的不自洽</li><li><strong>VGGT 自己的观察</strong>：论文报告<strong>推理时用 depth head + camera head 组合出的点云，比 point map head 直接输出更准</strong>。这是一条实验观察，<strong>不能直接推出"多任务的收益一定落在共享表示而不在那个 head"</strong>；它稳妥的含义是：训练时用哪些监督目标、推理时走哪条路径，是两个可以分开做的决定</li><li><strong>DA3 (2511.10647) 的减法</strong>：不要四个 head、不要特制架构，<strong>plain transformer + 单一 depth-ray 预测目标</strong>，在作者自建的基准上报告相对 VGGT 的平均相对提升——位姿 44.3%、几何 25.1%</li><li><strong>怎么读这个对比</strong>：两篇的数据、训练规模、评测集都不同，<strong>跨论文的分数差不能证明是哪一种监督机制带来的收益</strong>。能站得住的读法是：至少存在一种配置，单一预测目标就足以覆盖位姿与几何，说明 head 数量本身不是必要条件；要证因果得看同一篇里的消融</li><li><strong>能补一句加分</strong>：depth + ray 在信息上已经张成了位姿与点云，所以多 head 更像是把同一份信息拆开监督，代价是多出架构与损失权重的调参面</li></ul>
+<p>只说"多任务 = 更多监督 = 更好"；或反过来拿 DA3 的分数当"多任务无用"的证明——那是跨论文比较，撑不起因果结论。</p>
+</details>
+<details>
+
+<summary>Q23.AR mesh 生成的 token 预算：AMT / BPT / 树序列化各压掉了什么？为什么压到极限也还不够？</summary>
+<ul><li><strong>基线</strong>：朴素序列 = 每个三角形 3 顶点 × 3 坐标 = <strong>9 个坐标 token / 面</strong>。序列长度 = 面数 × 每面 token 数，transformer 平方复杂度，所以 token 数直接换算成"最多能生成多少面"</li><li><strong>MeshGPT</strong> (2311.15475)：图卷积编码 + <strong>残差量化</strong>，每个面压成 <strong>6 个码本 token</strong>（不是 9——9 是它要打败的朴素基线）</li><li><strong>AMT</strong>（MeshAnything V2, 2408.02555）压的是<strong>顶点重复</strong>：相邻面共享顶点，多数面只需编码<strong>一个新顶点</strong>而非三个 → 序列长度约为朴素的<strong>一半</strong></li><li><strong>BPT</strong> (2411.07025) 压的是<strong>坐标表示</strong>：<strong>块索引</strong>（坐标拆成块号 + 块内偏移）加上 <strong>patch 内的顶点共享</strong>，相对<strong>朴素序列</strong>缩短 <strong>约 75%</strong>，面数推过 <strong>8K</strong></li><li><strong>TreeMeshGPT</strong> (2503.11629) 压的是<strong>面片排列顺序</strong>：沿邻接树自回归，从"待扩展边"的栈里取边向外长面。压缩后长度<strong>约为原始的 22%</strong>（≈ 2 token / 面）——注意是"剩 22%"不是"少 22%"。它还在序列构造里约束定向，<strong>明显减少法线翻转</strong>，但不等于完全免掉后处理</li><li><strong>算一下 64K 面的 token 预算（L3 常追到这里）</strong>：朴素 9/面 → 约 <strong>576K</strong> token；AMT 约一半 → 约 <strong>288K</strong>；树序列化 ≈2/面 → 约 <strong>128K</strong>。<strong>压到最好仍是十万量级</strong>，超出常规上下文，平方注意力也扛不住</li><li><strong>所以 Meshtron (2412.09548) 走的是另一条路</strong>：不指望压缩把序列变短到"塞得下"，而是让十万级序列本身可训——<strong>hourglass 架构</strong>在中段降采样 token，<strong>滑动窗口注意力</strong>把平方复杂度截断，做到 <strong>64K 面 @ 1024 坐标分辨率</strong></li><li><strong>Nexus (2607.13563) 的批评是针对自回归本身</strong>：逐 token 生成会让前面的错误顺着序列往后传，压缩只是缩短序列，没有消除这条路径。它改成<strong>由粗到细的顶点八叉树 diffusion</strong> 先定顶点集合，再用 <strong>topology embedding</strong> 恢复边与面，因此不存在逐 token 的误差传播；代价是<strong>论文自己说推理偏慢</strong></li></ul>
+<p>把 "22%" 读成"少了 22%"（实际是剩下 22%），或把 MeshGPT 说成 9 token/面（那是它的基线）。另一个失分点：把"压缩"当成解决方案的终点——分别采用这些方案时，最好的也还在十万级 token（各家的压缩率不相乘），Meshtron 靠的是架构而不是更狠的 tokenizer。</p>
+</details>
+<details>
+
+<summary>Q24.SLAT / VecSet / triplane 三种 3D latent，各自的架构取舍是什么？</summary>
+<ul><li><strong>先破一个常见误答</strong>：三种 latent <strong>都能按坐标查询解码</strong>——triplane 是投影到三个平面双线性插值再逐元素相加（§8.3），VecSet 是拿查询坐标对 latent 集合做 cross-attention，SLAT 是按体素位置取。所以"能出几种格式"是<strong>各家训了哪些 decoder</strong> 的结果，不是表示本身的禁令</li><li><strong>SLAT</strong>（TRELLIS, 2412.01506）：$\boldsymbol z=\{(\boldsymbol z_i,\boldsymbol p_i)\}$，$N=64$ 体素分辨率、$L\approx 20\text{K}$ active voxel（约 8% 占用率）。$\boldsymbol p_i$ 只给<strong>稀疏支撑</strong>，细几何与外观都在 $\boldsymbol z_i$ 里。显式支撑让局部计算和按位置匹配的解码最顺手，TRELLIS 因此训了 3DGS / 场 / mesh 三个 decoder；代价是要多一个"生成结构"的阶段</li><li><strong>VecSet</strong>（3DShape2VecSet / Hunyuan3D ShapeVAE / Dora / Step1X-3D）：<strong>无序 latent 集合，没有空间索引</strong>。好处是集合可以很小——Dora (2412.17808) 用 Sharp Edge Sampling + dual cross-attention 压到 <strong>1,280 codes</strong>，在 Dora-bench 上与稠密的 XCube-VAE 相当（后者 &gt;10,000）；序列短意味着后面的 DiT 便宜。代价是丢掉了局部性：同一份 latent 里没有"这块在哪"的结构可用</li><li><strong>Triplane</strong>（EG3D / Direct3D 2405.14832 / LRM）：三个<strong>稠密</strong> 2D 平面，最大优势是 2D 卷积与注意力的整套工程直接复用；代价是分辨率一上去平面本身的显存就涨，而且轴对齐投影有歧义（细长结构在某个平面上重叠）</li><li><strong>解码目标也是一条轴</strong>：CLAY 出 occupancy field，Hunyuan3D-DiT 与 Dora 出隐式场，Step1X-3D 出 <strong>TSDF</strong>，TRELLIS 走 FlexiCubes 出 mesh。同是 VecSet，解码目标可以完全不同</li><li><strong>关于稀疏注意力的正确说法</strong>：<strong>稠密 token 一样可以上窗口化 / 稀疏注意力</strong>。Direct3D-S2 (2505.17412) 的收益来自稀疏支撑让被跳过的那部分计算<strong>真的不存在</strong>；它报告的 3.9× / 9.6× 是 <strong>SSA 算子相对 FlashAttention-2</strong> 的加速，不是整模型的端到端倍数</li></ul>
+<p>说"VecSet 只能出 mesh""triplane 谈不上稀疏注意力"——这两句都不成立，前者是 decoder 选择问题，后者稠密 token 也能做。另一个失分点是把 SLAT 说成"就是体素网格"：体素只是 $\boldsymbol p_i$，$\boldsymbol z_i$ 是把 active voxel 投进多视图 DINOv2 特征图采样再压缩来的。</p>
+</details>
+<details>
+
+<summary>Q25.π³ 的置换等变修掉了参考视图锚定的什么毛病？NoPoSplat 的 canonical frame 又为什么不同？</summary>
+<ul><li><strong>参考视图锚定是什么</strong>：DUSt3R 把所有 pointmap 放进 $I^1$ 的相机系，VGGT 一族同样要指定一张图当公共坐标原点</li><li><strong>它坏在哪</strong>：(1) 结果依赖"选了哪张"——同一批图换个顺序，输出就变，这是不该有的方差；(2) 参考图退化时，它仍然被当作全局基准。<strong>注意不要编造"误差沿到参考图的距离累积"</strong>：VGGT 这类是所有视图联合预测，不存在逐跳串联的链条</li><li><strong>π³ (2507.13347) 的置换等变到底是什么</strong>：$f(PX)=P f(X)$——它是对<strong>排列行为</strong>的约束。它确定性地消除的是<strong>参考选择依赖和输入顺序依赖</strong>，<strong>不等于</strong>"对坏视图不敏感"。π³ 报告的鲁棒性提升来自它的实验结果，不是从等变性直接推出来的</li><li><strong>比较不同参考系下的两个重建时</strong>：先把坐标变换对齐再比几何，否则量到的是"换了个系"而不是"几何变差了"</li><li><strong>NoPoSplat (2410.24207) 反过来，故意保留锚定</strong>：把<strong>第一张输入图的相机系直接定义成 canonical space</strong>，所有 Gaussian 都吐在那里，内参以 token 注入。它的"pose-free"限定在 Gaussian 网络本身</li><li><strong>为什么不矛盾——两者治的病不同</strong>：π³ 要的是<strong>不依赖任何特定视图</strong>（几何重建，视图之间本无主次）；NoPoSplat 要的是<strong>不依赖位姿估计这一步</strong>（稀疏视图下先估位姿再重建会传播误差，干脆用一个固定约定替掉）</li><li><strong>L3 追问：canonical frame 和尺度是两件事，三个区分要说清</strong>：(1) <strong>选参考系只固定原点与坐标轴</strong>，本身不决定尺度；(2) <strong>已知内参也消不掉全局尺度自由度</strong>——基线未知时，把场景与基线同比例缩放得到完全相同的图像，尺度不可观测；(3) NoPoSplat 的新视角评测<strong>不是"先做尺度对齐"</strong>，而是<strong>固定 Gaussian、优化目标相机位姿</strong>。顺带一提，AnySplat (2505.23716) 联合出内外参解决的是标定与配准，<strong>同样不给绝对尺度</strong></li></ul>
+<p>把 "pose-free" 和 "reference-free" 当同义词：NoPoSplat 是 pose-free 但<strong>不是</strong> reference-free，它的 canonical frame 恰恰就是一个被特权化的参考视图。</p>
+</details>
+<h2 id="a-附录代码完整骨架--参考文献">§A 附录：代码完整骨架 + 参考文献</h2>
+<h3 id="a1-完整-from-scratch-代码包含">A.1　完整 from-scratch 代码包含</h3>
+<p><code>volume_render()</code> (NeRF α-compositing 含数值稳定) · <code>positional_encoding()</code> (γ(p) Fourier features) · <code>gaussian_splat_forward()</code> (3DGS 教学版前向 + 投影 Jacobian) · <code>densify_and_prune()</code> (3DGS densification 启发式) · <code>sds_loss()</code> (SDS gradient surrogate) · <code>dust3r_conf_loss()</code> (DUSt3R 置信度加权 pointmap 损失，含尺度归一化与 metric 开关) · <code>marching_cubes_sketch()</code> (mesh 提取接口，用 scikit-image)。</p>
+<h3 id="a2-关键论文-reading-list">A.2　关键论文 reading list</h3>
+<ul><li><strong>NeRF 系</strong>：Mildenhall 2020 ECCV (HM); Müller <strong>Instant-NGP</strong> SIGGRAPH 2022 Best; Barron <strong>Mip-NeRF</strong> / <strong>360</strong> ICCV 2021 / CVPR 2022; Wang <strong>NeuS</strong> + Yariv <strong>VolSDF</strong> NeurIPS 2021; Fridovich-Keil <strong>Plenoxels</strong> CVPR 2022; Chen <strong>TensoRF</strong> ECCV 2022.</li><li><strong>3DGS 系</strong>：Kerbl <strong>3D Gaussian Splatting</strong> SIGGRAPH 2023 Best; Huang <strong>2D Gaussian Splatting</strong> SIGGRAPH 2024; Luiten <strong>Dynamic 3DGS</strong> 3DV 2024; Wu <strong>4DGS</strong> CVPR 2024; Guédon <strong>SuGaR</strong> CVPR 2024.</li><li><strong>Mesh / SDF</strong>：Shen <strong>DMTet</strong> NeurIPS 2021 / <strong>FlexiCubes</strong> SIGGRAPH 2023.</li><li><strong>SDS 系</strong>：Poole <strong>DreamFusion</strong> arXiv 2022.09 → ICLR 2023 Outstanding; Wang <strong>ProlificDreamer (VSD)</strong> NeurIPS 2023 Spotlight; Lin <strong>Magic3D</strong> CVPR 2023; Chen <strong>Fantasia3D</strong> ICCV 2023; Tang <strong>DreamGaussian</strong> ICLR 2024; Yi <strong>GaussianDreamer</strong> CVPR 2024.</li><li><strong>Single-image 3D</strong>：Liu <strong>Zero-1-to-3</strong> ICCV 2023 / <strong>One-2-3-45</strong> NeurIPS 2023 / <strong>SyncDreamer</strong> ICLR 2024; Shi <strong>Zero-1-to-3++</strong> arXiv 2023 / <strong>MVDream</strong> ICLR 2024; Hong <strong>LRM</strong> arXiv 2023.11 → ICLR 2024; Tochilkin <strong>TripoSR</strong> arXiv 2024; Xu <strong>InstantMesh</strong> arXiv 2024; Boss <strong>Stable Fast 3D</strong> arXiv 2024.</li><li><strong>3D Foundation Models</strong>：Xiang <strong>TRELLIS</strong> 2412.01506 (Microsoft) / <strong>TRELLIS.2</strong> 2512.14692; Tencent <strong>Hunyuan3D 2.0</strong> 2501.12202 / <strong>2.1</strong> 2506.15442 / <strong>2.5</strong> 2506.16504 / <strong>Omni</strong> 2509.21245 / <strong>Studio</strong> 2509.12815 / <strong>Buffalo 1.0</strong> 2608.02711; Zhang <strong>CLAY</strong> SIGGRAPH 2024 (2406.13897); <strong>Direct3D</strong> 2405.14832 / <strong>Direct3D-S2</strong> 2505.17412; <strong>Dora</strong> 2412.17808 (CVPR 2025); <strong>Step1X-3D</strong> 2505.07747; Meta <strong>AssetGen 2</strong> 2605.26137.</li><li><strong>Feed-forward 重建</strong>：<strong>DUSt3R</strong> 2312.14132 (CVPR 2024) / <strong>MASt3R</strong> 2406.09756; <strong>VGGT</strong> 2503.11651 (CVPR 2025 Best Paper); <strong>Fast3R</strong> 2501.13928 (CVPR 2025); <strong>CUT3R</strong> 2501.12387; <strong>π³</strong> 2507.13347; <strong>MapAnything</strong> 2509.13414 (3DV 2026); <strong>Depth Anything 3</strong> 2511.10647; <strong>VGGT-Ω</strong> 2605.15195 (CVPR 2026 Oral); <strong>MV-DUSt3R+</strong> 2412.06974; <strong>VGGT-X</strong> 2509.25191; 综述 2507.08448.</li><li><strong>Feed-forward 3DGS</strong>：<strong>LGM</strong> 2402.05054; <strong>GS-LRM</strong> 2404.19702; <strong>Long-LRM</strong> 2410.12781 / <strong>Long-LRM++</strong> 2512.10267; <strong>DepthSplat</strong> 2410.13862 (CVPR 2025); <strong>NoPoSplat</strong> 2410.24207; <strong>AnySplat</strong> 2505.23716.</li><li><strong>原生 mesh 生成</strong>：<strong>MeshGPT</strong> 2311.15475; <strong>MeshAnything</strong> 2406.10163 / <strong>V2</strong> 2408.02555; <strong>BPT</strong> 2411.07025; <strong>TreeMeshGPT</strong> 2503.11629 (CVPR 2025); <strong>Meshtron</strong> 2412.09548; <strong>DeepMesh</strong> 2503.15265; <strong>Nexus</strong> 2607.13563.</li><li><strong>部件级 / sim-ready</strong>：<strong>PartGen</strong> 2412.18608; <strong>HoloPart</strong> 2504.07943; <strong>PartCrafter</strong> 2506.05573; <strong>PartPacker</strong> 2506.09980 (NVIDIA); <strong>EmbodiedGen</strong> 2506.10600; <strong>Artiverse</strong> 2605.24403.</li><li><strong>数据集 / 评测</strong>：<strong>Objaverse-XL</strong> 2307.05663（1000 万+）; <strong>GSO</strong> 2204.11918（真实扫描物体）; <strong>Toys4K</strong> 2101.07296（约 4K 件 / 105 类）; <strong>ULIP</strong> 2212.05171 / <strong>ULIP-2</strong> 2305.08275（3D-图像-文本对齐）.</li></ul>
+<h3 id="a3-embodied-ai--ar--vr-常见追问">A.3　Embodied AI / AR / VR 常见追问</h3>
+<p>3DGS 接物理引擎 → 先 2DGS / SuGaR 提 mesh → IsaacSim / MuJoCo；NeRF 动态化 → 4DGS / D-NeRF / K-Planes；AR 实时 3DGS → mobile-friendly (PostShot, Luma) + 剪枝 / 量化；3D 数据不足 → Objaverse-XL (TRELLIS) 或 2D 蒸馏 (DreamFusion 系) 或 multi-view 启发式 (MVDream)；扫一批图重建 → 先 VGGT 出结构再决定要不要等 COLMAP（§12.1）；生成资产要进仿真器 → 光有 mesh 不够，还缺部件、关节、物理材质（§9.6）。</p>
+<hr />
+<p><strong>3D Generation Quick Reference</strong> · 主要参考：Mildenhall 2020 (NeRF), Müller 2022 (Instant-NGP), Kerbl 2023 (3DGS), Poole 2022/ICLR 2023 (DreamFusion), Wang 2023 (VSD), Wang 2024 (DUSt3R), Wang 2025 (VGGT), Xiang 2024 (TRELLIS), Tencent 2025-26 (Hunyuan3D 2.x / Omni / Buffalo). 涵盖：NeRF 体渲染推导、Instant-NGP hash 网格、3DGS 投影 Jacobian、SDS / VSD 梯度推导、DUSt3R 置信度加权损失、feed-forward 重建与 feed-forward 3DGS、single-image 3D、3D foundation models 的 latent 表示轴、原生 mesh 生成、部件级与 sim-ready 资产。Embodied AI / AR / VR 必备。</p>
+
+<footer class="aris-footer">
+  <a href="https://wanshuiyin.github.io/ARIS-in-AI-Offer/">ARIS in AI Offer</a> · <a href="https://github.com/wanshuiyin/ARIS-in-AI-Offer"><span class="l-cn">⭐ 点个 Star</span><span class="l-en">⭐ Star on GitHub</span></a><br>
+  Generated by <a href="https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep/blob/main/skills/render-html/SKILL.md">ARIS <code>/render-html</code></a> ·
+  source path <code>docs/tutorials/3d_generation_tutorial.md</code> ·
+  SHA256 <code>72bb3948aef8</code> ·
+  generated at 2026-09-16 06:00 UTC.
+  This is a generated view — edit the source Markdown, then re-render.
+</footer>
+</main>
+
+</div>
+
+<!-- P0 polish: paper popover host (populated by IIFE below) -->
+<div id="cite-pop" hidden role="dialog" aria-labelledby="cite-pop-title">
+  <button class="cp-close" type="button" aria-label="Close">×</button>
+  <div class="cp-content"></div>
+</div>
+
+<!-- P0 polish: figure lightbox (native <dialog>, graceful fallback) -->
+<dialog class="lightbox" id="figure-lightbox" aria-label="Figure detail">
+  <div class="lb-inner">
+    <button class="lb-close" type="button" aria-label="Close">×</button>
+    <img alt="" />
+    <figcaption></figcaption>
+  </div>
+</dialog>
+
+<!-- P0 polish: paper registry sidecar, embedded by render_html.py (--papers) -->
+<script>window.PAPER_REGISTRY = {};</script>
+
+<!-- P0 polish: interactive enhancements (TOC scrollspy, code-card auto-collapse,
+     paper popovers, figure lightbox, print-restore for <details>, blog-mode H2). -->
+<script>
+(function () {
+  "use strict";
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];
+    });
+  }
+
+  // --- Feature 5: Print degradation fix ---------------------------------
+  // Force every <details> open during print, restore the pre-print state after.
+  var _stashOpen = [];
+  var _printing = false;
+  window.addEventListener("beforeprint", function () {
+    if (_printing) return;  // guard against multi-fire (Chrome print preview)
+    _printing = true;
+    _stashOpen = [];
+    document.querySelectorAll("details:not([open])").forEach(function (d) {
+      _stashOpen.push(d);
+      d.open = true;
+    });
+  });
+  window.addEventListener("afterprint", function () {
+    _stashOpen.forEach(function (d) { if (d.isConnected) d.open = false; });
+    _stashOpen = [];
+    _printing = false;
+  });
+
+  // --- Feature 3: TOC scrollspy -----------------------------------------
+  var tocLinks = [].slice.call(document.querySelectorAll("nav.toc a"));
+  var headings = tocLinks.map(function (a) {
+    var id = a.getAttribute("href").replace(/^#/, "");
+    return document.getElementById(id);
+  }).filter(Boolean);
+  if (headings.length && typeof IntersectionObserver !== "undefined") {
+    var linkById = new Map();
+    headings.forEach(function (h, i) { linkById.set(h.id, tocLinks[i]); });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        tocLinks.forEach(function (l) { l.classList.remove("active"); });
+        var lk = linkById.get(en.target.id);
+        if (lk) lk.classList.add("active");
+      });
+    }, { rootMargin: "-15% 0px -75% 0px" });
+    headings.forEach(function (h) { io.observe(h); });
+  }
+
+  // --- Feature 1: Long-code auto-collapse -------------------------------
+  var COLLAPSE_THRESHOLD = 30;
+
+  function wrapCodeCard(pre, openByDefault) {
+    if (!pre || pre.closest("details.code-card")) return;
+    var code = pre.querySelector("code");
+    if (!code) return;
+    var lines = code.textContent.replace(/\n+$/, "").split("\n").length;
+    var det = document.createElement("details");
+    det.className = "code-card";
+    det.open = openByDefault;
+    var sum = document.createElement("summary");
+    function updateSummary() {
+      sum.textContent = (det.open ? "▾ 收起代码 · " : "▸ 展开代码 · ") + lines + " 行";
+    }
+    updateSummary();
+    det.addEventListener("toggle", updateSummary);
+    pre.parentNode.insertBefore(det, pre);
+    det.appendChild(sum);
+    det.appendChild(pre);
+  }
+
+  // Honor explicit per-block flags first.
+  document.querySelectorAll("pre[data-collapse]").forEach(function (pre) {
+    var flag = pre.getAttribute("data-collapse");
+    if (flag === "collapsed") wrapCodeCard(pre, false);
+    // "open" → leave fully expanded, do not wrap.
+  });
+  // Then auto-wrap long unflagged blocks.
+  document.querySelectorAll("pre > code").forEach(function (code) {
+    var pre = code.closest("pre");
+    if (!pre || pre.closest("details") || pre.hasAttribute("data-collapse")) return;
+    var lines = code.textContent.replace(/\n+$/, "").split("\n").length;
+    if (lines >= COLLAPSE_THRESHOLD) wrapCodeCard(pre, false);
+  });
+
+  // --- Feature 10: Figure lightbox --------------------------------------
+  var lightbox = document.getElementById("figure-lightbox");
+  if (lightbox) {
+    var lbImg = lightbox.querySelector("img");
+    var lbCap = lightbox.querySelector("figcaption");
+    var lbClose = lightbox.querySelector(".lb-close");
+    function openLightbox(srcImg) {
+      lbImg.src = srcImg.src;
+      lbImg.alt = srcImg.alt || "";
+      var cap = srcImg.closest("figure") ? srcImg.closest("figure").querySelector("figcaption") : null;
+      lbCap.textContent = cap ? cap.textContent : "";
+      lbCap.hidden = !cap;
+      if (typeof lightbox.showModal === "function") lightbox.showModal();
+      else lightbox.hidden = false;
+    }
+    function closeLightbox() {
+      if (typeof lightbox.close === "function") lightbox.close();
+      else lightbox.hidden = true;
+    }
+    document.querySelectorAll("main figure img, main > p > img").forEach(function (img) {
+      if (img.closest("dialog")) return;
+      img.style.cursor = "zoom-in";
+      img.addEventListener("click", function () { openLightbox(img); });
+    });
+    if (lbClose) lbClose.addEventListener("click", closeLightbox);
+    lightbox.addEventListener("click", function (e) {
+      // Backdrop click closes; clicks inside .lb-inner do not bubble here.
+      if (e.target === lightbox) closeLightbox();
+    });
+  }
+
+  // --- Feature 2: Paper popover -----------------------------------------
+  var PAPERS = window.PAPER_REGISTRY || {};
+  var pop = document.getElementById("cite-pop");
+  var popContent = pop ? pop.querySelector(".cp-content") : null;
+  var popClose = pop ? pop.querySelector(".cp-close") : null;
+  var popTrigger = null;
+
+  function showPopover(el) {
+    var key = el.dataset.ref;
+    var info = PAPERS[key];
+    if (!info || !pop || !popContent) return;
+    popContent.innerHTML =
+      '<div class="cp-title" id="cite-pop-title">' + escapeHtml(info.title || key) + '</div>' +
+      (info.authors
+        ? '<div class="cp-meta">' + escapeHtml(info.authors) +
+            (info.date ? ' · ' + escapeHtml(info.date) : '') +
+            (info.inst ? ' · ' + escapeHtml(info.inst) : '') + '</div>'
+        : '') +
+      (info.key ? '<div class="cp-key">' + escapeHtml(info.key) + '</div>' : '') +
+      (info.arxiv
+        ? '<a class="cp-link" href="https://arxiv.org/abs/' + encodeURIComponent(info.arxiv) +
+          '" target="_blank" rel="noopener">arXiv ' + escapeHtml(info.arxiv) + ' ↗</a>'
+        : '');
+    var r = el.getBoundingClientRect();
+    pop.hidden = false;  // unhide first so offsetHeight is measurable
+    var margin = 16;
+    var popWidth = Math.min(360, Math.max(0, window.innerWidth - margin * 2));
+    var popHeight = Math.min(pop.offsetHeight || 200, Math.max(0, window.innerHeight - margin * 2));
+    pop.style.left = Math.max(margin, Math.min(r.left, window.innerWidth - popWidth - margin)) + "px";
+    pop.style.top = Math.max(margin, Math.min(r.bottom + 8, window.innerHeight - popHeight - margin)) + "px";
+    popTrigger = el;
+    if (popClose) popClose.focus();
+  }
+  function hidePopover() {
+    if (pop) pop.hidden = true;
+    if (popTrigger) popTrigger.focus();
+    popTrigger = null;
+  }
+  document.querySelectorAll("[data-ref]").forEach(function (el) {
+    el.setAttribute("tabindex", "0");
+    el.setAttribute("role", "button");
+    el.addEventListener("click", function (e) { e.stopPropagation(); showPopover(el); });
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); showPopover(el); }
+    });
+  });
+  if (popClose) popClose.addEventListener("click", hidePopover);
+  document.addEventListener("click", function (e) {
+    if (pop && !pop.hidden && !pop.contains(e.target) && !e.target.matches("[data-ref]")) hidePopover();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && pop && !pop.hidden) hidePopover();
+  });
+
+  // --- Feature 7: Blog-mode active-H2 highlight (opt-in) ----------------
+  if (document.body.classList.contains("aris-blog")) {
+    var h2s = [].slice.call(document.querySelectorAll("main h2"));
+    if (h2s.length && typeof IntersectionObserver !== "undefined") {
+      var io2 = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) {
+            h2s.forEach(function (h) { h.classList.remove("aris-active-h2"); });
+            en.target.classList.add("aris-active-h2");
+          }
+        });
+      }, { rootMargin: "-15% 0px -75% 0px" });
+      h2s.forEach(function (h) { io2.observe(h); });
+    }
+
+    // --- Feature 8: Focus-dim reading mode (B1) + floating toggle (B2) +
+    //     ↑/↓ section nav (B4). Built only inside this .aris-blog guard, so
+    //     non-blog tutorials never construct it. Default OFF. While ON:
+    //     dims non-current sections (h3-granular), keeps the intro bright,
+    //     pauses F7's io2, and binds a scroll listener (removed on OFF — no
+    //     new *persistent* global hook). Restores everything on OFF / print.
+    var mainEl = document.querySelector("main");
+    if (mainEl) {
+      var focusBtn = document.createElement("button");
+      focusBtn.className = "aris-focus-toggle";
+      focusBtn.type = "button";
+      focusBtn.setAttribute("aria-pressed", "false");
+      focusBtn.textContent = "🎯 Focus";
+      document.body.appendChild(focusBtn);
+
+      var focusHint = document.createElement("div");
+      focusHint.className = "aris-focus-hint";
+      document.body.appendChild(focusHint);
+      var hintTimer = null;
+      var showFocusHint = function (msg) {
+        focusHint.textContent = msg;
+        focusHint.classList.add("show");
+        if (hintTimer) clearTimeout(hintTimer);
+        hintTimer = setTimeout(function () { focusHint.classList.remove("show"); }, 1600);
+      };
+
+      var focusKids = function () { return [].slice.call(mainEl.children); };
+      var headerIdxList = function (kids) {
+        var idxs = [];
+        kids.forEach(function (el, i) {
+          if (el.tagName === "H2" || el.tagName === "H3") idxs.push(i);
+        });
+        return idxs;
+      };
+      // Deterministic current-section pick (no IntersectionObserver): the
+      // header whose top is closest to but above the viewport's 40% line;
+      // fallback = first header still below the line; then first header.
+      var activeHeaderIdx = function (kids, headerIdxs) {
+        var best = -1, bestTop = -Infinity, lineY = window.innerHeight * 0.4;
+        headerIdxs.forEach(function (idx) {
+          var top = kids[idx].getBoundingClientRect().top;
+          if (top < lineY && top > bestTop) { bestTop = top; best = idx; }
+        });
+        if (best < 0) {
+          for (var i = 0; i < headerIdxs.length; i++) {
+            if (kids[headerIdxs[i]].getBoundingClientRect().top >= 0) { best = headerIdxs[i]; break; }
+          }
+          if (best < 0) best = headerIdxs[0];
+        }
+        return best;
+      };
+      var updateFocus = function () {
+        var kids = focusKids();
+        var headerIdxs = headerIdxList(kids);
+        if (!headerIdxs.length) {                 // no h2/h3 → keep all bright (never dim a headerless page)
+          kids.forEach(function (el) { el.classList.add("aris-in-focus"); });
+          return;
+        }
+        var best = activeHeaderIdx(kids, headerIdxs);
+        var next = kids.length;
+        for (var j = 0; j < headerIdxs.length; j++) {
+          if (headerIdxs[j] > best) { next = headerIdxs[j]; break; }
+        }
+        var introEnd = headerIdxs[0];  // header.hero + anything before first heading stays bright
+        kids.forEach(function (el, i) {
+          el.classList.toggle("aris-in-focus", (i < introEnd) || (i >= best && i < next));
+        });
+      };
+      var onFocusScroll = function () {
+        if (document.body.classList.contains("aris-focus-dim")) updateFocus();
+      };
+      var onFocusKeydown = function (e) {
+        var tg = e.target;
+        if (tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA" || tg.tagName === "SELECT" || tg.isContentEditable)) return;
+        if (e.key === "Escape") {
+          var popEl = document.getElementById("cite-pop");
+          if (popEl && !popEl.hidden) return;     // an open popover handles Esc first
+          setFocus(false);
+          return;
+        }
+        if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+        e.preventDefault();
+        var heads = [].slice.call(document.querySelectorAll("main h2, main h3"));
+        if (!heads.length) return;
+        var cur = 0, bestDist = Infinity;
+        heads.forEach(function (h, i) {
+          var d = Math.abs(h.getBoundingClientRect().top - 80);
+          if (d < bestDist) { bestDist = d; cur = i; }
+        });
+        var ni = e.key === "ArrowDown" ? Math.min(cur + 1, heads.length - 1) : Math.max(cur - 1, 0);
+        heads[ni].scrollIntoView({ behavior: "smooth", block: "start" });
+        showFocusHint((ni + 1) + " / " + heads.length + "　" + heads[ni].textContent.trim().slice(0, 24));
+      };
+      var setFocus = function (on) {
+        document.body.classList.toggle("aris-focus-dim", on);
+        focusBtn.classList.toggle("on", on);
+        focusBtn.setAttribute("aria-pressed", on ? "true" : "false");
+        focusBtn.textContent = on ? "🎯 Focus ON" : "🎯 Focus";
+        if (on) {
+          window.addEventListener("scroll", onFocusScroll, { passive: true });
+          document.addEventListener("keydown", onFocusKeydown, true);    // capture phase: see an open popover before its bubble Esc handler (also: bound only while ON, guardrail 2)
+          if (typeof io2 !== "undefined" && io2) io2.disconnect();        // pause F7
+          updateFocus();
+          showFocusHint("Focus 模式：↑ / ↓ 切换小节，Esc 退出");
+        } else {
+          window.removeEventListener("scroll", onFocusScroll);
+          document.removeEventListener("keydown", onFocusKeydown, true);
+          focusKids().forEach(function (el) { el.classList.remove("aris-in-focus"); });
+          if (typeof io2 !== "undefined" && io2) h2s.forEach(function (h) { io2.observe(h); });  // resume F7
+        }
+      };
+      focusBtn.addEventListener("click", function () {
+        setFocus(!document.body.classList.contains("aris-focus-dim"));
+      });
+    }
+  }
+})();
+</script>
+</body>
+</html>

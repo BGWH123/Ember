@@ -1,0 +1,56 @@
+{
+  "skill": "interview-cheatsheet (EN translation-fidelity)",
+  "source": "docs/tutorials/image_generation_systems_tutorial_en.md",
+  "source_sha256": "91028f81d0926932dfa0a0c8f4802483120390267b454b350fe37de606f814cf",
+  "output": "docs/tutorials/image_generation_systems_tutorial_en.html",
+  "zh_source": "docs/tutorials/image_generation_systems_tutorial.md",
+  "reviewer": "codex gpt-5.5 xhigh, fresh thread",
+  "verdict": "WARN",
+  "thread_id": "019e7cbc-2422-77d3-b43d-0675de6f69a1",
+  "translation_fidelity_review": {
+    "verdict": "WARN",
+    "thread_id": "019e7cbc-2422-77d3-b43d-0675de6f69a1",
+    "phase": "B3 translation-fidelity review",
+    "date": "2026-05-31",
+    "issues": [
+      "WARN (HTML chrome, non-technical): docs/tutorials/image_generation_systems_tutorial_en.html ~line 1467 — renderer-injected Chinese code-collapse UI labels '收起代码 / 展开代码 / 行' appear in the English HTML view (not present in and not derived from the EN markdown content); cosmetic localization gap, no impact on technical content.",
+      "WARN (HTML chrome, non-technical): docs/tutorials/image_generation_systems_tutorial_en.html ~line 1693 — renderer-injected Chinese Focus-mode hint 'Focus 模式：↑ / ↓ 切换小节，Esc 退出' appears in the English HTML view; cosmetic localization gap only.",
+      "NO FAIL-LEVEL ISSUES: Codex confirmed every number, formula/equation, code block, tensor shape, citation (author/year/venue), and model/architecture name in the EN .md matches the ZH source of truth; no ZH section/claim/caveat dropped; no new hallucinated EN claim; terminology consistent; HTML structure/math/code/tables/links render faithfully to the EN markdown."
+    ],
+    "summary": "Fresh cross-model translation-fidelity audit (Codex GPT-5.5 xhigh, read-only, detect-only) of the English edition /Users/yangruofeng/Desktop/ARIS-in-秋招/docs/tutorials/image_generation_systems_tutorial_en.md against the Chinese source of truth /Users/yangruofeng/Desktop/ARIS-in-秋招/docs/tutorials/image_generation_systems_tutorial.md (both 1459 lines) plus the rendered HTML /Users/yangruofeng/Desktop/ARIS-in-秋招/docs/tutorials/image_generation_systems_tutorial_en.html. Verdict: WARN. The EN markdown is a FAITHFUL and COMPLETE translation of the ZH — all numbers, mathematical formulas/equations, co"
+  },
+  "rendered_at": "2026-09-22",
+  "post_ship_review": [
+    {
+      "scope": "2026-07-13 full-collection re-sweep (diffusion cluster): Codex GPT-5.6-sol candidate pass (run against the ZH source) + independent Claude Sonnet 5 adversarial verification, then applied in parallel to both editions",
+      "verdict": "FIXED",
+      "date": "2026-07-13",
+      "summary": "10 findings from the ZH-source verification pass (9 CONFIRMED + 1 NEEDS_NUANCE, 0 REFUTED) translated into natural-English equivalent fixes in this EN edition — same substantive corrections as image_generation_systems_tutorial.review.json's post_ship_review entry, no new content introduced.",
+      "fixes": [
+        "§3.3 SD3 RF equation: fixed backward data/noise identity and removed the incorrect 'opposite of DDPM' claim (also fixed the duplicate restatement in §13 Q15)",
+        "§3.4 FLUX.1 spec table: 'text tokens use absolute positions' corrected to 'text-token RoPE ids (txt_ids) set to all zeros, ordering carried by T5's relative-position mechanism'",
+        "§6.7 InstantID row: corrected to decoupled cross-attention injecting the face embedding itself as the identity embedding + IdentityNet (landmark ControlNet)",
+        "§6.7 PhotoMaker row: corrected to Stacked ID Embedding (per-photo fuse-then-stack), not average-then-concat",
+        "§7.7 Custom Diffusion: corrected from 'narrower LoRA-DreamBooth' to an independent selective full-parameter fine-tuning method",
+        "§9.2 ADD: removed the fabricated third 'score loss'; ADD has two losses (adversarial + one score-distillation-style distillation loss) (also fixed the duplicate 'three-in-one' restatement in §13 Q19)",
+        "§13 Q4: SD/SDXL U-Net middle block corrected from 'no cross-attn' to 'has cross-attn' (standard SpatialTransformer/UNetMidBlock2DCrossAttn), consistent with §3.1",
+        "§0/§2.2/§13 Q1: 'f=8 -> exactly 64x compute savings' softened to an order-of-magnitude estimate (NEEDS_NUANCE)",
+        "§13 Q7: LoRA parameter ratio corrected from r/min(d,k) to the exact r(d+k)/dk = r(1/d+1/k) (= 2r/n, not r/n, when d=k=n)",
+        "§3.2/§13 Q11: SDXL size/crop conditioning corrected from 4 scalars to 6 (added missing target_size pair)"
+      ],
+      "note": "HTML re-rendered and source_sha256 refreshed (this run); gated via tools/verify_reviews.py --mode strict --reproduce."
+    }
+  ],
+  "delta_reviews": [
+    {
+      "run": "delta-2026-09-22-dit-code",
+      "verdict": "PASS after one round",
+      "reviewer": "codex gpt-6-astra xhigh, 1 fresh thread",
+      "thread_ids": [
+        "01a0c8c8-580f-7782-9cb4-a169fd65bcff"
+      ],
+      "scope": "Added docs/tutorials/code/dit.py (classic single-stream class-conditional DiT: patchify/unpatchify, 2D sin-cos pos embed, adaLN-Zero block with (1+scale) and zero-initialised six-way modulation MLP, zero-initialised final layer, null class for CFG; [D01]-[D05] assert the §4.2 claims). §4.2 gains one paragraph pointing at the script and stating a consequence of the zero-initialised final layer (step 0 updates only the output linear; blocks are reached from step 1). Runnable Code list + code/README.md + hub catalogue gain the entry. Codex checked the structure against facebookresearch/DiT models.py (six-way order, 1+scale, zero-init sites, patchify layout: PASS); asked that [D03] measure the gradient of the modulation output itself rather than the MLP weight (done via retain_grad) and that the new sentence say 'only the output linear' and 'step 1's backward reaches the gates' (done, CN+EN).",
+      "notes": "Script runs on CPU in ~2 s with torch 2.14; codex's static API check says torch >= 2.1 is fine, Python >= 3.10 for the `X | None` annotations."
+    }
+  ]
+}

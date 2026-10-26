@@ -1,0 +1,47 @@
+{
+  "skill": "render-html",
+  "source": "docs/about.md",
+  "output": "docs/about.html",
+  "purpose": "GitHub Pages landing page (https://wanshuiyin.github.io/ARIS-in-AI-Offer/)",
+  "author": "Ruofeng Yang (杨若峰), Shanghai Jiao Tong University",
+  "reviewer": "codex gpt-5.5 xhigh, fresh thread",
+  "render_review": {
+    "verdict": "PASS",
+    "rounds": [
+      {
+        "run": 1,
+        "verdict": "PASS with 1 WARN",
+        "thread_id": "019e4048-701e-71f3-9d25-b23eeeef289c",
+        "summary": "12/13 checks pass; 1 warning on double H1 (hero h1 + content h1 both rendered)",
+        "warnings": [
+          "double H1: hero <h1> from template + content <h1> from MD source — semantic but not blocking"
+        ],
+        "fixes_applied": [
+          "Removed the source-level `# ARIS-in-AI-Offer — About` heading (kept the leading blockquote intro); re-rendered. Hero h1 from template is now the sole H1."
+        ]
+      },
+      {
+        "run": "B2",
+        "date": "2026-05-31",
+        "reviewer": "codex gpt-5.5 xhigh, fresh thread (B2 audit-chain re-review)",
+        "thread_id": "019e7c8b-2f0e-7130-9a4a-c90334d5d989",
+        "verdict": "PASS",
+        "scope": "render-fidelity + safety delta re-review (about.md changed after 05-19)",
+        "summary": "Re-audited docs/index.html vs docs/about.md: PASS, zero issues; headings/lists/table/callouts/ASCII block preserved, escapes clean, no unsafe HTML; source hash verified.",
+        "issues": []
+      }
+    ]
+  },
+  "summary": "ARIS-in-AI-Offer landing page (docs/index.html): rendered via tools/render_html.py from docs/about.md; codex 13-check render review passed with 1 cosmetic WARN, fixed in 1 round.",
+  "rendered_at": "2026-05-19",
+  "source_sha256": "c1b5bb5b1693387c108e4a543581fa1c11b16cff37bbbd867adf13f76dc17d5f",
+  "thread_id": "019e7c8b-2f0e-7130-9a4a-c90334d5d989",
+  "delta_reviews": [
+    {
+      "run": "delta-2026-09-11",
+      "scope": "Artifact moved from docs/index.html to docs/about.html so the site root can become the tutorial hub. Source docs/about.md untouched; re-rendered with the same flags. One line added at the top of about.md linking back to the hub.",
+      "verdict": "PASS",
+      "notes": "Pure relocation; no content change."
+    }
+  ]
+}

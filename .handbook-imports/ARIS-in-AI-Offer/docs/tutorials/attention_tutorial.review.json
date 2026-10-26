@@ -1,0 +1,103 @@
+{
+  "skill": "render-html",
+  "source": "docs/tutorials/attention_tutorial.md",
+  "source_sha256_prefix": "e8650ca7b3dac4fe",
+  "output": "docs/tutorials/attention_tutorial.html",
+  "author": "Ruofeng Yang (杨若峰), Shanghai Jiao Tong University",
+  "reviewer": "codex gpt-5.5 xhigh, fresh thread per run (never codex-reply)",
+  "verdict": "WARN",
+  "checks": {
+    "information_fidelity": "pass",
+    "structure": "pass",
+    "math_code_tables": "pass",
+    "callouts": "pass",
+    "details_inner_markdown_rendered": "pass",
+    "safety_escaping": "pass",
+    "placeholder_leak": "pass",
+    "author_byline_rendered": "pass",
+    "eyebrow_subtitle_title": "pass",
+    "no_absolute_local_path_leak": "pass",
+    "no_personal_info_leak": "pass",
+    "heading_glue_fix": "pass",
+    "toc_sidebar_links_resolve": "pass"
+  },
+  "blocking_issues": [],
+  "warnings": [],
+  "history": [
+    {
+      "run": 1,
+      "verdict": "FAIL",
+      "thread_id": "019e3e4a-1b4b-7901-9173-376a9099cc3d",
+      "issue": "§8 Position Encoding ALiBi row contained `|i-j|` math literal which was parsed as table-cell separators, breaking the 4-column table into 6 cells",
+      "fix": "Escaped pipes with \\lvert i-j \\rvert in source MD"
+    },
+    {
+      "run": 2,
+      "verdict": "FAIL",
+      "thread_id": "019e3e4d-caf6-7c31-b398-c1864bd0ee5a",
+      "issue": "§0 TL;DR callout swallowed list item 1 (`> 💡 ...— 1. **公式**：...`), then items 2-7 rendered as a fresh <ol> starting at 1",
+      "fix": "Split: callout now contains a one-line summary; all 7 TL;DR items follow as a standalone <ol>"
+    },
+    {
+      "run": 3,
+      "verdict": "PASS",
+      "thread_id": "019e3e52-83b0-7b32-9778-f81b118470c2",
+      "issue": null,
+      "fix": null
+    },
+    {
+      "run": "B2",
+      "date": "2026-05-31",
+      "reviewer": "codex gpt-5.5 xhigh, fresh thread (B2 audit-chain re-review)",
+      "thread_id": "019e7c8b-66fc-7ca2-bde6-c9f03aa3b224",
+      "verdict": "WARN",
+      "scope": "delta re-review (Runnable Code section added in 056c71f)",
+      "summary": "Delta of the new Runnable Code section is faithful; 2 non-breaking WARN (mha.py causal path lacks a dedicated assert; could not time 'CPU seconds' in read-only sandbox).",
+      "issues": [
+        "mha.py causal path lacks a dedicated assert that future tokens are masked (mask semantics themselves correct)",
+        "read-only sandbox could not run the scripts to time the 'CPU in seconds' claim (env limit, not a code defect)"
+      ]
+    }
+  ],
+  "summary": "Three-round review: FAIL (table-pipe math collision) → FAIL (TL;DR list numbering reset) → PASS. 13 checks pass on run 3.",
+  "rendered_at": "2026-05-19",
+  "source_sha256": "e8650ca7b3dac4fed8301ee38a559f0bc463e685b22bbe1fc04fc950d1f738c9",
+  "thread_id": "019e7c8b-66fc-7ca2-bde6-c9f03aa3b224",
+  "post_ship_review": [
+    {
+      "scope": "2026-07-12 full-collection re-sweep: Codex GPT-5.6-sol candidate pass + independent Claude Sonnet 5 adversarial verification (attempted to refute every candidate finding; only load-bearing ones kept)",
+      "verdict": "FIXED",
+      "date": "2026-07-12",
+      "summary": "8 findings verified (4 CONFIRMED + 4 NEEDS_NUANCE, 0 REFUTED) and precisely applied to the source MD.",
+      "fixes": [
+        "§1: 'Q/K/V 同一向量三投影' scoped explicitly to self-attention, with a cross-attention pointer to §4 (NEEDS_NUANCE)",
+        "§6.1: cumulative redundant compute over T generation steps without KV cache corrected O(t^2) -> O(T^3) (CONFIRMED; was internally inconsistent with §7's own O(L^3)->O(L^2) claim)",
+        "§6.1: 'KV cache 训练时不能用' softened — true for teacher-forced parallel SFT/pretraining, false for RLHF/GRPO on-policy rollout generation (NEEDS_NUANCE)",
+        "§6.1: LLaMA-2-70B KV cache size relabeled GB -> GiB (1.25 GiB approx 1.34 GB; vanilla MHA 10 GiB approx 10.74 GB) (CONFIRMED unit mislabel)",
+        "§6.2: GQA table 'used in' column qualified to LLaMA-2-70B only (7B/13B are still MHA) (NEEDS_NUANCE)",
+        "§10 Q24: RoPE bullet restored the 'content vectors still determine the score' caveat already present in the §8 table, avoiding a misreadable absolute claim (NEEDS_NUANCE)",
+        "§A appendix rewritten to describe the actual code/mha.py (3 sanity checks: sanity_check/shape_check/causal_check; single self-attention MultiHeadAttention with fused qkv Linear and [N,N] mask; no SelfAttention/CrossAttention wrappers, no 4 mask shapes, no NaN guard) instead of fabricated 9-check output referencing nonexistent wrappers/masks/NaN-guard (CONFIRMED — chose option (a): align appendix text to reality rather than adding new code)",
+        "§A appendix sanity-check transcript's exception type corrected ValueError -> AssertionError, matching both mha.py's actual `assert embed_dim % num_heads == 0` and the tutorial's own §3.4 code snippet; added a note that `assert` is stripped under python -O (CONFIRMED)"
+      ],
+      "note": "Verification and fixes limited to attention_tutorial.md / _en.md; code/mha.py itself was read to confirm ground truth and left unmodified. Re-rendered both HTMLs and refreshed source_sha256 (this run); gated via tools/verify_reviews.py --mode strict --reproduce."
+    }
+  ],
+  "delta_reviews": [
+    {
+      "run": "delta-2026-08-24",
+      "scope": "New §3.5 only (fused QKV: chunk / split / 5-D reshape+permute; GQA chunk(3) trap). No other content touched.",
+      "verdict": "PASS after 1 fix round",
+      "reviewer": "codex gpt-5.6-sol xhigh, fresh thread",
+      "thread_id": "01a031ba-d74f-7cb2-859e-fc75f24ec2ea",
+      "process": "Claims verified on a real PyTorch box before drafting (all three slicing forms torch.equal; GQA chunk(3) widths [43,43,42] failing later at view; chunk on width 5 -> [2,2,1]). Reviewer then re-derived all six claims and audited prose.",
+      "findings_fixed": [
+        "Form 2 (split) as printed stopped at [B,N,D] — missing the same view+transpose the chunk form gets; added, re-verified verbatim.",
+        "'differ only in GEMM count' compared the wrong pair — the three slicing forms share one GEMM; 3-to-1 is fused vs §3.4's three Linears. Reworded.",
+        "GPT-2 c_attn orientation: it is a Conv1D with weight [D,3D], Q/K/V concatenated along the OUTPUT dim — 'stacked vertically' described the transposed nn.Linear layout. Corrected, with the transpose note.",
+        "'real code almost always fuses' overstated — scoped to self-attention, with HF LLaMA (separate q/k/v_proj) and cross-attention (cannot fuse) as counterexamples.",
+        "'far better' tensor-core utilisation softened to shape/backend-dependent.",
+        "'the only correct form under MQA/GQA' narrowed to the true rule: never equal-chunk(3) unequal widths; explicit-width split is the standard form."
+      ]
+    }
+  ]
+}

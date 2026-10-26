@@ -1,0 +1,107 @@
+{
+  "skill": "interview-cheatsheet",
+  "source": "docs/tutorials/normalization_init_tutorial.md",
+  "source_sha256": "0e158f6f31513f901613914c449fb6e7639a80b63adccf8a695ea7ca9b8b3d0c",
+  "output": "docs/tutorials/normalization_init_tutorial.html",
+  "runnable_code": "docs/tutorials/code/normalization.py",
+  "topic": "归一化 / 残差 / 初始化 — BatchNorm / LayerNorm / RMSNorm / GroupNorm / Pre-vs-Post-LN(Xiong 梯度论证) / DeepNorm / Sandwich / QK-Norm / 残差连接+缩放(LayerScale/ReZero/SkipInit) / Xavier·Kaiming(因子2) / GPT-2 残差 1/√(2N) / Fixup / μP / NFNets / DyT / covariate-shift debunk(Santurkar)",
+  "effort": "max",
+  "reviewer": "codex gpt-5.5 xhigh, fresh thread per batch",
+  "drafted_by": "subagent (general-purpose), then orchestrator self-verified the hard math + ran the full cross-model review + redesigned the [d] demo",
+  "math_code_review": {
+    "verdict": "PASS (7 batches: math + 2 citation + code + answers + overall — code batch caught a real methodological confound, fixed)",
+    "rounds": [
+      {
+        "run": 1,
+        "scope": "math — Kaiming/Xavier derivations, Xiong Pre/Post-LN scalings, DeepNorm, GPT-2 1/√(2N), residual Jacobian",
+        "verdict": "PASS",
+        "thread_id": "019f0d8b-de84-7cf2-84be-8627febbfebb",
+        "confirmed_correct": "Var(z)=n_in·Var(W)·E[x^2]; E[ReLU(z)^2]=½Var(z) → Kaiming Var(W)=2/n_in; Xavier 2/(n_in+n_out); Xiong Post-LN top-grad Θ(d√ln d) depth-independent vs Pre-LN O(d√(ln d/L)) decaying; DeepNorm α=(2N)^{1/4}, β=(8N)^{-1/4}; GPT-2 1/√(2N) (2 residual writes/layer); residual Jacobian ∏(I+∂F/∂x) identity term; Pre-LN residual-stream std ∝√l. Crucially confirmed the SECOND-MOMENT subtlety (see code round): post-ReLU E[y^2]≈1 preserved, but Var(y)=1-1/π≈0.68 because ReLU mean≠0 — the propagated quantity is E[y^2], not Var."
+      },
+      {
+        "run": 2,
+        "scope": "citations batch 1 (11 load-bearing refs)",
+        "verdict": "PASS",
+        "thread_id": "019f0d8e-343c-71c0-a988-ffc781d2e347",
+        "notes": "All 11 arXiv ids confirmed exact: BatchNorm 1502.03167, LayerNorm 1607.06450, RMSNorm 1910.07467, Santurkar 1805.11604, Xiong 2002.04745, DeepNorm 2203.00555, Kaiming 1502.01852, ResNet 1512.03385, Fixup 1901.09321, ReZero 2003.04887, μP 2203.03466."
+      },
+      {
+        "run": 3,
+        "scope": "citations batch 2 (11 incl. the 'unsure' frontier/no-arXiv refs)",
+        "verdict": "PASS (1 bad Codex suggestion rejected)",
+        "thread_id": "019f0d8e-921a-7341-9d4b-db5d5b79af16",
+        "notes": "Veit 1605.06431, LayerScale 2103.17239, SkipInit 2002.10444, NFNets 2102.06171, GroupNorm 1803.08494, WeightNorm 1602.07868, QK-Norm 2010.04245 all confirmed. DyT 2503.10622 'unsure-but-likely-right' → kept with hedge. Xavier (AISTATS 2010) + GPT-2 (OpenAI report) confirmed NO arXiv id. NOTE: Codex suggested T-Fixup = arXiv:2002.04745 — REJECTED as a Codex error (2002.04745 is Xiong's Pre-LN paper, ref #5); T-Fixup kept venue-only (ICML 2020, no confirmed standalone arXiv id) as the safe choice."
+      },
+      {
+        "run": 4,
+        "scope": "code — normalization.py + §A blocks ([a]-[f])",
+        "verdict": "PASS (1 real confound caught & fixed)",
+        "thread_id": "019f0d91-a29a-7c73-a65e-ce3155bd00ab",
+        "real_issues_caught": [
+          "METHODOLOGICAL CONFOUND in [d] (Pre-LN vs Post-LN gradient): the original demo measured ||dL/dx|| with loss=mean(stack(x)^2), but a Post-LN stack's output is LayerNorm-normalized so that loss is ~scale-invariant and artificially suppresses ALL gradients → the headline '4.3e6× more gradient' was largely an artifact of output-normalization asymmetry, not pure Post-LN gradient pathology. VERIFIED on Server5 via a probe: with a symmetric final-LN+head, the ||dL/dx|| ratio collapses to 1.2×. FIX: redesigned [d] to measure the per-block weight-grad TOP/BOTTOM ratio (last/first) with a final linear head — a metric robust to the loss choice (Xiong's actual claim). New result: Pre-LN=0.40 (balanced), Post-LN=2.35 (top-heavy, >1). Re-ran clean on Server5."
+        ],
+        "confirmed_correct": "[a] LayerNorm==nn.LayerNorm (pop var, eps in sqrt); [b] RMSNorm==nn.RMSNorm + mean-shift-variance (LN invariant 9.5e-7, RMS not 3.05); [c] BatchNorm train≠eval; [e] Kaiming E[y^2]=1.00 / Xavier 0.50 (measuring SECOND MOMENT not Var — corrected from the subagent's '.var()≈1' which is actually 0.68); [f] residual var unscaled ×51 vs 1/√(2N) ×1.5. All 6 asserts pass on Server5 (torch 2.10)."
+      },
+      {
+        "run": 5,
+        "scope": "answers — L2/L3 conceptual claims",
+        "verdict": "PASS",
+        "thread_id": "019f0d97-4d4a-7d32-83a5-3991afdc0752",
+        "notes": "All fine: covariate-shift debunk (Santurkar noise-injection + β-smoothness), RMSNorm re-scaling>re-centering + not shift-invariant, QK-Norm (logit explosion/entropy collapse, Gemma2/Chameleon/ViT-22B), μP (SP LR drift → width-invariant via fan_in scaling → μTransfer), DyT (γ⊙tanh(αx)+β from LN≈tanh), GroupNorm (G=1→LN, G=C→IN, small-batch vision), SkipInit (BN's role = init-time identity bias), DeepNorm (up-scale residual + down-scale init, 1000 layers)."
+      },
+      {
+        "run": 6,
+        "scope": "overall — top-level framing, g^L motivation, comparison table",
+        "verdict": "PASS (3 calibration hedges applied)",
+        "thread_id": "019f0d97-e001-7c72-b877-1d0f86e060d0",
+        "notes": "No errors. Applied: (1) 'two orthogonal cures' → 'concept-separable but工程上强耦合' three-axis (norm/residual/init) framing; (2) added a 💡 caveat that g^L is a simplified scalar/mean-field model (real gain data-dependent; full stability also = Jacobian spectrum/dynamical isometry); (3) softened the covariate-shift 'debunk' wording (强质疑/主流不再视为主因, not absolute 推翻) + noted BN's multi-benefit (scale invariance, large LR, implicit reg), and added an init-only-guarantees-step-0 caveat to §8."
+      }
+    ]
+  },
+  "render_review": {
+    "verdict": "PASS",
+    "rounds": [
+      {
+        "run": 1,
+        "verdict": "PASS",
+        "thread_id": "019f0d9c-7225-7cd3-b487-217aaf7e6b1a",
+        "notes": "Fidelity confirmed. 14 §-sections, 25 Q&A (HTML 27/25, +2 template constant), 4 <pre> (3 python + 1 §A real-output), 1 <table> (§11 norm comparison), 23 callouts, 49 TOC, embedded sha matches. 331 math spans, ZERO raw </> inside math (all \\lt \\gt \\le etc.) — the #18-class footgun fully avoided. Spot-checks: \\gt renders as '>', \\boxed renders, §A python char-exact (`-&gt;` = escaped `->`), §11 table cell + real-output ```text block (`&gt;`=`>`) all faithful; no injection."
+      }
+    ]
+  },
+  "runnable_code_check": {
+    "verdict": "PASS",
+    "notes": "docs/tutorials/code/normalization.py (pure PyTorch, English comments per code/README convention) ran on Server5 (dllm, torch 2.10). Six asserts pass: [a] LayerNorm max|Δ|=2.4e-7; [b] RMSNorm match + mean-shift LN 9.5e-7 vs RMS 3.05; [c] BatchNorm train≠eval (running_mean→0.70); [d] per-block weight-grad top/bottom ratio Pre-LN=0.40 vs Post-LN=2.35 (confound-free, with head); [e] Kaiming E[y^2]=1.00 vs Xavier 0.50; [f] residual var unscaled ×51 vs 1/√(2N) ×1.5. §A real-output block is this run, verbatim. Orchestrator caught & fixed the [d] output-normalization confound (Codex round 4) and the subagent's [e] Var-vs-second-moment slip before shipping."
+  },
+  "summary": "Normalization / Residual / Init cheat sheet (effort=max, ~830 lines, subagent-drafted then orchestrator-verified): full cross-model review on codex gpt-5.5 xhigh — math (Kaiming/Xavier/Xiong/DeepNorm/GPT-2 derivations re-derived correct, incl. the post-ReLU SECOND-MOMENT E[y^2]≈1 vs Var≈0.68 subtlety), 2 citation batches (22 refs; all confirmed or safely hedged; rejected a bad Codex T-Fixup id that collided with Xiong's), code (caught a real methodological confound: the Pre/Post-LN ||dL/dx|| demo was polluted by Post-LN output-normalization → redesigned to the loss-robust per-block weight-grad top/bottom ratio, 0.40 vs 2.35), answers (all fine), overall (3 calibration hedges). Runnable code re-ran clean on Server5 with §A output captured verbatim. The covariate-shift debunk, Pre/Post-LN gradient argument, μP, QK-Norm, DyT are all interview-accurate.",
+  "rendered_at": "2026-06-19",
+  "post_ship_review": [
+    {
+      "scope": "cross-tutorial consistency fix",
+      "verdict": "FIXED",
+      "date": "2026-06-29",
+      "fix": "Added a clarifying Note in the §5.2 Pre-vs-Post-LN callout that \"Pre-LN warmup-free\" removes only the Post-LN gradient-imbalance reason for warmup; modern Pre-LN LLMs (GPT-3/LLaMA) STILL use warmup for Adam early-step v̂ variance / large-batch reasons (consistent with the optimizer tutorial §7.1).",
+      "note": "Cross-tutorial consistency fix (2026-06-29), surfaced by a holistic collection audit (structural + a cross-tutorial consistency pass). Orchestrator-verified (arithmetic 32768/576≈57; the warmup reasoning re-checked). Tiny factual/clarity correction — the original gating verdicts (math/code/render or translation-fidelity) remain valid; source re-rendered, sidecar hash refreshed."
+    },
+    {
+      "scope": "full-collection resweep (2026-07-12): Codex GPT-5.6-sol one-pass candidate-error sweep + independent Claude Sonnet 5 adversarial re-verification (attempted to refute every candidate before landing any fix)",
+      "verdict": "FIXED",
+      "date": "2026-07-12",
+      "fix": "12 candidate findings adjudicated: 10 CONFIRMED + 1 NEEDS_NUANCE landed as fixes in both zh and en editions; 1 REFUTED left untouched (original text was already correct).",
+      "findings_fixed": [
+        "#1 §8.1/Q14: Var(z)=n_in·Var(W)·Var(x) generalized to E[x^2] (zero-mean caveat added; now consistent with §8.3's E[y^2] usage)",
+        "#2 §2.2: running_var update now uses the unbiased Bessel-corrected estimate m/(m-1)·σ_B², distinct from the biased forward-pass variance (new callout added)",
+        "#4 (NEEDS_NUANCE) §11.1/§11.2: 'LayerNorm needs two reductions' softened to 'one extra statistic (mean); naive impl = 2 passes, fused/Welford = 1 pass'",
+        "#5 §6.1/Q19: DeepNorm β down-scaling clarified to apply only to FFN + attention V/O projections, not Q/K (which keep standard Xavier init)",
+        "#6 §6.3/Q18: QK-Norm model list corrected Gemma2→Gemma3 (Gemma2 used soft-capping at the time, not QK-Norm)",
+        "#7 §7.1/Q15: residual identity-term 'guarantees no vanishing gradient' softened to 'substantially improves gradient flow in the typical case' (F(x)=-x exact-cancellation counterexample noted)",
+        "#8 §8.3/Q10: 'Xavier vs Kaiming factor-of-2 is the only substantive difference' scoped to the n_in=n_out special case; general ratio is 1+n_out/n_in",
+        "#9 §8.5/§10.1: Fixup reframed from 'purely init-based' to 'mostly init-based + a few learnable scalar multipliers/biases' (matches its own §8.5 point 3, which the header/§10.1 recap had been contradicting)",
+        "#10 §A [d]: Pre-LN gradient top/bottom ratio 0.40 relabeled from 'balanced' to 'bottom-heavy' (bottom layer ≈2.5x the top, comparable skew magnitude to Post-LN's 2.35 but opposite direction) — surrounding prose, illustrative code comments, code/normalization.py's print string, and the captured real-output block all updated together for consistency",
+        "#11 §A [d] docstring (illustrative code block only): 'robust to loss choice, established by Xiong 2020' softened to 'designed to reduce loss-choice sensitivity; this script only verified it with a single seed + single quadratic loss'",
+        "#12 §8.4/§A [f]: code/normalization.py's residual-scaling loop fixed from N=50 writes at 1/sqrt(2N) scale (semantically mismatched with the '2N = N layers × 2 writes/layer' story) to 2N=100 writes at the same 1/sqrt(2N) scale; re-ran on SJTUServer5 (dllm env, torch 2.10) and captured fresh real output (unscaled ×101.1 vs 1/sqrt(2N)-scaled ×2.00, replacing the stale ×51.1 vs ×1.50) — the only finding requiring a runnable-code change"
+      ],
+      "note": "1 candidate (original finding_id 3, about eval-mode BN 'batch-size independent' phrasing / an alleged m=1-vs-N=1 mix-up) was REFUTED by the adversarial verification pass and left untouched — the source text already consistently uses lowercase m and the flagged sentence has a defensible reading. Both zh and en editions received the same substantive fixes (en in natural English, not machine-translated); the code fix is language-independent (comments differ, logic identical) and was verified once and mirrored. Both HTML renders regenerated; sidecar hashes refreshed; verify_reviews.py --mode strict --reproduce re-run clean."
+    }
+  ]
+}

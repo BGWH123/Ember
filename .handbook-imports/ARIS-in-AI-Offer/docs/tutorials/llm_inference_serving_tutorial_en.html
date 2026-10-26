@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Inference &amp; Serving Stack Interview Cheat Sheet</title>
+
+<meta name="generator" content="ARIS render-html (academic, v1)">
+<meta name="aris:source-path" content="docs/tutorials/llm_inference_serving_tutorial_en.md">
+<meta name="aris:source-sha256" content="bcee87a506dc59802aff40e5b78018f0ffdcbd19f17d1f1f0e4be73fcf924edd">
+<meta name="aris:generated-at" content="2026-09-16 06:00 UTC">
+
+<!-- MathJax 3 -->
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], processEscapes: true },
+  options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+<!-- highlight.js -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-light.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+<script>document.addEventListener('DOMContentLoaded', () => hljs.highlightAll());</script>
+
+
+<style>
+:root {
+  --bg: #fdfcf7;
+  --bg-soft: #f4f1ea;
+  --bg-code: #f8f5ec;
+  --ink: #1a1a1a;
+  --ink-soft: #4a4a4a;
+  --ink-muted: #6b6b6b;
+  --primary: #1a4a8c;
+  --primary-soft: #2d6cb8;
+  --accent: #b8390e;
+  --warn: #b45309;
+  --warn-bg: #fef3c7;
+  --info-bg: #dbeafe;
+  --good-bg: #d1fae5;
+  --good: #065f46;
+  --bad-bg: #fee2e2;
+  --bad: #991b1b;
+  --border: #d6d0c0;
+  --border-soft: #e8e3d5;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: "Source Serif Pro", "Source Serif 4", "Crimson Pro", "Georgia", "Songti SC", "STSong", serif;
+  line-height: 1.65;
+  color: var(--ink);
+  background: var(--bg);
+  margin: 0;
+  padding: 0;
+  font-size: 16px;
+}
+
+.layout {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 48px;
+  padding: 40px 32px;
+}
+
+nav.toc {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  font-size: 13px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  border-right: 1px solid var(--border-soft);
+  padding-right: 16px;
+}
+nav.toc h3 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+nav.toc ol { list-style: none; padding: 0; margin: 0; counter-reset: toc; }
+nav.toc ol li { margin: 5px 0; counter-increment: toc; }
+nav.toc ol li::before { content: counter(toc) ". "; color: var(--ink-muted); margin-right: 4px; }
+nav.toc a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-bottom: 1px dotted transparent;
+}
+nav.toc a:hover { color: var(--primary); border-bottom-color: var(--primary); }
+nav.toc ul { list-style: none; padding-left: 14px; margin: 3px 0; font-size: 12px; }
+nav.toc ul li::before { content: "→ "; color: var(--border); }
+
+main { min-width: 0; }
+
+header.hero {
+  border-bottom: 3px double var(--primary);
+  padding-bottom: 24px;
+  margin-bottom: 32px;
+}
+header.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 10px 32px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+  font-size: 14px;
+}
+header.top a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+header.top a:hover { border-color: var(--primary); color: var(--primary); }
+header.top a small { color: var(--ink-muted); font-size: 12px; }
+html:lang(en) .l-cn { display: none; }
+html:not(:lang(en)) .l-en { display: none; }
+header.hero .eyebrow {
+  font-family: inherit;
+  color: var(--ink-muted);
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-weight: 400;
+  margin-bottom: 8px;
+}
+header.hero h1 {
+  font-size: 32px;
+  line-height: 1.2;
+  margin: 0 0 12px;
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+header.hero .subtitle {
+  font-size: 16px;
+  color: var(--ink-soft);
+  margin: 0 0 8px;
+  font-style: italic;
+}
+header.hero .byline {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: 0 0 20px;
+}
+header.hero .byline strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+header.hero .meta {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--ink-muted);
+  border-top: 1px solid var(--border-soft);
+  padding-top: 14px;
+}
+header.hero .meta span strong { color: var(--ink-soft); }
+header.hero .meta code {
+  font-family: "JetBrains Mono", "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 11px;
+  background: var(--bg-soft);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border-soft);
+}
+
+h2 {
+  font-size: 24px;
+  margin: 44px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink);
+  font-weight: 700;
+}
+h2 .num { color: var(--primary); font-weight: 600; margin-right: 8px; }
+h3 { font-size: 19px; margin: 28px 0 10px; color: var(--primary); font-weight: 600; }
+h4 { font-size: 16px; margin: 20px 0 8px; color: var(--ink); font-weight: 600; }
+
+p { margin: 10px 0; }
+ul, ol { padding-left: 22px; margin: 10px 0; }
+ul li, ol li { margin: 4px 0; }
+ul li::marker { color: var(--primary); }
+
+strong { color: var(--accent); font-weight: 600; }
+em { color: var(--ink-soft); }
+
+a { color: var(--primary); }
+a:hover { color: var(--accent); }
+
+code:not(.hljs) {
+  font-family: "JetBrains Mono", "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 0.86em;
+  background: var(--bg-code);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border-soft);
+  color: var(--accent);
+}
+
+pre {
+  background: #fafaf6;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  padding: 0;
+  overflow-x: auto;
+  border-radius: 4px;
+  margin: 14px 0;
+}
+pre code, pre code.hljs {
+  background: transparent !important;
+  display: block;
+  padding: 14px 18px !important;
+  font-size: 13px;
+  line-height: 1.55;
+  font-family: "JetBrains Mono", "SF Mono", "Menlo", monospace;
+  color: var(--ink);
+}
+pre.diagram {
+  background: #f9f6ed;
+  border-left: 4px solid var(--accent);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.callout {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-radius: 4px;
+  border-left: 4px solid;
+  font-size: 15px;
+}
+.callout-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.callout-info { background: var(--info-bg); border-left-color: var(--primary); }
+.callout-info .callout-title { color: var(--primary); }
+.callout-warn { background: var(--warn-bg); border-left-color: var(--warn); }
+.callout-warn .callout-title { color: var(--warn); }
+.callout-good { background: var(--good-bg); border-left-color: var(--good); }
+.callout-good .callout-title { color: var(--good); }
+.callout-bad { background: var(--bad-bg); border-left-color: var(--bad); }
+.callout-bad .callout-title { color: var(--bad); }
+
+.table-wrap {
+  overflow-x: auto;
+  margin: 16px 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.table-wrap table {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+thead { background: var(--primary); color: white; }
+th, td {
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: top;
+}
+th { font-weight: 600; font-size: 13px; letter-spacing: 0.02em; }
+tr:last-child td { border-bottom: none; }
+tbody tr:nth-child(even) { background: var(--bg-soft); }
+
+details.qa, details {
+  background: white;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  margin: 10px 0;
+  padding: 0;
+}
+details summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--primary);
+  list-style: none;
+  user-select: none;
+}
+details summary::-webkit-details-marker { display: none; }
+details summary::before {
+  content: "▸ ";
+  margin-right: 4px;
+  display: inline-block;
+  transition: transform 0.15s;
+}
+details[open] summary::before { transform: rotate(90deg); }
+details[open] summary { border-bottom: 1px solid var(--border-soft); }
+details > :not(summary) { padding: 10px 14px; }
+details p:first-of-type { margin-top: 8px; }
+
+mjx-container[display="true"] { margin: 12px 0 !important; }
+
+footer.aris-footer {
+  margin-top: 60px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+footer.aris-footer a { color: var(--ink-muted); border-bottom: 1px dotted var(--border); }
+
+@media (max-width: 900px) {
+  header.top { padding: 10px 16px 0; }
+  header.top a small { display: none; }
+  .layout { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px; }
+  nav.toc {
+    position: static;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--border-soft);
+    padding-right: 0;
+    padding-bottom: 14px;
+  }
+  header.hero h1 { font-size: 24px; }
+  h2 { font-size: 20px; }
+}
+@media print {
+  header.top { display: none; }
+  nav.toc { display: none; }
+  .layout { grid-template-columns: 1fr; padding: 0; }
+  body { background: white; }
+  header.hero { border-bottom-color: var(--ink); }
+  #cite-pop, dialog.lightbox { display: none !important; }
+}
+
+/* --- P0 polish: TOC scrollspy active state ---------------------------- */
+nav.toc a.active {
+  color: var(--accent);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+/* --- P0 polish: Long-code auto-collapse ------------------------------- */
+details.code-card {
+  margin: 14px 0;
+  background: #fafaf6;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: 4px;
+}
+details.code-card > summary {
+  cursor: pointer;
+  padding: 8px 14px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  list-style: none;
+  user-select: none;
+}
+details.code-card > summary::-webkit-details-marker { display: none; }
+details.code-card > summary::before { content: none; }
+details.code-card > pre {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-left: none;
+  border-radius: 0;
+}
+@media print {
+  details.code-card { border: 1px solid #ccc; background: white; }
+  details.code-card > summary { display: none !important; }
+  details.code-card > pre { border: 1px solid #ddd; border-radius: 4px; background: white; }
+}
+
+/* --- P0 polish: Paper popover ([[ref]] popups) ------------------------ */
+[data-ref] {
+  color: var(--primary);
+  border-bottom: 1px dotted var(--primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+[data-ref]:hover { background: rgba(26, 74, 140, 0.08); }
+#cite-pop {
+  position: fixed;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  font-size: 13px;
+  line-height: 1.5;
+  z-index: 1000;
+}
+#cite-pop[hidden] { display: none; }
+#cite-pop .cp-title {
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+  padding-right: 24px;
+}
+#cite-pop .cp-meta {
+  color: var(--ink-muted);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+#cite-pop .cp-key {
+  color: var(--accent);
+  font-style: italic;
+  margin-bottom: 8px;
+}
+#cite-pop .cp-link {
+  display: inline-block;
+  color: var(--primary);
+  font-weight: 500;
+}
+#cite-pop .cp-close {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--ink-muted);
+}
+
+/* --- P0 polish: Figure lightbox (native <dialog>) --------------------- */
+dialog.lightbox {
+  border: none;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.92);
+  width: 96vw;
+  height: 96vh;
+  max-width: 96vw;
+  max-height: 96vh;
+}
+dialog.lightbox::backdrop { background: rgba(0, 0, 0, 0.92); }
+dialog.lightbox .lb-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  position: relative;
+}
+dialog.lightbox img {
+  max-width: 90vw;
+  max-height: 84vh;
+  object-fit: contain;
+  cursor: zoom-out;
+}
+dialog.lightbox figcaption {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  text-align: center;
+  max-width: 700px;
+}
+dialog.lightbox .lb-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+/* --- P0 polish: blog/talk mode active-H2 highlight (opt-in) ----------- */
+body.aris-blog h2 { scroll-margin-top: 24px; }
+body.aris-blog h2.aris-active-h2 {
+  background: linear-gradient(to right, rgba(26, 74, 140, 0.06), transparent);
+  border-radius: 4px;
+  padding-left: 12px;
+  margin-left: -12px;
+}
+
+/* --- Focus-dim reading mode (B1) + floating toggle (B2) + ↑/↓ nav (B4) -----
+   Blog opt-in. Everything is scoped under body.aris-blog(.aris-focus-dim) so
+   the 46 non-blog tutorials are completely unaffected (no .aris-blog → button
+   hidden, dim rule never matches). While ON, dims every <main> child except
+   the current section and the intro (header.hero stays bright). F7's io2 is
+   paused while ON; the scroll listener is bound only while ON. */
+body.aris-blog.aris-focus-dim main > *:not(.aris-in-focus) {
+  opacity: 0.28;
+  transition: opacity 0.25s ease;
+}
+body.aris-blog.aris-focus-dim main > .aris-in-focus { opacity: 1; }
+.aris-focus-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1100;
+  display: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 6px 13px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+body.aris-blog .aris-focus-toggle { display: inline-block; }
+.aris-focus-toggle:hover { color: var(--primary); }
+.aris-focus-toggle.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.aris-focus-hint {
+  position: fixed;
+  bottom: 18px;
+  right: 16px;
+  z-index: 1100;
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.aris-focus-hint.show { opacity: 1; }
+@media print {
+  .aris-focus-toggle, .aris-focus-hint { display: none !important; }
+  body.aris-focus-dim main > * { opacity: 1 !important; }
+}
+</style>
+</head>
+<body class="">
+<header class="top">
+  <a href="https://easyaioffer.github.io/"><span class="l-cn">⌂ 全部教程</span><span class="l-en">⌂ All tutorials</span><small>easyaioffer.github.io</small></a>
+  <a href="https://github.com/wanshuiyin/ARIS-in-AI-Offer">⭐ Star</a>
+</header>
+<div class="layout">
+
+<nav class="toc">
+  <h3>Contents</h3>
+  <ol>
+<li><a href="#0-the-request-state-machine--tldr-cheat-sheet">§0 The Request State Machine + TL;DR Cheat Sheet</a>
+<ul>
+<li><a href="#01-happy-path-a-request-that-completes-normally">0.1　Happy path: a request that completes normally</a></li>
+<li><a href="#02-the-full-state-machine-aggregated-view">0.2　The full state machine: aggregated view</a></li>
+</ul>
+</li>
+<li><a href="#1-the-request-state-machine-from-http-to-token-stream">§1 The Request State Machine: From HTTP to Token Stream</a>
+<ul>
+<li><a href="#11-panorama-what-a-request-actually-goes-through">1.1　Panorama: what a request actually goes through</a></li>
+<li><a href="#12-two-stage-admission-and-overload-handling">1.2　Two-stage admission and overload handling</a></li>
+<li><a href="#13-fairness-and-starvation">1.3　Fairness and starvation</a></li>
+<li><a href="#14-cancellation-client-backpressure-disconnect">1.4　Cancellation, client backpressure, disconnect</a></li>
+<li><a href="#15-model-loading-and-warm-up-cold-start-is-not-steady-state-ttft">1.5　Model loading and warm-up: cold start is not steady-state TTFT</a></li>
+<li><a href="#16-the-real-limits-of-reproducibility">1.6　The real limits of reproducibility</a></li>
+<li><a href="#17-termination-failure-and-the-resource-cleanup-protocol">1.7　Termination, failure, and the resource-cleanup protocol</a></li>
+</ul>
+</li>
+<li><a href="#2-serving-metrics-slos-and-the-prefilldecode-roofline">§2 Serving Metrics, SLOs, and the Prefill/Decode Roofline</a>
+<ul>
+<li><a href="#21-precise-metric-definitions-declare-the-system-boundary-first">2.1　Precise metric definitions (declare the system boundary first)</a></li>
+<li><a href="#22-throughput-slo-attainment-and-goodput">2.2　Throughput, SLO attainment, and goodput</a></li>
+<li><a href="#23-the-prefilldecode-empirical-regime--not-a-theorem">2.3　The prefill/decode empirical regime — not a theorem</a></li>
+<li><a href="#24-trustworthy-benchmarks-and-capacity-planning-overview">2.4　Trustworthy benchmarks and capacity planning (overview)</a></li>
+</ul>
+</li>
+<li><a href="#3-logits-to-tokens-sampling-constrained-decoding-and-streaming">§3 Logits to Tokens: Sampling, Constrained Decoding, and Streaming</a>
+<ul>
+<li><a href="#31-the-sampling-pipeline-and-a-quick-reference-table">3.1　The sampling pipeline and a quick-reference table</a></li>
+<li><a href="#32-penalties-a-penalty-is-not-subtract-the-same-constant">3.2　Penalties: a penalty is not &quot;subtract the same constant&quot;</a></li>
+<li><a href="#33-constrained-decoding-and-best-of-n">3.3　Constrained decoding and best-of-n</a></li>
+<li><a href="#34-stop-conditions-and-streaming-boundaries">3.4　Stop conditions and streaming boundaries</a></li>
+</ul>
+</li>
+<li><a href="#4-the-kv-lifecycle-allocation-paging-sharing-and-routing">§4 The KV Lifecycle: Allocation, Paging, Sharing, and Routing</a>
+<ul>
+<li><a href="#41-capacity-accounting-kv-bytes-once-they-enter-serving">4.1　Capacity accounting: KV bytes once they enter serving</a></li>
+<li><a href="#42-pagedattention-a-block-table-not-automatic-swap-out-to-disk">4.2　PagedAttention: a block table, not automatic swap-out to disk</a></li>
+<li><a href="#43-prefix-caching-and-multi-tenant-correctness">4.3　Prefix caching and multi-tenant correctness</a></li>
+<li><a href="#44-eviction-and-preemption">4.4　Eviction and preemption</a></li>
+<li><a href="#45-cache-aware-routing">4.5　Cache-aware routing</a></li>
+</ul>
+</li>
+<li><a href="#5-scheduling-scheduler-ticks-batching-and-admission">§5 Scheduling: Scheduler Ticks, Batching, and Admission</a>
+<ul>
+<li><a href="#51-a-scheduler-iteration-in-full-what-one-tick-does">5.1　A scheduler iteration in full: what one tick does</a></li>
+<li><a href="#52-static-batchings-real-limitation">5.2　Static batching&#x27;s real limitation</a></li>
+<li><a href="#53-continuous-in-flight-batching">5.3　Continuous (in-flight) batching</a></li>
+<li><a href="#54-chunked-prefill">5.4　Chunked prefill</a></li>
+<li><a href="#55-admission-control-and-the-joint-kvtoken-budget-constraint">5.5　Admission control and the joint KV/token-budget constraint</a></li>
+</ul>
+</li>
+<li><a href="#6-from-one-machine-to-a-cluster-replicas-parallelism-and-prefilldecode-disaggregation">§6 From One Machine to a Cluster: Replicas, Parallelism, and Prefill/Decode Disaggregation</a>
+<ul>
+<li><a href="#61-replica-routing">6.1　Replica routing</a></li>
+<li><a href="#62-tpppep-the-forward-only-inference-view">6.2　TP/PP/EP: the forward-only inference view</a></li>
+<li><a href="#63-prefilldecode-disaggregation">6.3　Prefill/Decode Disaggregation</a></li>
+</ul>
+</li>
+<li><a href="#7-combining-optimizations-and-bottleneck-migration">§7 Combining Optimizations and Bottleneck Migration</a>
+</li>
+<li><a href="#8-from-scratch-implementations-demo-index">§8 From-Scratch Implementations: Demo Index</a>
+</li>
+<li><a href="#9-25-high-frequency-interview-questions">§9 25 High-Frequency Interview Questions</a>
+<ul>
+<li><a href="#l1-must-know">L1 Must-know</a></li>
+<li><a href="#l2-advanced">L2 Advanced</a></li>
+<li><a href="#l3-top-lab">L3 Top-lab</a></li>
+</ul>
+</li>
+<li><a href="#a-appendix-sanity-check">§A Appendix: Sanity Check</a>
+</li>
+<li><a href="#references">📚 References</a>
+</li>
+</ol>
+</nav>
+
+<main>
+<header class="hero">
+  <div class="eyebrow">Interview Prep · LLM Inference &amp; Serving Stack</div>
+  <h1>LLM Inference &amp; Serving Stack Interview Cheat Sheet</h1>
+  <p class="subtitle">request state machine · exact support-set definitions for sampling operators · PagedAttention/KV lifecycle · continuous batching/chunked prefill · prefill-decode disaggregation · 25 interview questions (L1 essentials · L2 advanced · L3 top-tier lab)</p>
+  
+  <div class="meta">
+    <span><strong>Source:</strong> <code>docs/tutorials/llm_inference_serving_tutorial_en.md</code></span>
+    <span><strong>SHA256:</strong> <code>bcee87a506dc</code></span>
+    <span><strong>Rendered:</strong> 2026-09-16 06:00 UTC</span>
+    
+  </div>
+</header>
+
+<h2 id="0-the-request-state-machine--tldr-cheat-sheet">§0 The Request State Machine + TL;DR Cheat Sheet</h2>
+<p><strong>LLM inference serving is a state machine spanning the gateway, the scheduler, the GPU-memory manager, and the sampler</strong>; prefill and decode are just two of its states. Only with the full path in view can you say which step TTFT is stuck on, which resource a KV OOM is alarming about, or where to start when p99 degrades. Quantization, the KV capacity formula, and the speculative-decoding derivations live in their own tutorials; here the question is only <strong>where they plug into the serving pipeline and what they change</strong>.</p>
+<div class="callout callout-info"><div class="callout-title">8 TL;DR items</div><p>details in §1–§7.</p></div>
+<ol><li><strong>Request path</strong>: ingress gate → tokenize/validate → prefix lookup → scheduler admission + KV <strong>reservation</strong> → queued/runnable → prefill → first token (taken directly from the logits of the last prefill forward, not "a separate decode run") → per-step decode (sampling + streaming) → finished → KV reclaim (§0.1, §1).</li><li><strong>Two-stage admission</strong>: the ingress gate does only coarse-grained checks before tokenization; the precise KV/token-budget decision must wait until after tokenize and prefix lookup, and passing it only <strong>reserves</strong> (bookkeeping level) — physical allocation happens when some tick selects the request (§1.2).</li><li><strong>Metrics</strong>: $TTFT=t_{\text{first emit}}-t_{\text{arrival}}$, $ITL_j=t_{\text{emit},j}-t_{\text{emit},j-1}$, $TPOT=\frac{t_{\text{last emit}}-t_{\text{first emit}}}{N_{\text{out}}-1}$ — declare the system boundary for each quantity first; throughput is a rate, SLO attainment is a ratio, goodput is "the rate that meets the SLO" — the three must not be conflated (§2).</li><li><strong>Typical bottlenecks</strong>: "prefill compute-bound, decode bandwidth-bound" is an empirical conclusion for common operating regimes, not a theorem — larger batches, quantization, and ultra-long context all move the bottleneck (§2.3).</li><li><strong>Sampling</strong>: top-p is the smallest sorted prefix whose cumulative probability first reaches or exceeds the threshold (the boundary token must be kept); the min-p support set changes with temperature; multiple filters do not always commute; constrained decoding is essentially setting illegal tokens' logits to $-\infty$ and then sampling as usual (§3).</li><li><strong>KV</strong>: PagedAttention is block-table indirection, not "page faults auto-loading from disk"; prefix caching reuses <strong>exact token prefixes</strong>, not semantically similar prompts, and multi-tenant deployments must also guard against cache side channels (§4).</li><li><strong>Scheduling</strong>: static batching's real limitation is that empty slots cannot be refilled by new requests before the whole batch ends; continuous batching saves empty slots via iteration-level refill but does not guarantee lower latency for every workload; chunked prefill improves decode ITL yet may lengthen the long prompt's own TTFT (§5).</li><li><strong>Scaling and diagnosis</strong>: disaggregation is not an unconditional speedup (its gains must clear the break-even of KV transfer/coordination/failure recovery); optimizations do not stack linearly; the same seed does not guarantee token-level reproduction; when p99 degrades, split queueing time from service time first, then instrument stage by stage along the state machine (§6, §7, §1.6).</li></ol>
+<h3 id="01-happy-path-a-request-that-completes-normally">0.1　Happy path: a request that completes normally</h3>
+<pre><code class="language-text">Client request
+  → ① ingress gate (coarse-grained fast rejection, no tokenization needed)
+  → ② tokenize / validate (only now is the exact prompt length known)
+  → ③ prefix lookup (exact token-prefix match; the hit portion reuses KV)
+  → ④ scheduler admission + KV reservation (bookkeeping, not physical allocation)
+  → ⑤ queued / runnable (waiting to be selected by some scheduler tick)
+  → ⑥ prefill (one or more forwards over the missed span)
+  → ⑦ first-token sampling → ⑧ per-step decode (sampling pipeline §3 + detokenization/streaming)
+  → ⑨ FINISHED → ⑩ KV reclaim + billing/logging</code></pre>
+<p>Side paths: REJECTED can occur at either admission check ① or ④; PREEMPTED/SWAPPED/RESUMED, BACKPRESSURED, and TIMED_OUT/FAILED/CANCELLED are branches reachable from any running stage — the full state diagram is in §0.2. Three notes below the diagram:</p>
+<ul><li><strong>The first token comes directly from the logits/hidden state of the last prefill forward</strong> — no "independent" decode iteration needs to start first; the full-prefix-hit exception is in §1.1.</li><li><strong>KV reservation ≠ physical allocation</strong>: passing ④ only means the quota is reserved in the books; physical blocks are allocated when some tick selects the request (§1.2, §5.1).</li><li><strong>Stop strings can straddle token boundaries</strong>, so the server must buffer a small span of uncommitted text before it can emit safely (§3.4).</li></ul>
+<h3 id="02-the-full-state-machine-aggregated-view">0.2　The full state machine: aggregated view</h3>
+<div class="table-wrap"><table><thead><tr><th>Category</th><th>States</th><th>One-liner</th></tr></thead><tbody><tr><td><strong>Admission</strong></td><td>REJECTED / QUEUED / DEGRADED</td><td>Two-stage admission decides between reject, queue (KV is only a <strong>reservation</strong> in the books), and degraded admit (§1.2)</td></tr><tr><td><strong>Execution</strong></td><td>RUNNABLE / PREFILLING / DECODING</td><td>Once a tick selects the request, the reservation becomes physical allocation, and KV keeps growing through decode (§5.1)</td></tr><tr><td><strong>Paused</strong></td><td>PREEMPTED / SWAPPED / RESUMED / BACKPRESSURED</td><td>Resources reclaimed by the scheduler, KV migrated to host, or the client cannot keep up; the three preemption flavors release different resources (§4.4)</td></tr><tr><td><strong>Terminal</strong></td><td>FINISHED / CANCELLED / TIMED_OUT / FAILED</td><td>All four paths share one reclaim routine — capacity/scheduling/accounting resource actions + idempotency; full cleanup invariants in §1.7</td></tr></tbody></table></div>
+<details>
+<summary>Full table of states, guards, and held resources (14 states)</summary>
+<div class="table-wrap"><table><thead><tr><th>State</th><th>Entry condition (guard)</th><th>Held resources</th><th>Main exit transitions</th></tr></thead><tbody><tr><td><strong>REJECTED</strong> (terminal)</td><td>The ingress gate finds body/rate/quota over limit; or tokenize/validate fails; or scheduler admission finds the KV/token budget unsatisfiable even with queueing</td><td>None (never held KV or a scheduling slot)</td><td>Terminal; returns an error to the client</td></tr><tr><td><strong>QUEUED</strong></td><td>Passed ingress gate + tokenize/validate + prefix lookup + scheduler admission; the KV <strong>reservation</strong> succeeded but no tick has selected it yet</td><td>Request metadata + reserved KV quota (bookkeeping, not physical blocks) + a queueing-deadline timer</td><td>→ RUNNABLE (selected by a tick) / → TIMED_OUT (queueing deadline exceeded) / → CANCELLED (client cancels) / → DEGRADED</td></tr><tr><td><strong>DEGRADED</strong></td><td>Under capacity pressure, the scheduler chooses to lower this request's allowed best-of-n/max concurrency instead of rejecting outright</td><td>Same as QUEUED, but the reservation is recomputed under the degraded parameters</td><td>→ RUNNABLE</td></tr><tr><td><strong>RUNNABLE</strong></td><td>Selected by a scheduler tick that has a free batch slot and physical KV blocks covering at least this round of work</td><td>The reservation converts to allocated physical KV blocks + this iteration's batch slot + a token-budget share</td><td>→ PREFILLING/DECODING (normal execution) / → PREEMPTED (scheduler reclaims resources for a higher-priority request)</td></tr><tr><td><strong>PREFILLING → DECODING</strong></td><td>Respectively: the missed prompt span is not yet fully computed / at least one token produced and not yet terminated</td><td>Same as RUNNABLE, with KV growing continuously</td><td>→ FINISHED / → BACKPRESSURED / → PREEMPTED / → CANCELLED / → TIMED_OUT / → FAILED</td></tr><tr><td><strong>BACKPRESSURED</strong></td><td>Tokens generated but the client cannot keep up (slow connection/not reading); the output buffer hits its cap</td><td>Same as DECODING + a bounded buffer of generated-but-unsent tokens</td><td>→ DECODING (client resumes consuming) / → PREEMPTED (buffer tops out) / → CANCELLED (final disconnect)</td></tr><tr><td><strong>PREEMPTED</strong></td><td>The scheduler decides to free resources for other requests; the concrete action is one of <strong>discard-and-recompute</strong> / <strong>migrate to host (SWAPPED)</strong> / <strong>pause but keep KV (descheduled)</strong> (§4.4, not an exhaustive taxonomy)</td><td>Depends on the action: the recompute variant releases all physical KV; SWAPPED releases GPU memory but holds a host-memory copy; the descheduled variant keeps holding all physical KV blocks and releases only the batch slot/compute share</td><td>→ RESUMED (rescheduled) / → CANCELLED/TIMED_OUT (cancelled or timed out while waiting)</td></tr><tr><td><strong>SWAPPED</strong></td><td>The migration sub-case of PREEMPTED; KV has finished moving to host memory</td><td>Host-memory footprint (no GPU memory held) + request metadata</td><td>→ RESUMED (swap-in completes, GPU memory reoccupied)</td></tr><tr><td><strong>RESUMED</strong></td><td>The scheduler decides to bring a PREEMPTED/SWAPPED request back into some tick</td><td>Physical KV blocks re-allocated/moved back depending on origin + a batch slot</td><td>→ RUNNABLE (merges into subsequent ticks normally)</td></tr><tr><td><strong>TIMED_OUT</strong> (terminal)</td><td>The agreed deadline expires while waiting in QUEUED/PREEMPTED</td><td>None (moves into cleanup)</td><td>Terminal</td></tr><tr><td><strong>CANCELLED</strong> (terminal)</td><td>The client explicitly cancels or disconnects (heartbeat/half-close detection)</td><td>None</td><td>Terminal; must be marked <strong>immediately</strong> as the highest-priority KV-reclaim target, not deferred to the next tick</td></tr><tr><td><strong>FAILED</strong> (terminal)</td><td>Worker crash/uncaught exception</td><td>None</td><td>Terminal; usually needs to trigger a retry (if idempotent)</td></tr><tr><td><strong>FINISHED</strong> (terminal)</td><td>Whichever fires first among EOS/stop string/stop-token sequence/<code>max_new_tokens</code>/context limit/constrained-decoding accept state</td><td>None</td><td>Terminal</td></tr></tbody></table></div>
+</details>
+<h2 id="1-the-request-state-machine-from-http-to-token-stream">§1 The Request State Machine: From HTTP to Token Stream</h2>
+<h3 id="11-panorama-what-a-request-actually-goes-through">1.1　Panorama: what a request actually goes through</h3>
+<p>Expanding §0's diagram, the details interviewees most often omit:</p>
+<ul><li><strong>Admission has two stages</strong>: the ingress gate does coarse fast rejection first; the precise KV/token-budget decision waits until after tokenize and prefix lookup — full mechanism (including reservation vs. physical allocation and the three over-limit responses) in §1.2.</li><li><strong>Prefix lookup happens before prefill</strong>: the scheduler matches existing cache exactly by token IDs (typically hash of the prefix token sequence); the hit portion is skipped, and prefill runs only over the missed suffix span (§4.3).</li><li><strong>Prefill over the missed span is one or more forwards</strong>: without chunked prefill it usually completes in one pass; with chunked prefill it is split across multiple iterations (§5.4).</li><li><strong>The first token is not necessarily a separate decode round</strong>: the last prefill forward itself computes the logits at "the last prompt position", and sampling happens right there — provided that forward actually computed this position. <strong>If the prefix cache fully hits</strong> (every prompt token skipped the forward), the system holds only K/V, no final hidden state/logits; it must have cached those logits separately, or at minimum recompute the last prompt token, otherwise there is nothing to sample the first token from — an easily missed step in the "full hit looks fastest" scenario. Many assume "prefill finishes, then a separate decode iteration produces the first token", which breeds the wrong intuition about what TTFT is made of.</li><li><strong>Per-step decode</strong>: each step runs 1 forward over only the new token, but attention reads the entire KV history; the token sampled this step immediately becomes next step's input (§3 unfolds the sampling details).</li><li><strong>Detokenization/streaming</strong>: each produced token is incrementally detokenized and pushed to the client; the buffering mechanism for stop strings straddling token boundaries is in §3.4 and §8 [D03].</li><li><strong>Termination conditions are a whole set, not "EOS and done"</strong>: full list in §3.4; the termination/failure/cleanup protocol in §1.7.</li></ul>
+<h3 id="12-two-stage-admission-and-overload-handling">1.2　Two-stage admission and overload handling</h3>
+<p>Whether a request gets accepted is not "admit if a GPU is free" — it is a joint decision in two stages (matching the guards of REJECTED/QUEUED/DEGRADED in §0.2's state table):</p>
+<p><strong>Stage one: ingress gate (before tokenization)</strong> — looks only at coarse signals: request-body size limit, rate limits, whether the tenant quota is exhausted. This layer blocks obviously over-limit traffic at minimal cost, without waiting for the tokenizer to finish.</p>
+<p><strong>Stage two: scheduler admission + KV reservation (after tokenize/validate and prefix lookup)</strong> — only now are the exact prompt length and miss length known; it jointly considers:</p>
+<ul><li><strong>Current KV headroom</strong> (allocated blocks vs. total blocks, §4)</li><li><strong>Max batched tokens / max concurrent sequences</strong> (this iteration's token-work budget, §5.1, §5.5)</li><li><strong>Predicted output length</strong> (unknown output length is the main source of admission risk — most systems can only estimate via heuristics/history, and prediction error is itself one root cause of overload)</li><li><strong>Tenant quotas</strong> (prevent a single tenant from exhausting global resources in multi-tenant environments)</li></ul>
+<p>Passing stage two only means the KV quota is <strong>reserved</strong> (remaining capacity decremented in the books), not that physical blocks are allocated — physical allocation happens when a scheduler tick actually selects this request (RUNNABLE, §5.1).</p>
+<p>Three responses when over limit: <strong>immediate rejection</strong> (REJECTED — fail fast so the client can retry another replica), <strong>queueing</strong> (QUEUED — holds request metadata and a reservation but no physical GPU resources; needs a queueing deadline), and <strong>degradation</strong> (DEGRADED — e.g. lower this request's allowed max concurrency/best-of-n, squeezing it in with a smaller reservation instead of rejecting).</p>
+<h3 id="13-fairness-and-starvation">1.3　Fairness and starvation</h3>
+<p>The choice of scheduling policy directly decides who starves:</p>
+<div class="table-wrap"><table><thead><tr><th>Policy</th><th>Mean latency</th><th>Tail latency</th><th>Long requests</th><th>Short requests</th></tr></thead><tbody><tr><td>Pure FCFS</td><td>Medium</td><td>Can be very bad (long request blocks the queue head)</td><td>Fine</td><td>Can get stuck</td></tr><tr><td>Shortest-job-first (needs length prediction)</td><td>Better</td><td>Depends on prediction accuracy</td><td>May starve indefinitely</td><td>Prioritized</td></tr><tr><td>decode-priority</td><td>Good on the decode side</td><td>Stable decode ITL</td><td>Prefill deferred, TTFT worsens</td><td>Benefits</td></tr><tr><td>prefill-priority</td><td>Good on the prefill side</td><td>Decode ITL jitters</td><td>Good TTFT</td><td>Decode gets interrupted</td></tr></tbody></table></div>
+<p><strong>There is no free scheduling policy</strong> — utilization maximization and fairness/tail latency are usually two goals to trade off deliberately; do not report only "how much throughput improved".</p>
+<h3 id="14-cancellation-client-backpressure-disconnect">1.4　Cancellation, client backpressure, disconnect</h3>
+<p>If the server does not notice promptly after a client disconnects or explicitly cancels, it keeps running decode for a request <strong>nobody is listening to</strong> — pure GPU waste that also crowds out other requests' scheduling/KV resources. Engineering-wise this requires: heartbeat/half-close detection at the connection layer; the scheduler marking "cancelled" as the highest-priority KV-reclaim target; and backpressure on streaming responses — when the client cannot keep up, generated-but-unsent tokens must not buffer without bound (session memory grows, which then drags down other requests' streaming buffers); a bounded queue + backpressure signal is needed (BACKPRESSURED, §0.2), and once it tops out, either wait for the client to catch up or actively degrade/preempt the request. The full termination/failure/cleanup protocol (deadlines, worker failure, retry/idempotency) is in §1.7.</p>
+<h3 id="15-model-loading-and-warm-up-cold-start-is-not-steady-state-ttft">1.5　Model loading and warm-up: cold start is not steady-state TTFT</h3>
+<p>Right after a replica starts, weight loading (disk/object store into GPU memory), CUDA kernel autotuning, CUDA Graph capture, and memory-pool initialization all make the first batch of requests far slower than steady state. <strong>This cold-start latency must not be mixed into "steady-state TTFT" benchmarks</strong> — evaluation reports must report the cold-start tail and the steady-state distribution separately, or scale-up jitter gets misdiagnosed as a chronic problem. The full evaluation protocol (load sweep, saturation point, p99 sample size, etc.) is in §2.4.</p>
+<h3 id="16-the-real-limits-of-reproducibility">1.6　The real limits of reproducibility</h3>
+<div class="callout callout-warn"><div class="callout-title">Same random seed + same weights ≠ token-level reproduction</div><p>continuous batching changes batch composition and kernel shapes (different batch sizes trigger different GEMM/attention kernel paths); floating-point addition is not associative, so changed reduce/all-reduce orders change the numbers; and when multiple requests share one RNG stream, who consumes which segment first depends on scheduling order. Most of the time this is normal behavior for a "batching + parallelism + floating point" system, <strong>but it must not become a universal shield</strong>: if batch composition, parallel topology, and kernel paths are all fixed and outputs still differ, suspect a real implementation bug (uninitialized memory, race conditions) instead of reflexively blaming "inherent system behavior".</p></div>
+<details>
+<summary>The full list of what bit-exact token-level reproduction must fix simultaneously</summary>
+<p><strong>Batch composition and arrival order</strong>, <strong>parallel topology</strong> (TP/PP/EP degrees and rank mapping), <strong>hardware model</strong> (different GPU architectures may differ in reduction order and kernel implementations), <strong>software/kernel versions</strong> (library upgrades on the same hardware can also swap kernel implementations), <strong>numeric precision</strong> (fp16/bf16/fp32 round differently), <strong>collective-communication algorithms</strong> (ring vs. tree all-reduce orders differ), <strong>the framework's determinism switches</strong> (many frameworks disable deterministic kernels by default for speed), and <strong>a per-request independent RNG stream</strong> — fixing the random seed is just one necessary condition, far from sufficient. The interview version and the precise MoE-routing conditions are in Q17.</p>
+</details>
+<h3 id="17-termination-failure-and-the-resource-cleanup-protocol">1.7　Termination, failure, and the resource-cleanup protocol</h3>
+<p>A request can reach a terminal state via four different paths — <strong>normal completion</strong> (FINISHED), <strong>client cancellation</strong> (CANCELLED), <strong>timeout</strong> (TIMED_OUT), <strong>worker failure</strong> (FAILED) — but every path must converge to <strong>the same reclaim routine</strong>, or you get resource leaks or double frees. The full bounded-buffer and backpressure story for slow clients is in §1.4.</p>
+<p><strong>Worker failure and retry</strong>: when a worker process crashes, every request it was serving must be marked FAILED; whether upstream retries depends on whether the request is <strong>idempotent</strong> — if the client already received partial tokens (a partial stream), naive retry produces a duplicated prefix, so either the client deduplicates or the server explicitly declares "on failure, retry from scratch; any partial output already sent is void".</p>
+<p><strong>Cleanup = three classes of resource actions — capacity/scheduling/accounting</strong>: <strong>capacity</strong> — physical KV blocks decrement by reference count, and shared prefixes/beam branches only truly return blocks to the allocator when the last holder releases (requests terminated while still QUEUED/DEGRADED only roll back reservation bookkeeping — there are no physical blocks to free); <strong>scheduling</strong> — release the batch slot and the active-sequence quota; <strong>accounting</strong> — produce exactly one terminal billing/log record. Cancellation and timeout can race and fire almost simultaneously — repeated calls into the reclaim routine must be <strong>idempotent</strong>: never free the same block twice (double-free), and never both "assume the other will handle it" so nothing gets freed (leak).</p>
+<div class="callout callout-info"><div class="callout-title">Billing semantics</div><p>the generated / emitted / committed counts are not always equal — N generated tokens may yield only M ≤ N actually sent to the client (stop-string truncation discards, speculative-decoding rejected candidates); billing and monitoring must state explicitly which number they use, or "generated volume" and "billed volume" will not reconcile.</p></div>
+<p>If the interviewer asks "what exactly does the system do after a request is cancelled", the answer should cover the cleanup invariants shared by all four paths, not just "stop decoding".</p>
+<h2 id="2-serving-metrics-slos-and-the-prefilldecode-roofline">§2 Serving Metrics, SLOs, and the Prefill/Decode Roofline</h2>
+<h3 id="21-precise-metric-definitions-declare-the-system-boundary-first">2.1　Precise metric definitions (declare the system boundary first)</h3>
+<p>$$TTFT = t_{\text{first emit}} - t_{\text{arrival}}, \qquad ITL_j = t_{\text{emit},j} - t_{\text{emit},j-1}$$</p>
+<p>$$TPOT = \frac{t_{\text{last emit}} - t_{\text{first emit}}}{N_{\text{out}} - 1}\quad (N_{\text{out}} \ge 2)$$</p>
+<p>If the endpoint of E2E latency is defined as "the emit time of the last token" and all timestamps share the same system boundary, then $t_{\text{last emit}} - t_{\text{arrival}} = TTFT + \sum_{j=2}^{N_{\text{out}}} ITL_j$ is an <strong>identity</strong>, not an approximation; if the reported scope also includes post-emit flush/connection close/trailing network transfer, the right side needs that tail term added explicitly — only then write $\approx$.</p>
+<p>Every quantity must first declare its <strong>system boundary</strong>: does TTFT include queueing time, tokenization time, gateway/network transfer? "Mean" or "p95/p99"?</p>
+<div class="callout callout-warn"><div class="callout-title">Do not conflate TPOT with &quot;total latency divided by token count&quot;</div><p>TPOT is the steady-state per-token time of the decode phase (the denominator excludes the first token); folding queueing and prefill time into "total latency / token count" misreports a queueing-affected request as "this model decodes slowly".</p></div>
+<h3 id="22-throughput-slo-attainment-and-goodput">2.2　Throughput, SLO attainment, and goodput</h3>
+<p>High system throughput (tokens/s or requests/s) does not mean good user experience — if the batch is packed full to pump throughput and TTFT/TPOT degrade across the board, users perceive a slowdown. Three routinely conflated concepts to pull apart:</p>
+<ul><li><strong>Throughput</strong>: work processed per unit time, a <strong>rate</strong> — but first declare which dimension: request throughput (requests/s), output-token throughput (output tokens/s), or total-token throughput (total tokens/s including prompt tokens, often used to estimate GPU-time occupancy/cost). The three can rank systems completely differently under long-prompt/short-output or short-prompt/long-output workloads.</li><li><strong>SLO attainment</strong>: the requests (or tokens) meeting the TTFT/TPOT/deadline SLO <strong>as a fraction of the total</strong>, a dimensionless <strong>ratio</strong> — $A = N_{\text{SLO}} / N_{\text{total}}$.</li><li><strong>Goodput</strong>: the requests (or tokens) meeting the same SLO constraints <strong>as a rate per unit time</strong> — $G = N_{\text{SLO}} / \Delta t$, still in requests/s or tokens/s, <strong>not a ratio</strong>. Describing goodput as "the fraction of requests meeting the SLO" is common but inaccurate: attainment and goodput are quantities of different dimensions — attainment can be high while goodput is low because the whole system is slow, and attainment can be mediocre while goodput is still numerically sizable because raw throughput is enormous.</li></ul>
+<p>When reporting system capability, give the throughput–latency curve (swept across concurrency/arrival rates, see §2.4) rather than a single-point throughput number; declaring which of the three throughputs, and whether it is SLO attainment or goodput, is likewise part of the "system boundary" that must be stated upfront.</p>
+<h3 id="23-the-prefilldecode-empirical-regime--not-a-theorem">2.3　The prefill/decode empirical regime — not a theorem</h3>
+<p>Expanding one standard Transformer layer's FLOPs (full derivation in <a href="kv_cache_speculative_decoding_tutorial.md"><code>kv_cache_speculative_decoding_tutorial.md</code></a> §3.1) gives roughly: prefill computes $L$ tokens in one pass, reusing the weights $L$ times, so arithmetic intensity is usually high and GPU compute easy to saturate; decode computes only 1 new token per step yet re-reads the whole layer's weights plus the history-growing KV, so at small batch its arithmetic intensity is low and it often lands in the HBM-bandwidth-bound regime. This "prefill compute-bound, decode bandwidth-bound" is an <strong>empirical conclusion for common operating regimes</strong>, with two qualifiers: as decode batch grows, arithmetic intensity rises (the same weights amortize over more tokens), some linear layers can turn compute-bound again, and quantization shifts the batch size at which that flip happens; and at ultra-long context, prefill attention can itself be limited by IO/HBM/workspace/kernel implementation — using FlashAttention does not automatically make the whole prefill compute-bound. Input and output lengths also act asymmetrically: input length directly sets prefill work and per-step decode KV reads, while output length does not change the initial prefill's arithmetic intensity but adds decode rounds, KV residency time, and late-stage context length.</p>
+<blockquote><p>🎯 <strong>Roofline is an upper-bound thought experiment, not a latency predictor</strong> — the ridge point $I^{*}=\text{peak FLOP/s}/\text{HBM byte/s}$ exists only to compare against a kernel's own arithmetic intensity and judge which side it theoretically leans toward; real latency also depends on kernel implementation, scheduling overhead, and memory-access patterns — see [D09] in §8.</p></blockquote>
+<p>FlashAttention-style work optimizes the <strong>attention kernel's IO efficiency</strong> (saving GPU-memory reads/writes); PagedAttention (§4) manages <strong>the address space and allocation policy of KV during serving</strong> — they solve problems at different layers; do not merge them into one technique.</p>
+<p>Lower still, the pure kernel/assembly-level factors — operator fusion, CUDA Graphs (shape changes force re-capture), prefill's wide GEMM vs. decode's narrow GEMM/GEMV ($L_q=1$), paged attention's extra block-table-indirection cost — are all examples of implementation details visibly moving measured numbers.</p>
+<h3 id="24-trustworthy-benchmarks-and-capacity-planning-overview">2.4　Trustworthy benchmarks and capacity planning (overview)</h3>
+<p>Reporting throughput, goodput, and TTFT/TPOT as one trustworthy set of numbers is easier to get wrong than it looks; below are the most common pitfalls.</p>
+<ul><li><strong>Open-loop vs. closed-loop</strong>: open-loop keeps sending at a fixed arrival rate (e.g. Poisson arrivals); closed-loop fixes concurrency (send the next only after one completes). <strong>They measure different things</strong>: closed-loop naturally lowers the effective arrival rate as the system slows, easily squeezing "falsely stable" latency numbers out of an already-overloaded system; open-loop is closer to real production traffic but requires the load-test client itself not to become the bottleneck.</li><li><strong>Coordinated omission</strong>: under closed-loop or naive retry logic, when a request gets stuck the load tool tends to "forget" to keep sending follow-ups on the original cadence, so the sample systematically misses the slowest cases — the measured p99 comes out far more optimistic than reality. The fix is computing latency against <strong>scheduled arrival times</strong> rather than <strong>actual send times</strong>.</li><li><strong>Realistic input/output length distributions</strong>: use real traces (or at least synthetic distributions matching the real ones) instead of fixed lengths, because the prefill/decode ratio, KV occupancy, and batch composition all depend strongly on the length distribution; fixed-length load tests deviate systematically from production behavior.</li><li><strong>Load sweep and the saturation point</strong>: numbers measured at a single concurrency/arrival rate are meaningless; sweep a curve from idle to saturation, find the knee where the throughput–latency curve turns steep (the saturation point), and state explicitly "which latency this throughput number corresponds to".</li><li><strong>Report cold start separately, and mind p99 sample size</strong>: the cold-start tail must be reported apart from the steady-state distribution (§1.5), or scale-up jitter gets misread as a chronic problem; tail quantiles like p99 are very noisy at small sample sizes, so use enough samples and state confidence intervals.</li></ul>
+<p>The full input list for replica sizing (goodput-based replica-count calculation) is in Q19.</p>
+<h2 id="3-logits-to-tokens-sampling-constrained-decoding-and-streaming">§3 Logits to Tokens: Sampling, Constrained Decoding, and Streaming</h2>
+<h3 id="31-the-sampling-pipeline-and-a-quick-reference-table">3.1　The sampling pipeline and a quick-reference table</h3>
+<p><strong>The execution order of logits processors is part of the API semantics, and frameworks do not agree on it.</strong> This tutorial fixes the teaching pipeline below (for exposition only — it mandates no framework's order; notation: raw logits $z_i$, occurrence count $c_i$ of a token):</p>
+<p>$$\text{hard constraints/logit bias} \to \text{repetition/frequency/presence penalties} \to \text{temperature} \to \text{truncation filters} \to \text{renormalize} \to \text{sample}$$</p>
+<p>Quick-reference table for the four most common operators ($p_i=\text{softmax}(z_i/T)$; every filter renormalizes within its kept set):</p>
+<div class="table-wrap"><table><thead><tr><th>Operator</th><th>Precise definition</th><th>Key pitfall</th></tr></thead><tbody><tr><td><strong>Temperature</strong></td><td>$p_i(T)=\exp(z_i/T)/\sum_j \exp(z_j/T)$, defined only for $T&gt;0$; with finite logits and no extra mask the support is the full vocabulary</td><td><code>T=0</code> must be implemented as a separate greedy branch ($y_t=\arg\max_i z_i$; tied maxima need a declared deterministic tie-break — this tutorial takes the lowest index); never actually compute $z_i/0$; the tied $T\to0^+$ limit is in §A [D01]</td></tr><tr><td><strong>Top-k</strong></td><td>Support = the $k$ tokens with the largest logits ($1\le k\le \vert E\vert$, $E$ the set of legal tokens with finite logits this step)</td><td>Positive temperature scaling preserves ranking, so top-k alone has a support unchanged for any $T&gt;0$; ties at rank $k$ make the support non-unique — declare a tie-break (this tutorial sorts by $(-z_i,\text{token\_id})$ and takes the first $k$)</td></tr><tr><td><strong>Top-p</strong></td><td>Sort by probability descending; take the smallest prefix whose cumulative probability <strong>first reaches $\ge p_0$</strong>; the boundary token must be kept</td><td>Both intuitive definitions — "keep all $p_i\ge p_0$" and "cumulative strictly $&lt;p_0$" — wrongly drop the boundary token; [D01] nails it with $p=[0.4,0.3,0.2,0.1]$ and threshold $0.65$: the correct support is the first two tokens (cumulative $0.7\ge0.65$), while "strictly less than" stops wrongly at the first token (cumulative $0.4$)</td></tr><tr><td><strong>Min-p</strong></td><td>$S=\{i:\ p_i \ge \alpha \max_j p_j\}$, equivalent to $z_i \ge z_{\max} + T\log\alpha$</td><td>The support <strong>changes with temperature</strong> — not a fixed logit-gap threshold: for $\alpha&lt;1$, larger $T$ lowers the threshold and enlarges the support ([D01] sweeps several $T$ to verify monotone non-decrease)</td></tr></tbody></table></div>
+<p>Stacked truncation filters <strong>do not always commute</strong> — each filter renormalizes within its kept set, so the next one no longer sees the original distribution: <code>top_k(3)</code> then <code>top_p(0.8)</code> gives a different support from the reverse order; numerical counterexample in Q11 and §8 [D02].</p>
+<details>
+<summary>Other samplers: typical sampling and beam search</summary>
+<p><strong>Typical sampling</strong>: $H(p)=-\sum_i p_i\log p_i$, $d_i=|-\log p_i - H(p)|$; sort by $d_i$ ascending (tokens whose information content is closest to the overall entropy come first), take the smallest prefix whose cumulative probability reaches <code>typical_p</code>, renormalize. <strong>Not equivalent to top-p</strong> — the support need not be a contiguous prefix of the probability ranking: [D01] constructs $p=[0.02,0.35,0.33,0.30]$, where <code>typical_p=0.63</code> selects the 2nd- and 3rd-highest-probability tokens while excluding the highest one (0.35).</p>
+<p><strong>Beam search</strong>: maintains a candidate set of width $B$, approximately maximizing the sequence-level $\log P(y_{1:T})=\sum_t \log p(y_t\mid y_{&lt;t},x)$; stepwise pruning <strong>does not guarantee global optimality</strong>; length normalization is not unique (a common form is $S(y)=\log P(y)/|y|^{\alpha}$ — do not treat it as universal). It solves a sequence-level search problem, not "lack of diversity" — in dialogue generation it can actually favor generic, repetitive, or prematurely ended text.</p>
+</details>
+<h3 id="32-penalties-a-penalty-is-not-subtract-the-same-constant">3.2　Penalties: a penalty is not "subtract the same constant"</h3>
+<p>$$\text{Frequency/presence penalty}:\quad z_i' = z_i - \alpha_f c_i - \alpha_p\mathbf{1}[c_i&gt;0]$$</p>
+<p>The frequency term grows linearly with occurrence count; the presence term only cares "has it appeared or not"; whether <code>counts</code> includes prompt tokens (versus only the generated part) is decided by each API's semantics — tutorials/frameworks should state it explicitly.</p>
+<p>$$\text{Sign-aware repetition penalty}\ (r&gt;1):\quad z_i' = \begin{cases} z_i/r &amp; z_i&gt;0 \\ r\,z_i &amp; z_i&lt;0\end{cases}\qquad\text{applies only to tokens that have appeared}$$</p>
+<p>It is <strong>not</strong> subtracting one constant from every seen token — the scaling direction depends on sign (positive logits get pushed down, negative logits get pushed further down).</p>
+<h3 id="33-constrained-decoding-and-best-of-n">3.3　Constrained decoding and best-of-n</h3>
+<p>JSON-schema, regex, and FSM-driven constrained decoding is essentially <strong>setting the logits of currently illegal tokens to $-\infty$ at every step, then doing softmax + sampling as usual</strong> (the <code>apply_hard_mask</code> in §8 [D01] demonstrates this primitive). <strong>Bad-word/banned-sequence</strong> (forbidding certain token sequences from reappearing), <strong>forced tokens</strong> (leaving finite logits only on designated tokens), and <strong>no-repeat n-gram</strong> are all special cases of the same mask primitive — the actual mask timing depends on <strong>the state of the generated suffix so far</strong>, and permanently banning a single token is just a banned sequence of length 1. The genuinely messy parts — automaton state transitions (FSM/PDA), tokenizer-aware matching, dead-end handling — are in Q9.</p>
+<p><strong>Best-of-n / parallel sampling</strong> cannot be treated as an ordinary sampling parameter: the $n$ candidates share the KV of the same prompt (copy-on-write, §4.2), and only the generated suffixes grow roughly $n$-fold — the full KV-occupancy and scheduling-accounting version is in Q24.</p>
+<h3 id="34-stop-conditions-and-streaming-boundaries">3.4　Stop conditions and streaming boundaries</h3>
+<p>Stop conditions must at least distinguish: <strong>the EOS token</strong>, <strong>stop-token sequences</strong>, <strong>stop strings</strong> (string-level, possibly straddling multiple token boundaries), <code>max_new_tokens</code>, <strong>the total context limit</strong>, <strong>the constrained decoder's accept state</strong> (e.g. JSON syntactically closed), <strong>deadlines</strong>, and <strong>client cancellation</strong>.</p>
+<p>When a stop string straddles token boundaries, the server must <strong>buffer a span of uncommitted text that "may still be a stop-string prefix"</strong> before pushing to the client, and emit safely only once no further stop-string match is possible (§8 [D03] gives a minimal implementation). This belongs to the same "unstable boundary" family as the tokenization tutorial's <strong>prefix instability</strong>, but at a different layer — one at the tokenizer's encode boundary, the other at streaming's string-match boundary; the former, plus the full token-healing mechanism, is in <a href="tokenization_tutorial.md"><code>tokenization_tutorial.md</code></a> §5.4.</p>
+<h2 id="4-the-kv-lifecycle-allocation-paging-sharing-and-routing">§4 The KV Lifecycle: Allocation, Paging, Sharing, and Routing</h2>
+<h3 id="41-capacity-accounting-kv-bytes-once-they-enter-serving">4.1　Capacity accounting: KV bytes once they enter serving</h3>
+<p>Per-token KV bytes directly reuse the conclusion of <a href="kv_cache_speculative_decoding_tutorial.md"><code>kv_cache_speculative_decoding_tutorial.md</code></a> §2.1:</p>
+<p>$$m_{\text{token}} = 2\, N_{\text{layer}}\, N_{\text{kv\_head}}\, d_{\text{head}}\, b$$</p>
+<p>(the factor 2 is K/V; $b$ is bytes per element; this is the <strong>ideal payload</strong>, excluding allocator alignment, block-table metadata, quantization scales, and other overheads — the MQA/GQA/MLA derivations are in that tutorial). Here $m_{\text{token}}$ is an externally known quantity. Once it enters the serving lifecycle, three things depend on it: block allocation and internal fragmentation, cross-request sharing and copy-on-write (§4.2), and reclamation under preemption/eviction (§4.4); [D07]–[D08] cover those three.</p>
+<h3 id="42-pagedattention-a-block-table-not-automatic-swap-out-to-disk">4.2　PagedAttention: a block table, not automatic swap-out to disk</h3>
+<p>The core mechanism (full design in <a href="kv_cache_speculative_decoding_tutorial.md"><code>kv_cache_speculative_decoding_tutorial.md</code></a> §5): each sequence's logical KV blocks map through a <strong>block table</strong> to non-contiguous physical blocks in GPU memory, and the attention kernel reads KV via this table's indirection. Fixed-size blocks remove the requirement that "each request must reserve one contiguous max-length KV span", cutting external fragmentation and over-reservation; but <strong>the last partially filled block still carries internal fragmentation</strong> (the allocator demo in §8 [D07]).</p>
+<div class="callout callout-warn"><div class="callout-title">PagedAttention does not mean &quot;KV auto-loads from disk on a page fault&quot;</div><p>OS paging is only a design-inspiration analogy; PagedAttention's core is the <strong>GPU attention kernel plus the block-table indirection mechanism</strong>, managing the mapping and sharing of non-contiguous physical blocks within GPU memory. That does not seal the serving system off from disk/host memory — actually "moving out of GPU memory" is a separate mechanism that can stack on top of it: host swap / KV offload (moving KV to CPU memory or even slower storage), one of the cost options under §4.4's preemption — it is just <strong>not PagedAttention's own default behavior</strong>.</p></div>
+<p>Physical blocks can be shared across common prefixes or beam branches via reference counting; when a shared writable tail block needs to diverge, the usual trigger is <strong>copy-on-write</strong> (copy the block and rewrite the mapping, rather than mutating the shared content in place).</p>
+<h3 id="43-prefix-caching-and-multi-tenant-correctness">4.3　Prefix caching and multi-tenant correctness</h3>
+<p>Prefix caching reuses the KV of an <strong>exact token prefix</strong>; the core criterion is "<strong>token-ID sequences equal position by position + every configuration that produced the KV is compatible</strong>" — e.g. same model version/weights, same adapter (LoRA etc.), same position encoding and attention configuration, same KV dtype/memory layout, same parallel sharding.</p>
+<div class="callout callout-warn"><div class="callout-title">&quot;Semantically similar prompts&quot; cannot share KV</div><p>prefix caching only cuts the cost of <strong>repeated prefill</strong>; it does not reduce prefill work on the missed suffix, nor any subsequent decode work; it is not a semantic cache, nor retrieval augmentation.</p></div>
+<p>In multi-tenant settings, the prefix cache is a genuine security-boundary problem: the cache's <strong>hash-key design, access permissions, and eviction policy</strong> must all prevent tenants from using side channels like "did the cache hit" or "response-latency differences" to infer each other's private prefix contents — or worse, directly reusing cached content they should not access.</p>
+<h3 id="44-eviction-and-preemption">4.4　Eviction and preemption</h3>
+<p>For standard full causal attention, <strong>evicting any old KV forfeits the guarantee of equivalence with "the exact computation path that keeps the full history KV"</strong> — the evicted position should have participated in every subsequent query's attention, so dropping it introduces an approximation never validated in training. Safe sliding-window eviction requires the model itself to train/infer with windowed attention, or an explicit acceptance of the semantic shift brought by <strong>approximate methods</strong> like attention sinks or compression — eviction is a priced engineering choice, not a lossless optimization.</p>
+<p>Common preemption approaches differ both in cost and in whether they actually relieve GPU-memory pressure — this is a common taxonomy, not an exhaustive one:</p>
+<ul><li><strong>Discard KV and recompute</strong> (recompute): truly frees physical KV blocks, at the cost of extra recomputation compute;</li><li><strong>Migrate to host memory</strong> (swap): also truly frees GPU memory, at the cost of extra transfer (growing with KV size);</li><li><strong>Pause but keep KV (descheduling)</strong>: merely removes this request from the current round of scheduling; it skips this iteration but <strong>keeps holding all its physical KV blocks</strong>. This one <strong>should not be lumped with the other two as the same class of "memory reclamation"</strong>: what it frees is compute/scheduling share, and it cannot relieve KV memory pressure; if the goal is to free KV space for other requests, descheduling alone does not help — it must pair with recompute or swap.</li></ul>
+<p>Which one (or which combination) to pick depends on the concrete trade-off of recompute cost vs. transfer bandwidth vs. memory pressure — there is no universally optimal answer.</p>
+<p>The triple impact of long-generation requests — stretching mixed-batch iterations, occupying KV capacity long-term, raising the probability of triggering preemption — unfolds fully in Q21.</p>
+<h3 id="45-cache-aware-routing">4.5　Cache-aware routing</h3>
+<p>With multiple replicas, choosing which replica to route to cannot just chase "the highest prefix-cache hit rate":</p>
+<blockquote><p>🎯 <strong>Cache-aware routing's correct objective is minimizing expected completion time or SLO-violation probability, not maximizing hit rate</strong> — the highest-hit replica can still be slower than a no-hit but idle replica if its queue is already deep. The routing decision must jointly weigh current queue depth, expected KV occupancy, the prefill savings from prefix-cache hits, and failure-domain isolation — not greedily optimize a single metric.</p></blockquote>
+<h2 id="5-scheduling-scheduler-ticks-batching-and-admission">§5 Scheduling: Scheduler Ticks, Batching, and Admission</h2>
+<h3 id="51-a-scheduler-iteration-in-full-what-one-tick-does">5.1　A scheduler iteration in full: what one tick does</h3>
+<p>Each scheduler tick (one iteration) is the hub connecting admission, KV, prefill, decode, sampling, and streaming — four core steps:</p>
+<ol><li><strong>Reclaim and refill</strong>: reclaim last round's terminal requests per §1.7's cleanup protocol (freeing batch slots and KV blocks), then refill the active set from QUEUED/DEGRADED per the scheduling policy (§1.3) — provided <code>max_num_seqs</code>, physical KV capacity, and the already-reserved shares line up; the selected requests convert from "reserved" to physically allocated (QUEUED → RUNNABLE).</li><li><strong>Allocate the budget, form the mixed batch</strong>: <code>max_batched_tokens</code> is <strong>this iteration's</strong> token-work budget (not a whole-lifetime reservation for the request — that was computed at admission, §1.2), split between prefill chunks (§5.4) and 1 decode token per active request.</li><li><strong>Execute and emit</strong>: run one mixed forward containing both prefill chunks and decode tokens (kernel-level differences at the end of §2.3), apply §3's sampling pipeline to the logits to produce the next token, and hand it to streaming/stop-string detection (§3.4); if the client cannot keep up, the request goes BACKPRESSURED (§0.2) instead of buffering without bound.</li><li><strong>Update states</strong>: check termination conditions (EOS/stop/length/deadline/cancel) and mark terminal states for next round's reclaim; under excessive KV pressure or to make room for higher priority, run preemption per §4.4 (recompute/swap/descheduling — only the first two truly free GPU memory).</li></ol>
+<p>Speculative decoding adds "a variable number of accepted tokens after verification + KV rollback of rejected candidates" to step 3; its accounting impact on this tick is in §7.</p>
+<h3 id="52-static-batchings-real-limitation">5.2　Static batching's real limitation</h3>
+<div class="callout callout-warn"><div class="callout-title">Static batching&#x27;s key limitation is not &quot;all requests must finish before any output&quot;</div><p>completed sequences emit their own tokens immediately (no waiting for others); the real limitation is that <strong>the batch slots they leave behind usually cannot be refilled by new requests before the whole batch ends</strong> — the slot sits empty until the longest request in the batch finishes and the scheduler forms the next batch.</p></div>
+<h3 id="53-continuous-in-flight-batching">5.3　Continuous (in-flight) batching</h3>
+<p>Continuous batching removes finished requests and admits new ones into the vacated slots at <strong>iteration boundaries</strong>; the main gains come from <strong>less decode padding, fewer empty slots, and less head-of-line blocking</strong>.</p>
+<div class="callout callout-warn"><div class="callout-title">Continuous batching does not guarantee lower per-request latency under every workload</div><p>when all requests are similar in length, continuous and static have almost no empty slots to save, and their makespans can be identical (the equal-length counterexample in §8 [D04]).</p></div>
+<h3 id="54-chunked-prefill">5.4　Chunked prefill</h3>
+<p>Splitting a long prompt's prefill into multiple fixed-size chunks lets the scheduler interleave decode work between chunks, capping the token work of a single iteration and preventing one long prefill from monopolizing a whole iteration (head-of-line blocking).</p>
+<div class="callout callout-warn"><div class="callout-title">Chunked prefill usually improves decode ITL and fairness under mixed load, but can increase the long prompt&#x27;s own TTFT</div><p>its own prefill work is spread over more iterations, each getting a smaller prefill budget. The concrete outcome depends on the decode-priority policy, chunk size, and kernel batching efficiency — [D05] in §8 computes both opposing effects at once with a simplified token-budget model. The "decode gap" there measures the <strong>decode service gap</strong> — how many iterations pass between two servings of a decode request — a <strong>proxy</strong> for ITL, not ITL itself; only under the simplifying assumption "every iteration takes roughly equal time" does a service gap dropping from 3 iterations to 1 correspond to lower ITL — in real systems each iteration's actual duration varies with batch composition and the prefill/decode mix, so the proxy and true ITL are not a strict linear conversion.</p></div>
+<h3 id="55-admission-control-and-the-joint-kvtoken-budget-constraint">5.5　Admission control and the joint KV/token-budget constraint</h3>
+<p>At the scheduler-implementation level, admission jointly maintains four constraints — <code>max_num_seqs</code>, <code>max_batched_tokens</code> (the iteration-level budget, §5.1), remaining KV block capacity, and tenant quotas — hitting any one means reject or queue, and the decision only affects whether the "reservation" succeeds; physical allocation waits for the moment a tick selects the request. The full two-stage admission is in §1.2.</p>
+<h2 id="6-from-one-machine-to-a-cluster-replicas-parallelism-and-prefilldecode-disaggregation">§6 From One Machine to a Cluster: Replicas, Parallelism, and Prefill/Decode Disaggregation</h2>
+<h3 id="61-replica-routing">6.1　Replica routing</h3>
+<p>Routing decisions across multiple replicas must trade off <strong>current queue depth, expected KV occupancy, prefix-cache locality, and failure domains</strong> — the cache-aware full version is in §4.5.</p>
+<h3 id="62-tpppep-the-forward-only-inference-view">6.2　TP/PP/EP: the forward-only inference view</h3>
+<div class="callout callout-good"><div class="callout-title">When the model fits on one GPU and the goal is aggregate throughput, data-parallel replicas are usually the first-choice baseline</div><p>no per-request cross-GPU communication, plus free routing on load and prefix locality (§4.5, §6.1). Whether TP/PP/EP helps must be measured against latency targets, batch size, and interconnect bandwidth — <strong>"the model doesn't fit" is the most common hard constraint, but not the only reason to shard</strong>.</p></div>
+<p>Inference has no backward pass and no optimizer state, but that does not make parallel communication disappear — communication-volume analysis and the full derivations of backward/ZeRO/FSDP/training pipeline schedules are in <a href="distributed_training_tutorial.md"><code>distributed_training_tutorial.md</code></a>; here are only the three inference-specific points:</p>
+<ul><li><strong>TP</strong>: every layer's forward still needs collective communication (e.g. the all-reduce after row-parallel); <strong>at small decode batches, per-token communication latency easily outweighs the compute savings</strong>.</li><li><strong>EP (MoE)</strong>: expert parallelism at inference still needs token dispatch/combine communication and faces expert load imbalance; <strong>no backward does not remove all-to-all latency, hot experts, or small-message communication overhead</strong>; EP usage is driven mainly by the MoE's expert placement.</li><li><strong>PP</strong>: for single requests and low concurrency, PP <strong>cannot automatically lower latency</strong>, since end-to-end still traverses all stages; it takes enough concurrent sequences or micro-batches to fill the pipeline, otherwise most time is spent waiting on bubbles.</li></ul>
+<h3 id="63-prefilldecode-disaggregation">6.3　Prefill/Decode Disaggregation</h3>
+<p>The motivation for splitting prefill and decode onto different nodes/resource pools: the two phases have very different resource profiles (prefill compute-heavy, decode bandwidth-heavy), they can scale independently, and it reduces interference from long prefills with same-node decode ITL.</p>
+<div class="callout callout-warn"><div class="callout-title">Disaggregation is not an unconditional speedup</div><p>the gains must exceed: cross-node KV-transfer overhead, extra queueing and metadata coordination, load imbalance, and failure-recovery complexity. With short prompts (KV transfer large relative to total gain) or weak interconnects, disaggregation can actually be slower — it is an engineering decision requiring a measured break-even point, not a default-better architecture. Prefix-cache hits shorten effective prefill and shift the resource ratio between the prefill and decode sides, further changing how that break-even should be computed.</p></div>
+<h2 id="7-combining-optimizations-and-bottleneck-migration">§7 Combining Optimizations and Bottleneck Migration</h2>
+<p>Each optimization alone has a clean win story, but <strong>combined, the gains neither multiply nor add directly</strong> — together they change batch size, memory headroom, kernel shapes, and the location of the bottleneck itself:</p>
+<ul><li><p><strong>Quantization</strong>: weight quantization mainly relieves weight bandwidth and capacity pressure; <strong>KV-cache quantization is an independent design point</strong> — the model using low-bit weights does not entitle the KV to the same bit width as a matter of course (numeric sensitivity and per-channel/per-token granularity choices differ completely). Numeric details (scale/zero-point, concrete GPTQ/AWQ/FP8 error analysis) are in <a href="quantization_tutorial.md"><code>quantization_tutorial.md</code></a>; this section gives only the decision dimensions:</p>
+<div class="table-wrap"><table><thead><tr><th>Quantized object</th><th>Main effect</th><th>Coupling point with serving</th></tr></thead><tbody><tr><td>Weights</td><td>Bandwidth, memory capacity</td><td>Moves the flip point of decode arithmetic intensity (§2.3)</td></tr><tr><td>KV cache</td><td>Memory capacity, allowed batch/context ceiling</td><td>Affects §4's capacity accounting and block allocation</td></tr><tr><td>Activations</td><td>Kernel support, numeric stability</td><td>Determines which fused kernels are usable and prefill's real throughput</td></tr></tbody></table></div></li><li><strong>Speculative decoding</strong>: acceptance rate and the $E[\tau]$ expected-speedup derivation are in <a href="kv_cache_speculative_decoding_tutorial.md"><code>kv_cache_speculative_decoding_tutorial.md</code></a> §7; what serving has to account for is this: each target verification processes multiple candidate tokens and yields a <strong>variable number</strong> of accepted tokens, so the scheduler must account separately for "verified tokens", "output tokens", and "KV delta" — never treat it as fixed-stride decode. Quantizing the target or the draft can shift the draft/target distribution gap and the acceptance rate through numeric error — <strong>speculative decoding and quantization are not strictly orthogonal</strong>.</li><li><strong>Prefix caching × continuous batching × disaggregation</strong>: a prefix hit shortens the effective prefill length, which changes the prefill pool's actual workload in a disaggregated deployment and thus the ratio at which the two resource pools should be provisioned — the three are mutually coupled, and evaluating any one in isolation yields misleading conclusions.</li></ul>
+<blockquote><p>🎯 <strong>Online symptom → localization path (diagnostic table)</strong></p></blockquote>
+<div class="table-wrap"><table><thead><tr><th>Symptom</th><th>Check first</th></tr></thead><tbody><tr><td>High TTFT</td><td>Queueing time, admission rejection rate, prefix-cache hit rate, whether prefill is being squeezed by chunking</td></tr><tr><td>TPOT/ITL jitter</td><td>Long prefills cutting in, preemption frequency, whether batch composition churns frequently</td></tr><tr><td>KV OOM</td><td>Block-allocation fragmentation, long-generation requests' occupancy, admission's KV reservation policy</td></tr><tr><td>Low cache hit rate</td><td>Hash-key design, whether tenant-isolation policy over-partitions, whether routing destroys locality</td></tr><tr><td>Low GPU utilization but latency still bad</td><td>First check whether batches are too small/fragmented rather than rushing to add GPUs — usually a scheduling or admission problem</td></tr><tr><td>p99 suddenly degrades</td><td>First split queueing time vs. service time; then instrument stage by stage: queue → cache hit → prefill → decode → KV pressure → preemption → kernel/collective → network → streaming (cache hit affects whether/how much prefill runs, so it precedes prefill); do not stare at GPU utilization alone</td></tr></tbody></table></div>
+<h2 id="8-from-scratch-implementations-demo-index">§8 From-Scratch Implementations: Demo Index</h2>
+<p>The full runnable script is <a href="../code/inference_serving.py.html"><code>code/inference_serving.py</code></a> (pure standard library, no third-party dependencies, [D01]–[D09] finish in seconds on CPU); each demo verifies one isolated mechanism:</p>
+<div class="table-wrap"><table><thead><tr><th>Demo</th><th>What it verifies</th><th>Section</th></tr></thead><tbody><tr><td>[D01]–[D02]</td><td>Exact support sets of sampling filters, the $T\to0^+$ limit, constraint masks; filter-order non-commutativity</td><td>§3.1–§3.3</td></tr><tr><td>[D03]</td><td>Streamed buffering of stop strings across tokens</td><td>§3.4</td></tr><tr><td>[D04]–[D05]</td><td>Continuous batching (with the equal-length counterexample) and the chunked-prefill trade-off</td><td>§5.2–§5.4</td></tr><tr><td>[D06]–[D08]</td><td>KV per-token bytes in practice, block-allocation internal fragmentation, prefix sharing</td><td>§4.1–§4.3</td></tr><tr><td>[D09]</td><td>Roofline ridge point (upper-bound reference, not a latency predictor)</td><td>§2.3</td></tr></tbody></table></div>
+<p>Key assertion snippets are folded below; the full invariant list and the script's real output are in §A.</p>
+<details>
+<summary>(a) Sampling: key assertion snippets</summary>
+<p>Split into "compute filtered probabilities" (<code>top_k_filter</code>/<code>top_p_filter</code>/<code>min_p_filter</code>/<code>typical_filter</code> — pure functions that never touch randomness) and "draw" (<code>sample</code>, the only function that calls the RNG).</p>
+<pre><code class="language-python"># top-p: smallest sorted prefix whose cumulative probability first reaches or exceeds the threshold; keep the boundary token
+p_ex = [0.4, 0.3, 0.2, 0.1]
+filt = top_p_filter(p_ex, 0.65)
+support = {i for i, p in enumerate(filt) if p &gt; 0}
+assert support == {0, 1}                                   # cumulative 0.7 &gt;= 0.65
+assert sum([p_ex[0]]) &lt; 0.65                                # &quot;strictly below p0&quot; would drop the boundary token
+
+# min-p support changes with temperature (not a fixed logit-gap threshold)
+sizes = [len(min_p_support_from_logits(logits_t, T, alpha=0.3))
+         for T in (0.2, 0.5, 1.0, 2.0, 5.0)]
+assert sizes == sorted(sizes) and sizes[0] &lt; sizes[-1]      # larger T, larger support
+
+# filter order is not commutative
+support_a = support_of(top_p_filter(top_k_filter(probs, 3), 0.8))   # top_k -&gt; top_p
+support_b = support_of(top_k_filter(top_p_filter(probs, 0.8), 3))   # top_p -&gt; top_k
+assert support_a != support_b                               # {0,1} vs {0,1,2}</code></pre>
+</details>
+<details>
+<summary>(b) Continuous-batching simulation: key assertion snippets</summary>
+<p>Three requests A/B/C arrive simultaneously, capacity=2, needing 1/4/1 decode tokens respectively; each active request emits 1 token per tick:</p>
+<pre><code class="language-python">reqs = [Request(&quot;A&quot;, 0, 1), Request(&quot;B&quot;, 0, 4), Request(&quot;C&quot;, 0, 1)]
+comp_static, _  = simulate_batching(reqs, capacity=2, policy=&quot;static&quot;)
+comp_cont,   _  = simulate_batching(reqs, capacity=2, policy=&quot;continuous&quot;)
+assert comp_static == {&quot;A&quot;: 1, &quot;B&quot;: 4, &quot;C&quot;: 5}    # C cannot start until t=4
+assert comp_cont   == {&quot;A&quot;: 1, &quot;C&quot;: 2, &quot;B&quot;: 4}    # C slots in at t=1 right after A finishes
+
+# Note: &quot;utilization&quot; here is scheduler-slot utilization (total serviced tokens /
+# (capacity * makespan)) — a capacity metric of this unit-cost toy model, not GPU
+# SM/HBM utilization; in real systems each iteration&#x27;s actual duration varies with
+# batch composition and the prefill/decode mix, unlike the equal-time ticks assumed here.
+u_static, _ = utilization(comp_static, reqs, 2)   # slot utilization: 6 / (2*5) = 0.60
+u_cont,   _ = utilization(comp_cont,   reqs, 2)   # slot utilization: 6 / (2*4) = 0.75</code></pre>
+<p>The equal-length counterexample (two requests both needing 3 ticks) verifies <code>comp_static_eq == comp_cont_eq</code> — continuous batching does <strong>not always</strong> strictly dominate. The scheduling simulator checks uniformly across all policies: total generated tokens conserved, no running before arrival, active count within capacity, immediate release on completion (no lingering KV).</p>
+</details>
+<details>
+<summary>(c) KV block allocation and sharing: key assertion snippets</summary>
+<p>Per-token bytes directly take the §4.1 formula ($m_{\text{token}}=64$ bytes is that formula instantiated with one example configuration); what matters is three things after that number enters the serving side — the block allocator reports both logical and allocated figures (internal fragmentation); the prefix-sharing scenario verifies the physical block count drops after sharing; and the explicit check that "KV heads not divisible by the TP degree must not be naively divided":</p>
+<pre><code class="language-python">m_token = kv_bytes_per_token(n_layer=2, n_kv_head=2, d_head=4, bytes_per_elem=2)
+assert m_token == 64                                        # 2*2*2*4*2 bytes/token
+
+logical_slots, allocated_slots = block_alloc_slots([1, 5], block_size=4)
+assert (logical_slots, allocated_slots) == (6, 12)          # internal fragmentation: 12 &gt; 6
+
+no_share = physical_blocks_no_sharing([6, 7], block_size=4)  # 4
+with_share = no_share - 1                                    # sharing one full block -&gt; 3</code></pre>
+</details>
+<h2 id="9-25-high-frequency-interview-questions">§9 25 High-Frequency Interview Questions</h2>
+<p>Three difficulty tiers; organize answers as "framework → key formulas/definitions → common mistakes", without repeating the main text's derivations.</p>
+<h3 id="l1-must-know">L1 Must-know</h3>
+<details>
+<summary>Q1. What stages does a request go through from arrival to its first token?</summary>
+<ul><li>ingress gate → tokenize/validate → prefix lookup → scheduler admission + KV reservation → queued/runnable → prefill → first-token sampling (directly from the last prefill forward's logits) → <strong>detokenize + the first real emit to the client</strong> (§1, §0.2); "getting the first token" means the first emit observed client-side, and the detokenization and network transfer in between usually belong inside TTFT</li><li>Any stage can be interrupted by client cancel/disconnect, and KV must be reclaimed immediately (§1.7)</li><li>The first requests after a replica boots have TTFT with a cold-start tail (model loading/kernel autotune/graph capture); benchmarks must report it separately from steady state (§1.5, §2.4)</li></ul>
+<p><strong>Mistakes</strong>: assuming "prefill finishes, then a separate decode run produces the first token" is the default implementation; omitting two-stage admission and the first-emit step.</p>
+</details>
+<details>
+<summary>Q2. How are TTFT/ITL/TPOT/throughput/goodput each defined?</summary>
+<ul><li>$TTFT=t_{\text{first emit}}-t_{\text{arrival}}$, $ITL_j=t_{\text{emit},j}-t_{\text{emit},j-1}$, $TPOT=\frac{t_{\text{last emit}}-t_{\text{first emit}}}{N_{\text{out}}-1}$ (§2.1)</li><li>Throughput is a <strong>rate</strong> (declare which of request / output-token / total-token first); <strong>SLO attainment</strong> ($A=N_{\text{SLO}}/N_{\text{total}}$) is a ratio; <strong>goodput</strong> ($G=N_{\text{SLO}}/\Delta t$) is a rate — different dimensions, never conflate (§2.2)</li><li>Declare the system boundary: whether queueing/tokenization/network transfer is included; report mean or p95/p99</li></ul>
+<p><strong>Mistakes</strong>: conflating TPOT with "total latency / token count"; calling goodput "the fraction of requests meeting the SLO" (that is SLO attainment).</p>
+</details>
+<details>
+<summary>Q3. Why do prefill and decode usually have different bottlenecks? Is that always the case?</summary>
+<ul><li>Prefill: $L$ tokens computed in one pass with high weight reuse, usually compute-bound; decode: repeatedly re-reads weights + KV at small batch, usually bandwidth-bound (§2.3)</li><li><strong>Not a theorem</strong>: at large decode batch, arithmetic intensity rises and it can turn compute-bound again; quantization moves the flip point; at ultra-long context, prefill can also be IO/kernel-limited</li></ul>
+<p><strong>Mistakes</strong>: treating the empirical rule as a universal theorem, with no counterexample to offer.</p>
+</details>
+<details>
+<summary>Q4. What exactly are the support sets of top-k/top-p/min-p/temperature?</summary>
+<ul><li>top-k: the $k$ largest logits ($1\le k\le\vert E\vert$, $E$ the legal finite-logit set this step; ties at rank $k$ broken by $(-z_i,\text{token\_id})$) (§3.1)</li><li>top-p: the smallest sorted prefix whose cumulative probability <strong>first reaches or exceeds the threshold</strong> (keep the boundary token) — both common definitions "$p_i\ge p_0$" and "cumulative strictly $&lt;p_0$" wrongly drop the boundary token</li><li>min-p: $p_i\ge\alpha\max_j p_j$, equivalent logit threshold $z_i\ge z_{\max}+T\log\alpha$; the support changes with $T$, not a fixed logit gap</li><li>temperature: with finite logits and no extra mask, the support for any $T&gt;0$ is the <strong>full vocabulary</strong>; $T=0$ is not on this curve but a separate greedy branch (unique after tie-break; the tied limit is in §A [D01])</li></ul>
+<p><strong>Mistakes</strong>: misremembering "first reaches" as "first strictly exceeds"; thinking the min-p threshold is temperature-independent; forgetting to answer temperature's own support set.</p>
+</details>
+<details>
+<summary>Q5. What problem does PagedAttention actually solve?</summary>
+<ul><li>Logical KV blocks map through a block table to non-contiguous physical blocks, removing the "reserve one contiguous max-length span" requirement and cutting fragmentation (§4.2)</li><li>Supports sharing (prefixes/beam branches) + copy-on-write</li><li>It does <strong>not</strong> lower attention's computational complexity, and it is <strong>not</strong> "page faults auto-loading from disk" — that is a separate host swap/offload mechanism</li></ul>
+<p><strong>Mistakes</strong>: answering "it lowered attention's computational complexity", or conflating it with disk paging.</p>
+</details>
+<details>
+<summary>Q6. What is static batching's key limitation?</summary>
+<ul><li>It is <strong>not</strong> "all requests must finish before any output" — finished requests emit their results immediately</li><li>The real limitation: slots left by finished sequences <strong>cannot be refilled by new requests before the whole batch ends</strong> (§5.2)</li></ul>
+<p><strong>Mistakes</strong>: answering "must wait for everyone", unable to state the sharper "slots cannot be refilled" formulation.</p>
+</details>
+<details>
+<summary>Q7. Why is continuous batching more efficient? Is it always faster?</summary>
+<ul><li>Removes finished requests and admits new ones at iteration level; the main gains are fewer empty slots/less padding/less head-of-line blocking (§5.3)</li><li><strong>No guarantee of lower latency for every workload</strong>: with similar request lengths, static and continuous can have identical makespans (§8 [D04] counterexample)</li></ul>
+<p><strong>Mistakes</strong>: only saying "faster", with no equal-length counterexample where the two tie.</p>
+</details>
+<details>
+<summary>Q8. What does prefix caching reuse? What are its limits?</summary>
+<ul><li>Reuses the KV of an <strong>exact token prefix</strong>; must simultaneously match token IDs, model version, adapter, position-encoding state, attention configuration, KV dtype/layout, and parallel sharding (§4.3)</li><li>Only cuts repeated prefill; does not reduce the missed suffix or any subsequent decode work</li><li>In multi-tenant settings, the hash key/access permissions/eviction policy must prevent cross-tenant side channels</li></ul>
+<p><strong>Mistakes</strong>: believing "semantically similar prompts" can also hit; not knowing a hit saves only prefill while decode work stays unchanged.</p>
+</details>
+<h3 id="l2-advanced">L2 Advanced</h3>
+<details>
+<summary>Q9. How is constrained decoding (JSON/schema/regex) implemented?</summary>
+<ul><li>Essence: at every step, set currently illegal tokens' logits to $-\infty$, then softmax + sample as usual (§3.3); "currently illegal" is decided by an automaton/parser that tracks the generated text — an FSM (regex/simple schemas), a PDA (nested structures like JSON's bracket matching), or an incremental grammar parser</li><li>The legal-token set is <strong>tokenizer-aware</strong>: a candidate next token may span multiple characters and must be matched character by character against the current automaton state — string-level checks alone do not suffice</li><li><strong>Dead-ends</strong> must be handled: a token can be legal right now yet drive the automaton into a state from which no accept state is ever reachable — a full implementation either prunes with lookahead or explicitly declares this edge case unhandled</li></ul>
+<p><strong>Mistakes</strong>: presenting constrained decoding as needing brand-new sampling theory, or stopping at the one-liner "mask illegal tokens" without naming automaton state/tokenizer-aware matching/dead-ends — the genuinely messy parts.</p>
+</details>
+<details>
+<summary>Q10. How do you run a trustworthy serving benchmark?</summary>
+<ul><li>First separate <strong>open-loop</strong> (keep sending at a fixed arrival rate) from <strong>closed-loop</strong> (fixed concurrency) — closed-loop automatically lowers the effective arrival rate as the system slows, easily squeezing "falsely stable" numbers out of an overloaded system</li><li>Beware <strong>coordinated omission</strong>: compute latency against scheduled arrival times instead of actual send times, or the slowest samples get systematically dropped and p99 looks more optimistic than reality</li><li>Use real (or realistically matched) input/output length distributions + a <strong>load sweep</strong> (report the throughput–latency curve and the saturation knee, not single-point throughput); report cold start separately from steady state, and give p99 enough samples (§2.4)</li></ul>
+<p><strong>Mistakes</strong>: just "run a load script and measure throughput", unable to explain the open/closed-loop difference or coordinated omission's distortion mechanism.</p>
+</details>
+<details>
+<summary>Q11. Why does the execution order of sampling filters matter? Give a non-commuting example</summary>
+<ul><li>top-p depends on "whether the previous step already renormalized" — the cumulative-probability base differs across orders (§3.1); every filter renormalizes within its kept set, so the next one no longer sees the original distribution</li><li>Concrete counterexample (§8 [D02], input distribution $p=[0.5,0.2,0.15,0.1,0.05]$): <code>top_k(3)</code> first truncates the support to the 3 highest-probability tokens and renormalizes, then <code>top_p(0.8)</code> gives support size 2; the reverse — <code>top_p(0.8)</code> first (accumulating to 0.8 on the original distribution) then <code>top_k(3)</code> — gives support size 3. Same distribution, different order, different final support</li></ul>
+<p><strong>Mistakes</strong>: only saying "order can matter" without a concrete counterexample, and forgetting "renormalization at every step" — the root cause of the order sensitivity.</p>
+</details>
+<details>
+<summary>Q12. What does chunked prefill solve? What does it cost?</summary>
+<ul><li>Chunks a long prompt's prefill so it cannot monopolize iterations and stall same-batch decode (head-of-line blocking) (§5.4)</li><li>Usually improves decode ITL and mixed-load fairness, but <strong>can increase the long prompt's own TTFT</strong> (§8 [D05] quantifies this trade-off with a token-budget toy model)</li></ul>
+<p><strong>Mistakes</strong>: answering only "improves latency", missing the negative effect on the long prompt's own TTFT.</p>
+</details>
+<details>
+<summary>Q13. What signals should admission control decide on?</summary>
+<ul><li>Two stages: ingress gate (body/rate/quota, before tokenization) → scheduler admission + KV reservation (after tokenization) — full mechanism in §1.2; three over-limit responses: reject (REJECTED), queue (QUEUED, with a deadline), degrade (DEGRADED)</li><li><strong>Prompt length is a definite value once tokenization completes</strong>, so KV occupancy can be computed exactly; <strong>output length can only be predicted until generation finishes</strong> (heuristics/history), and prediction error is a major source of overload</li><li>Joint constraints: KV headroom, <code>max_batched_tokens</code> (an <strong>iteration-level</strong> work budget, §5.1 — not a per-request reservation), max concurrent sequences, tenant quotas</li></ul>
+<p><strong>Mistakes</strong>: only "look at GPU utilization"; conflating <code>max_batched_tokens</code> (the iteration-level budget) with per-request KV reservation.</p>
+</details>
+<details>
+<summary>Q14. What are the preemption implementations, and what does each cost?</summary>
+<ul><li>Common approaches (not an exhaustive taxonomy, §4.4): <strong>discard KV and recompute</strong> (extra compute; truly frees memory), <strong>migrate to host (swap)</strong> (extra transfer, cost growing with KV size; truly frees memory), <strong>pause but keep KV (descheduling)</strong> (keeps occupying memory; frees only compute/scheduling share)</li><li><strong>Descheduling should not be lumped with the other two as "memory reclamation"</strong>: it cannot relieve KV memory pressure, it just temporarily stops using compute — if the goal is freeing KV space, it must pair with recompute or swap</li><li>Selection basis: the concrete trade-off of recompute cost vs. transfer bandwidth vs. memory pressure — no universal optimum</li></ul>
+<p><strong>Mistakes</strong>: unable to name the three common paths and their costs; counting "pause but keep KV" as a memory-saving technique too.</p>
+</details>
+<details>
+<summary>Q15. What is the correct objective of cache-aware routing?</summary>
+<ul><li>The real objective is a combination of dimensions: minimize expected completion time/SLO-violation probability, maximize goodput, control cost, cross-tenant fairness (§4.5) — first make explicit which one (or which weighted mix) this routing decision optimizes</li><li>The highest-hit replica with a deep queue can be slower than a no-hit but idle replica</li></ul>
+<p><strong>Mistakes</strong>: treating "highest hit rate" or "shortest completion time" as the single exclusive routing objective, ignoring the cost and fairness dimensions.</p>
+</details>
+<details>
+<summary>Q16. How does speculative decoding account inside a serving iteration?</summary>
+<ul><li>draft→verify→accept/reject sits inside the decode iteration; the acceptance-rate/$E[\tau]$ derivations are in <code>kv_cache_speculative_decoding_tutorial.md</code>; the serving view is in §7</li><li>Each verification yields a <strong>variable number</strong> of accepted tokens; the scheduler must account separately for verified tokens, output tokens, and the KV delta — never as fixed-stride</li><li><strong>Accepted, emitted, and committed KV are not always equal</strong>: the KV deltas of rejected candidate tokens must be rolled back and cannot count toward this request's committed KV; the output side may also include a bonus/residual token (e.g. the extra free token from the target model after a successful verification), and whether it counts toward the "output token count" is decided by each implementation's billing semantics — it must be declared explicitly (§1.7)</li></ul>
+<p><strong>Mistakes</strong>: treating spec decoding as a fixed-multiplier throughput gain; assuming generated tokens, truly committed KV, and finally billed output tokens are always the same thing.</p>
+</details>
+<details>
+<summary>Q17. Why doesn't the same random seed guarantee token-identical output across deployments?</summary>
+<ul><li>Under continuous batching the batch composition changes, so the kernels' batch shapes and reduce/all-reduce orders change with it — floating-point addition is not associative, so changed order changes the numbers (§1.6)</li><li><strong>When multiple requests share one RNG stream, who consumes which segment of the stream first depends on scheduling order</strong>, so "fixed seed" loses its meaning — the seed is only one necessary condition for bit-level reproduction (full list in §1.6's fold)</li></ul>
+<blockquote><p>Note: standard MoE <strong>does not reroute merely because load changed</strong> — only under concrete conditions like capacity limits/drops, or numeric perturbations flipping the top-k ranking, can load indirectly change which expert a token lands on.</p></blockquote>
+<p><strong>Mistakes</strong>: believing a fixed seed reproduces token-for-token across environments; using "inherent to the system" as a universal shield — if batch composition, parallel topology, and kernel paths are all fixed and outputs still differ, suspect a real implementation bug.</p>
+</details>
+<h3 id="l3-top-lab">L3 Top-lab</h3>
+<details>
+<summary>Q18. When is prefill/decode disaggregation worth doing?</summary>
+<ul><li>Motivation: very different resource profiles across the two phases, independent scaling, less interference from long prefills on same-node decode ITL (§6.3)</li><li><strong>Not an unconditional speedup</strong>: gains must exceed the extra costs of cross-node KV transfer, queueing coordination, and failure recovery; short prompts/weak interconnects can make it slower</li><li>Prefix-cache hits change the effective prefill length and thus the optimal ratio between the two pools</li></ul>
+<p><strong>Mistakes</strong>: treating disaggregation as a default-better architecture without discussing break-even conditions.</p>
+</details>
+<details>
+<summary>Q19. How do you choose TP/PP/EP and the replica count?</summary>
+<ul><li><strong>Parallelism</strong>: when the model fits on one GPU and the goal is aggregate throughput, data-parallel replicas are usually the first baseline, avoiding cross-GPU communication (§6.2); whether TP/PP/EP helps must be measured against latency targets, batch size, and interconnect bandwidth — "the model doesn't fit" is the most common but not the only motive; TP's per-token communication latency easily outweighs compute savings at small decode batches; PP cannot automatically lower latency at low concurrency and needs enough micro-batches to fill the pipeline; EP's no-backward does not remove all-to-all/hot-expert latency</li><li><p><strong>How to size the replica count</strong> (the real point of this question — parallelism alone is only half an answer):</p>
+<ol><li>First determine a single replica's achievable <strong>goodput</strong> under the given SLO constraints (not raw throughput, §2.2), measured via §2.4's load sweep under the target latency constraint — never estimated from theory alone</li><li>Divide the target arrival rate by single-replica goodput to get a theoretical lower bound on the replica count</li><li>Layer on <strong>peak headroom</strong> — provision for expected peaks/bursts, not the average arrival rate</li><li>Add <strong>N+1 redundancy</strong> so a single replica's failure/rolling upgrade does not overload the whole system</li><li>Factor in <strong>topology</strong>: whether replicas spread across failure domains or share the same switches affects routing (§4.5, §6.1) and the actually usable aggregate goodput</li></ol></li></ul>
+<p><strong>Mistakes</strong>: only "big model, use TP/PP", unable to say these parallelisms can be slower at small batch/low concurrency; giving no concrete goodput-based sizing method.</p>
+</details>
+<details>
+<summary>Q20. Service p99 suddenly degrades — how do you localize it?</summary>
+<ul><li>First split latency into <strong>queueing time</strong> (waiting for admission/scheduling) and <strong>service time</strong> (actually running prefill/decode); quantile degradation is often a queueing-side problem, not individual requests getting slower</li><li>Then instrument stage by stage in state-machine order: queue → cache hit → prefill → decode → KV pressure → preemption → kernel/collective → network → streaming (§7 diagnostic table; cache hit precedes prefill because it decides whether/how much prefill this request runs at all)</li><li>Check whether the <strong>workload mix</strong> changed (input/output length distributions shifted suddenly, one tenant bursting lots of long prompts); with per-stage traces, directly compare which stage's share of time rose</li><li>Check for <strong>cold-start/autoscaling</strong> effects (new replicas still cold after coming online, or a transient replica-count dip during scale-out)</li><li>Audit whether the load test/monitoring itself has <strong>coordinated omission</strong> (measuring by actual processing time instead of scheduled arrival time systematically drops the slowest requests)</li><li>Do not look only at GPU utilization — low utilization can also be a scheduling/admission problem, not a signal to add GPUs</li></ul>
+<p><strong>Mistakes</strong>: GPU-utilization-only debugging with no staged methodology; placing cache hit after prefill; not separating queueing time from service time.</p>
+</details>
+<details>
+<summary>Q21. How does one long-generation request affect other requests' SLOs?</summary>
+<ul><li><p>Under continuous batching it <strong>usually does not monopolize the whole batch</strong>, but the impact is more than the single capacity dimension of "holding KV quota":</p>
+<ol><li>The longer its context, the more history KV each of its decode steps reads and the more attention it computes, <strong>directly stretching this mixed batch's iteration time</strong> — other requests' ITL in the same batch degrades with it; this is a direct effect, not the indirect "quota crowding" one</li><li>It <strong>occupies KV blocks and active-sequence quota long-term</strong>, pushing up memory pressure</li><li>Rising memory pressure <strong>raises the probability of triggering preemption</strong>, which then affects even more requests (§4.4)</li></ol></li><li>The accurate statement is the superposition of these three — "directly stretching iterations + occupying capacity + raising preemption risk" — not a vague "capacity-level interference", and certainly not "blocks all requests"</li></ul>
+<p><strong>Mistakes</strong>: over-strong claims like "one long request blocks all requests", or the opposite narrowing to just "occupies capacity", missing the mechanism of directly stretching other requests' ITL.</p>
+</details>
+<details>
+<summary>Q22. What are the security risks of a prefix cache under multi-tenancy?</summary>
+<ul><li>Bad hash-key design can let different tenants' prefixes collide or have their existence inferred; the response-latency difference between hit and miss is itself a side channel (§4.3)</li><li>Hit checks need <strong>tenant-namespace isolation</strong> + <strong>exact token verification</strong> (a hash collision does not prove it is really the same prefix); the eviction policy likewise needs tenant isolation, or tenant A can evict or probe tenant B's sensitive prefixes</li><li>"Encrypting the KV cache at rest" guards against <strong>storage leakage at rest</strong> and does not solve the core problem — cross-tenant <strong>authorization isolation</strong> and the <strong>hit/latency side channel</strong> are access-control and information-leakage issues, not a question of whether the data is encrypted</li></ul>
+<p><strong>Mistakes</strong>: answering only "encrypted storage" as the full solution; unable to name the hit/latency side channel as the concrete mechanism.</p>
+</details>
+<details>
+<summary>Q23. Why can't you casually apply sliding-window eviction to standard full causal attention?</summary>
+<ul><li>Evicting any old KV makes the output <strong>lose the guarantee of equivalence with "the exact computation path that keeps the full history KV"</strong> — every query in standard attention may in principle depend on any historical position, so after dropping a position's KV the computation is no longer exact but an approximation never validated in training</li><li>The safe versions: the model itself uses windowed attention in training/inference, or you explicitly accept the approximate semantic shift of attention-sink/compression methods, treating eviction as a priced engineering choice</li></ul>
+<p><strong>Mistakes</strong>: assuming eviction is a "free optimization" losslessly stackable on any model.</p>
+</details>
+<details>
+<summary>Q24. What extra KV and scheduling costs do best-of-n/parallel sampling add?</summary>
+<ul><li>The $n$ candidates generate in parallel but <strong>share the same prompt</strong> — the prompt's KV can be shared as one copy via copy-on-write, so the whole thing need not scale by $n$; the better approximation is $M_{KV}\approx M_{\text{prompt}}+\sum_j M_{\text{branch},j}$ — only each branch's <strong>generated-suffix</strong> KV grows roughly with the branch count (§3.3, §4.2)</li><li>Only when the implementation <strong>lacks CoW sharing</strong> does it degrade toward the more pessimistic bound $n(M_{\text{prompt}}+M_{\text{generated}})$; wall time also need not be $n$ times that of a single candidate — it depends on whether the candidates fit into the same decode iterations</li><li>Admission/KV capacity accounting must include this increment, or the capacity misestimate surfaces only at runtime</li></ul>
+<p><strong>Mistakes</strong>: treating best-of-n as a nearly free lightweight parameter, or misremembering "KV multiplies by n" while forgetting the prompt prefix can be shared.</p>
+</details>
+<details>
+<summary>Q25. When a long prompt arrives, how do you protect running online decode requests' SLOs?</summary>
+<ul><li>The toolbox: chunked prefill capping the per-iteration prefill budget, decode-priority scheduling, a dedicated prefill resource pool (evolving further into disaggregation), admission splitting traffic by predicted length (§5.4, §6.3)</li><li>Trade-off: techniques that carve time slices within one resource pool (like chunked prefill) usually stretch the long prompt's own TTFT; a dedicated pool/disaggregation, sized well, can win on both — "protecting decode necessarily sacrifices prefill TTFT" is not a universally valid conclusion</li></ul>
+<p><strong>Mistakes</strong>: answering only the single move "chunked prefill", or asserting "all these techniques stretch the long prompt's TTFT".</p>
+</details>
+<h2 id="a-appendix-sanity-check">§A Appendix: Sanity Check</h2>
+<p>Running <code>python3 code/inference_serving.py</code> (pure Python standard library, no third-party dependencies, seconds on CPU) should pass all checks [D01]–[D09]; the key invariant list and the real terminal output are folded below.</p>
+<details>
+<summary>Key invariant list ([D01]–[D09])</summary>
+<ol><li><strong>[D01] Sampling support sets</strong>: greedy takes the lowest index on tied maxima; <code>temperature_probs</code> raises on $T\le0$; with a unique max logit, $T\to0^+$ concentrates on the argmax, and with tied max logits the mass splits evenly; the top-k support size is exactly $k$; top-p on $p=[0.4,0.3,0.2,0.1]$ with threshold $0.65$ gives the first two tokens as support (cumulative $0.7$); min-p always keeps the max-probability token, with support monotone non-decreasing as $\alpha\downarrow$ and as $T\uparrow$ (for $\alpha&lt;1$); typical sampling excludes the highest-probability token in the constructed example; adding a constant to all logits leaves the min-p/top-k/top-p supports unchanged.</li><li><strong>[D02] Filter-order non-commutativity</strong>: on the same distribution, <code>top_k-&gt;top_p</code> and <code>top_p-&gt;top_k</code> yield different supports ($\{0,1\}$ vs $\{0,1,2\}$).</li><li><strong>[D03] Streamed stop detection</strong>: a stop string split across 3 token chunks is still detected, with no unsafe partial prefix ever leaked along the way; in the no-match case, all text is fully recoverable via flush.</li><li><strong>[D04] Batch scheduling</strong>: static gives $A=1,B=4,C=5$ (utilization $0.60$), continuous gives $A=1,C=2,B=4$ (utilization $0.75$); in the equal-length counterexample both policies have the same makespan; the scheduler satisfies token-count conservation, no running before arrival, active count within capacity, release upon completion.</li><li><strong>[D05] The chunked-prefill trade-off</strong>: max decode gap drops from 3 (unchunked) to 1 (chunked), but the long prompt's own TTFT rises from 3 to 4.</li><li><strong>[D07]–[D08] KV block allocation and sharing</strong> (per-token bytes take the §4.1 formula, $m_{\text{token}}=64$ bytes with $N_{\text{layer}}=2,N_{\text{kv\_head}}=2,d_{\text{head}}=4,b=2$): lengths $[1,5]$ with block size $4$ give logical/allocated slots $=6/12$ (i.e. $384/768$ bytes — internal fragmentation is real); lengths $[6,7]$ sharing 1 full block drop physical blocks from 4 to 3; KV heads not divisible by the TP degree refuse naive division.</li><li><strong>[D09] The roofline ridge point</strong> serves only as an upper-bound reference, never as a latency predictor.</li></ol>
+</details>
+<details>
+<summary>Real output of running <code>python3 code/inference_serving.py</code></summary>
+<pre><code class="language-text">[D01] sampling operators: greedy tie-break, T=0 rejected, T-&gt;0 limits (unique-&gt;one-hot, tied-&gt;split), top-k/top-p/min-p/typical support sets (exact boundaries, nested/shift-invariant, domain-checked), penalties, constrained masking, deterministic + empirical draw checks PASS
+[D02] filter order is NOT commutative: top_k-&gt;top_p support=[0, 1], top_p-&gt;top_k support=[0, 1, 2]  PASS
+[D03] stop-string streaming: &#x27;STOP&#x27; split across 3 chunks still detected (emitted=&#x27;abc&#x27;), no-match case fully recoverable via flush  PASS
+[D04] static: A=1,B=4,C=5 (util=0.60); continuous: A=1,C=2,B=4 (util=0.75); equal-length counterexample: both makespan=3 (no strict dominance); delayed-arrival workload respects arrival&lt;=tick&lt;completion; illegal inputs (7 cases) rejected immediately  PASS
+[D05] chunked prefill: decode max-gap 3-&gt;1 (ITL improves) but long-prompt TTFT 3-&gt;4 (worsens) -- not a free lunch  PASS
+[D06] KV bytes/token (L=2,kv_head=2,d_head=4,fp16)=64B; [D07] block alloc lengths=[1,5],P=4: logical=6 slots/384B, allocated=12 slots/768B; [D08] prefix-sharing (real token-sequence match) blocks 4-&gt;3, sub-block overlap shares 0, 3-way sharing scales as (n-1)*B_shared, TP-divisibility guard enforced  PASS
+[D09] roofline ridge point I* = 201.3 FLOPs/byte (upper-bound reference only)  PASS
+
+all inference serving sanity checks passed</code></pre>
+<p>(The above is real terminal output captured from re-running <code>code/inference_serving.py</code>, verbatim-identical to the current version of that script.)</p>
+</details>
+<h2 id="references">📚 References</h2>
+<ul><li><strong>PagedAttention / vLLM</strong> — Kwon et al., <em>Efficient Memory Management for Large Language Model Serving with PagedAttention</em>, arXiv 2309.06180 (2023), SOSP 2023.</li><li><strong>Orca (iteration-level / continuous batching)</strong> — Yu et al., <em>Orca: A Distributed Serving System for Transformer-Based Generative Models</em>, arXiv 2204.05120 (2022), OSDI 2022.</li><li><strong>Sarathi-Serve (chunked prefill)</strong> — Agrawal et al., <em>Taming Throughput-Latency Tradeoff in LLM Inference with Sarathi-Serve</em>, arXiv 2403.02310 (2024), OSDI 2024.</li><li><strong>DistServe (disaggregation, goodput)</strong> — Zhong et al., <em>DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving</em>, arXiv 2401.09670 (2024), OSDI 2024.</li><li><strong>Splitwise (phase splitting)</strong> — Patel et al., <em>Splitwise: Efficient Generative LLM Inference Using Phase Splitting</em>, arXiv 2311.18677 (2023), ISCA 2024.</li><li><strong>SGLang / RadixAttention (radix-tree prefix caching)</strong> — Zheng et al., <em>SGLang: Efficient Execution of Structured Language Model Programs</em>, arXiv 2312.07104 (2023).</li><li><strong>Nucleus sampling (top-p)</strong> — Holtzman et al., <em>The Curious Case of Neural Text Degeneration</em>, arXiv 1904.09751 (2019), ICLR 2020.</li><li><strong>Top-k sampling</strong> — Fan, Lewis &amp; Dauphin, <em>Hierarchical Neural Story Generation</em>, arXiv 1805.04833 (2018), ACL 2018.</li><li><strong>Min-p sampling</strong> — Nguyen et al., <em>Turning Up the Heat: Min-p Sampling for Creative and Coherent LLM Outputs</em>, arXiv 2407.01082 (2024).</li><li><strong>Locally typical sampling</strong> — Meister et al., <em>Locally Typical Sampling</em>, arXiv 2202.00666 (2022), TACL 2023.</li><li><strong>Speculative decoding</strong> — Leviathan, Kalman &amp; Matias, <em>Fast Inference from Transformers via Speculative Decoding</em>, arXiv 2211.17192 (2022), ICML 2023.</li><li><strong>Speculative sampling</strong> — Chen et al. (DeepMind), <em>Accelerating Large Language Model Decoding with Speculative Sampling</em>, arXiv 2302.01318 (2023).</li><li><strong>FlashAttention (attention-kernel IO optimization — not the same technique as PagedAttention)</strong> — Dao et al., <em>FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness</em>, arXiv 2205.14135 (2022), NeurIPS 2022.</li><li><strong>Megatron-LM (TP)</strong> — Shoeybi et al., <em>Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism</em>, arXiv 1909.08053 (2019).</li><li><strong>Roofline model</strong> — Williams, Waterman &amp; Patterson, <em>Roofline: An Insightful Visual Performance Model for Multicore Architectures</em>, Communications of the ACM (2009) (no arXiv id).</li><li><strong>Constrained decoding / grammar-constrained generation</strong> — Willard &amp; Louf, <em>Efficient Guided Generation for Large Language Models</em>, arXiv 2307.09702 (2023). This paper backs the concrete implementation of guided/grammar-constrained generation, but it should not be cited to argue that "every constrained-decoding implementation is essentially nothing but mask-and-renormalize" — §3.3's "essentially a mask" is an abstraction at the sampling-primitive level, not a restatement of that paper's scope.</li></ul>
+
+<footer class="aris-footer">
+  <a href="https://wanshuiyin.github.io/ARIS-in-AI-Offer/">ARIS in AI Offer</a> · <a href="https://github.com/wanshuiyin/ARIS-in-AI-Offer"><span class="l-cn">⭐ 点个 Star</span><span class="l-en">⭐ Star on GitHub</span></a><br>
+  Generated by <a href="https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep/blob/main/skills/render-html/SKILL.md">ARIS <code>/render-html</code></a> ·
+  source path <code>docs/tutorials/llm_inference_serving_tutorial_en.md</code> ·
+  SHA256 <code>bcee87a506dc</code> ·
+  generated at 2026-09-16 06:00 UTC.
+  This is a generated view — edit the source Markdown, then re-render.
+</footer>
+</main>
+
+</div>
+
+<!-- P0 polish: paper popover host (populated by IIFE below) -->
+<div id="cite-pop" hidden role="dialog" aria-labelledby="cite-pop-title">
+  <button class="cp-close" type="button" aria-label="Close">×</button>
+  <div class="cp-content"></div>
+</div>
+
+<!-- P0 polish: figure lightbox (native <dialog>, graceful fallback) -->
+<dialog class="lightbox" id="figure-lightbox" aria-label="Figure detail">
+  <div class="lb-inner">
+    <button class="lb-close" type="button" aria-label="Close">×</button>
+    <img alt="" />
+    <figcaption></figcaption>
+  </div>
+</dialog>
+
+<!-- P0 polish: paper registry sidecar, embedded by render_html.py (--papers) -->
+<script>window.PAPER_REGISTRY = {};</script>
+
+<!-- P0 polish: interactive enhancements (TOC scrollspy, code-card auto-collapse,
+     paper popovers, figure lightbox, print-restore for <details>, blog-mode H2). -->
+<script>
+(function () {
+  "use strict";
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];
+    });
+  }
+
+  // --- Feature 5: Print degradation fix ---------------------------------
+  // Force every <details> open during print, restore the pre-print state after.
+  var _stashOpen = [];
+  var _printing = false;
+  window.addEventListener("beforeprint", function () {
+    if (_printing) return;  // guard against multi-fire (Chrome print preview)
+    _printing = true;
+    _stashOpen = [];
+    document.querySelectorAll("details:not([open])").forEach(function (d) {
+      _stashOpen.push(d);
+      d.open = true;
+    });
+  });
+  window.addEventListener("afterprint", function () {
+    _stashOpen.forEach(function (d) { if (d.isConnected) d.open = false; });
+    _stashOpen = [];
+    _printing = false;
+  });
+
+  // --- Feature 3: TOC scrollspy -----------------------------------------
+  var tocLinks = [].slice.call(document.querySelectorAll("nav.toc a"));
+  var headings = tocLinks.map(function (a) {
+    var id = a.getAttribute("href").replace(/^#/, "");
+    return document.getElementById(id);
+  }).filter(Boolean);
+  if (headings.length && typeof IntersectionObserver !== "undefined") {
+    var linkById = new Map();
+    headings.forEach(function (h, i) { linkById.set(h.id, tocLinks[i]); });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        tocLinks.forEach(function (l) { l.classList.remove("active"); });
+        var lk = linkById.get(en.target.id);
+        if (lk) lk.classList.add("active");
+      });
+    }, { rootMargin: "-15% 0px -75% 0px" });
+    headings.forEach(function (h) { io.observe(h); });
+  }
+
+  // --- Feature 1: Long-code auto-collapse -------------------------------
+  var COLLAPSE_THRESHOLD = 30;
+
+  function wrapCodeCard(pre, openByDefault) {
+    if (!pre || pre.closest("details.code-card")) return;
+    var code = pre.querySelector("code");
+    if (!code) return;
+    var lines = code.textContent.replace(/\n+$/, "").split("\n").length;
+    var det = document.createElement("details");
+    det.className = "code-card";
+    det.open = openByDefault;
+    var sum = document.createElement("summary");
+    function updateSummary() {
+      sum.textContent = (det.open ? "▾ 收起代码 · " : "▸ 展开代码 · ") + lines + " 行";
+    }
+    updateSummary();
+    det.addEventListener("toggle", updateSummary);
+    pre.parentNode.insertBefore(det, pre);
+    det.appendChild(sum);
+    det.appendChild(pre);
+  }
+
+  // Honor explicit per-block flags first.
+  document.querySelectorAll("pre[data-collapse]").forEach(function (pre) {
+    var flag = pre.getAttribute("data-collapse");
+    if (flag === "collapsed") wrapCodeCard(pre, false);
+    // "open" → leave fully expanded, do not wrap.
+  });
+  // Then auto-wrap long unflagged blocks.
+  document.querySelectorAll("pre > code").forEach(function (code) {
+    var pre = code.closest("pre");
+    if (!pre || pre.closest("details") || pre.hasAttribute("data-collapse")) return;
+    var lines = code.textContent.replace(/\n+$/, "").split("\n").length;
+    if (lines >= COLLAPSE_THRESHOLD) wrapCodeCard(pre, false);
+  });
+
+  // --- Feature 10: Figure lightbox --------------------------------------
+  var lightbox = document.getElementById("figure-lightbox");
+  if (lightbox) {
+    var lbImg = lightbox.querySelector("img");
+    var lbCap = lightbox.querySelector("figcaption");
+    var lbClose = lightbox.querySelector(".lb-close");
+    function openLightbox(srcImg) {
+      lbImg.src = srcImg.src;
+      lbImg.alt = srcImg.alt || "";
+      var cap = srcImg.closest("figure") ? srcImg.closest("figure").querySelector("figcaption") : null;
+      lbCap.textContent = cap ? cap.textContent : "";
+      lbCap.hidden = !cap;
+      if (typeof lightbox.showModal === "function") lightbox.showModal();
+      else lightbox.hidden = false;
+    }
+    function closeLightbox() {
+      if (typeof lightbox.close === "function") lightbox.close();
+      else lightbox.hidden = true;
+    }
+    document.querySelectorAll("main figure img, main > p > img").forEach(function (img) {
+      if (img.closest("dialog")) return;
+      img.style.cursor = "zoom-in";
+      img.addEventListener("click", function () { openLightbox(img); });
+    });
+    if (lbClose) lbClose.addEventListener("click", closeLightbox);
+    lightbox.addEventListener("click", function (e) {
+      // Backdrop click closes; clicks inside .lb-inner do not bubble here.
+      if (e.target === lightbox) closeLightbox();
+    });
+  }
+
+  // --- Feature 2: Paper popover -----------------------------------------
+  var PAPERS = window.PAPER_REGISTRY || {};
+  var pop = document.getElementById("cite-pop");
+  var popContent = pop ? pop.querySelector(".cp-content") : null;
+  var popClose = pop ? pop.querySelector(".cp-close") : null;
+  var popTrigger = null;
+
+  function showPopover(el) {
+    var key = el.dataset.ref;
+    var info = PAPERS[key];
+    if (!info || !pop || !popContent) return;
+    popContent.innerHTML =
+      '<div class="cp-title" id="cite-pop-title">' + escapeHtml(info.title || key) + '</div>' +
+      (info.authors
+        ? '<div class="cp-meta">' + escapeHtml(info.authors) +
+            (info.date ? ' · ' + escapeHtml(info.date) : '') +
+            (info.inst ? ' · ' + escapeHtml(info.inst) : '') + '</div>'
+        : '') +
+      (info.key ? '<div class="cp-key">' + escapeHtml(info.key) + '</div>' : '') +
+      (info.arxiv
+        ? '<a class="cp-link" href="https://arxiv.org/abs/' + encodeURIComponent(info.arxiv) +
+          '" target="_blank" rel="noopener">arXiv ' + escapeHtml(info.arxiv) + ' ↗</a>'
+        : '');
+    var r = el.getBoundingClientRect();
+    pop.hidden = false;  // unhide first so offsetHeight is measurable
+    var margin = 16;
+    var popWidth = Math.min(360, Math.max(0, window.innerWidth - margin * 2));
+    var popHeight = Math.min(pop.offsetHeight || 200, Math.max(0, window.innerHeight - margin * 2));
+    pop.style.left = Math.max(margin, Math.min(r.left, window.innerWidth - popWidth - margin)) + "px";
+    pop.style.top = Math.max(margin, Math.min(r.bottom + 8, window.innerHeight - popHeight - margin)) + "px";
+    popTrigger = el;
+    if (popClose) popClose.focus();
+  }
+  function hidePopover() {
+    if (pop) pop.hidden = true;
+    if (popTrigger) popTrigger.focus();
+    popTrigger = null;
+  }
+  document.querySelectorAll("[data-ref]").forEach(function (el) {
+    el.setAttribute("tabindex", "0");
+    el.setAttribute("role", "button");
+    el.addEventListener("click", function (e) { e.stopPropagation(); showPopover(el); });
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); showPopover(el); }
+    });
+  });
+  if (popClose) popClose.addEventListener("click", hidePopover);
+  document.addEventListener("click", function (e) {
+    if (pop && !pop.hidden && !pop.contains(e.target) && !e.target.matches("[data-ref]")) hidePopover();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && pop && !pop.hidden) hidePopover();
+  });
+
+  // --- Feature 7: Blog-mode active-H2 highlight (opt-in) ----------------
+  if (document.body.classList.contains("aris-blog")) {
+    var h2s = [].slice.call(document.querySelectorAll("main h2"));
+    if (h2s.length && typeof IntersectionObserver !== "undefined") {
+      var io2 = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) {
+            h2s.forEach(function (h) { h.classList.remove("aris-active-h2"); });
+            en.target.classList.add("aris-active-h2");
+          }
+        });
+      }, { rootMargin: "-15% 0px -75% 0px" });
+      h2s.forEach(function (h) { io2.observe(h); });
+    }
+
+    // --- Feature 8: Focus-dim reading mode (B1) + floating toggle (B2) +
+    //     ↑/↓ section nav (B4). Built only inside this .aris-blog guard, so
+    //     non-blog tutorials never construct it. Default OFF. While ON:
+    //     dims non-current sections (h3-granular), keeps the intro bright,
+    //     pauses F7's io2, and binds a scroll listener (removed on OFF — no
+    //     new *persistent* global hook). Restores everything on OFF / print.
+    var mainEl = document.querySelector("main");
+    if (mainEl) {
+      var focusBtn = document.createElement("button");
+      focusBtn.className = "aris-focus-toggle";
+      focusBtn.type = "button";
+      focusBtn.setAttribute("aria-pressed", "false");
+      focusBtn.textContent = "🎯 Focus";
+      document.body.appendChild(focusBtn);
+
+      var focusHint = document.createElement("div");
+      focusHint.className = "aris-focus-hint";
+      document.body.appendChild(focusHint);
+      var hintTimer = null;
+      var showFocusHint = function (msg) {
+        focusHint.textContent = msg;
+        focusHint.classList.add("show");
+        if (hintTimer) clearTimeout(hintTimer);
+        hintTimer = setTimeout(function () { focusHint.classList.remove("show"); }, 1600);
+      };
+
+      var focusKids = function () { return [].slice.call(mainEl.children); };
+      var headerIdxList = function (kids) {
+        var idxs = [];
+        kids.forEach(function (el, i) {
+          if (el.tagName === "H2" || el.tagName === "H3") idxs.push(i);
+        });
+        return idxs;
+      };
+      // Deterministic current-section pick (no IntersectionObserver): the
+      // header whose top is closest to but above the viewport's 40% line;
+      // fallback = first header still below the line; then first header.
+      var activeHeaderIdx = function (kids, headerIdxs) {
+        var best = -1, bestTop = -Infinity, lineY = window.innerHeight * 0.4;
+        headerIdxs.forEach(function (idx) {
+          var top = kids[idx].getBoundingClientRect().top;
+          if (top < lineY && top > bestTop) { bestTop = top; best = idx; }
+        });
+        if (best < 0) {
+          for (var i = 0; i < headerIdxs.length; i++) {
+            if (kids[headerIdxs[i]].getBoundingClientRect().top >= 0) { best = headerIdxs[i]; break; }
+          }
+          if (best < 0) best = headerIdxs[0];
+        }
+        return best;
+      };
+      var updateFocus = function () {
+        var kids = focusKids();
+        var headerIdxs = headerIdxList(kids);
+        if (!headerIdxs.length) {                 // no h2/h3 → keep all bright (never dim a headerless page)
+          kids.forEach(function (el) { el.classList.add("aris-in-focus"); });
+          return;
+        }
+        var best = activeHeaderIdx(kids, headerIdxs);
+        var next = kids.length;
+        for (var j = 0; j < headerIdxs.length; j++) {
+          if (headerIdxs[j] > best) { next = headerIdxs[j]; break; }
+        }
+        var introEnd = headerIdxs[0];  // header.hero + anything before first heading stays bright
+        kids.forEach(function (el, i) {
+          el.classList.toggle("aris-in-focus", (i < introEnd) || (i >= best && i < next));
+        });
+      };
+      var onFocusScroll = function () {
+        if (document.body.classList.contains("aris-focus-dim")) updateFocus();
+      };
+      var onFocusKeydown = function (e) {
+        var tg = e.target;
+        if (tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA" || tg.tagName === "SELECT" || tg.isContentEditable)) return;
+        if (e.key === "Escape") {
+          var popEl = document.getElementById("cite-pop");
+          if (popEl && !popEl.hidden) return;     // an open popover handles Esc first
+          setFocus(false);
+          return;
+        }
+        if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+        e.preventDefault();
+        var heads = [].slice.call(document.querySelectorAll("main h2, main h3"));
+        if (!heads.length) return;
+        var cur = 0, bestDist = Infinity;
+        heads.forEach(function (h, i) {
+          var d = Math.abs(h.getBoundingClientRect().top - 80);
+          if (d < bestDist) { bestDist = d; cur = i; }
+        });
+        var ni = e.key === "ArrowDown" ? Math.min(cur + 1, heads.length - 1) : Math.max(cur - 1, 0);
+        heads[ni].scrollIntoView({ behavior: "smooth", block: "start" });
+        showFocusHint((ni + 1) + " / " + heads.length + "　" + heads[ni].textContent.trim().slice(0, 24));
+      };
+      var setFocus = function (on) {
+        document.body.classList.toggle("aris-focus-dim", on);
+        focusBtn.classList.toggle("on", on);
+        focusBtn.setAttribute("aria-pressed", on ? "true" : "false");
+        focusBtn.textContent = on ? "🎯 Focus ON" : "🎯 Focus";
+        if (on) {
+          window.addEventListener("scroll", onFocusScroll, { passive: true });
+          document.addEventListener("keydown", onFocusKeydown, true);    // capture phase: see an open popover before its bubble Esc handler (also: bound only while ON, guardrail 2)
+          if (typeof io2 !== "undefined" && io2) io2.disconnect();        // pause F7
+          updateFocus();
+          showFocusHint("Focus 模式：↑ / ↓ 切换小节，Esc 退出");
+        } else {
+          window.removeEventListener("scroll", onFocusScroll);
+          document.removeEventListener("keydown", onFocusKeydown, true);
+          focusKids().forEach(function (el) { el.classList.remove("aris-in-focus"); });
+          if (typeof io2 !== "undefined" && io2) h2s.forEach(function (h) { io2.observe(h); });  // resume F7
+        }
+      };
+      focusBtn.addEventListener("click", function () {
+        setFocus(!document.body.classList.contains("aris-focus-dim"));
+      });
+    }
+  }
+})();
+</script>
+</body>
+</html>

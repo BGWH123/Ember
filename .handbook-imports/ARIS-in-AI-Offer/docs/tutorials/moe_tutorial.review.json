@@ -1,0 +1,89 @@
+{
+  "skill": "interview-cheatsheet",
+  "source": "docs/tutorials/moe_tutorial.md",
+  "source_sha256": "e9b8f06e6f0e1ac932c1fa6aebbfb30516bf33cc87e284073ceb40a5c15a88c5",
+  "source_sha256_backfilled": "added 2026-05-31 post-hoc; source git-verified unchanged since review (2026-05-19); not a new codex review",
+  "output": "docs/tutorials/moe_tutorial.html",
+  "topic": "MoE (Mixture-of-Experts) — DeepSeek-V3 / Mixtral / Llama 4 / Qwen-MoE",
+  "effort": "max",
+  "byline": "Ruofeng Yang (杨若峰), Shanghai Jiao Tong University",
+  "reviewer": "codex gpt-5.5 xhigh, fresh thread per round",
+  "math_code_review": {
+    "verdict": "PASS (with arithmetic + formula completion fixes)",
+    "rounds": [
+      {
+        "run": "0 (subagent)",
+        "verdict": "no fixes applied (subagent hung before first codex returned)",
+        "notes": "Original draft as-is from initial generation."
+      },
+      {
+        "run": 1,
+        "verdict": "FAIL → fixed",
+        "thread_id": "019e3fae-e47f-7711-af04-1e5092f678dc",
+        "reviewer": "main-session DIY backfill",
+        "real_issues_caught": [
+          "§4.4 router gradient formula: only diagonal softmax derivative shown, missing full Jacobian with off-diagonal -p_i*p_l cross terms and the renormalization Z dependency",
+          "§3 capacity code uses int() floor; text formula uses ceil(). Tiny batch can produce capacity=0",
+          "Q20 Mixtral 8x7B arithmetic: 7×8 + (1/3 × 7) ≈ 56 + 2.3 ≈ 47B was wrong (the 56 figure already assumed expert-multiplied attention; the actual derivation is shared + 8×FFN ≈ 2.4 + 38.4 ≈ 40.8B, plus router weights brings to official 46.7B)",
+          "§7.2 memory table claim '8× H100 80G 才够 FP8' for 671B FP8: 8×80 = 640 GB < 671 GB; need 16× H100 80G or 8× H200 141G"
+        ],
+        "fixes_applied": [
+          "Rewrote §4.4 with full softmax+renormalize Jacobian: ∂g_i/∂s_l = 1[i∈T_k](∂p_i/∂s_l / Z - p_i/Z² · 1[l∈T_k] · ∂Z/∂s_l); added explicit off-diagonal -p_i*p_l discussion",
+          "§3 capacity: replaced int(...) with math.ceil(...) + max(1, ...) guard; added comment matching text",
+          "Q20 rewritten: shared 2.4B + 8×4.8B FFN ≈ 40.8B + router weights → 46.7B official; active 12B (top-2)",
+          "§7.2 table updated: '8×80G=640GB 还差一点; 实际部署需 16×H100 80G 或 8×H200 141G'; §10 same fix"
+        ],
+        "warnings": [
+          "Torch-dependent code blocks not runtime-tested (env lacks torch); static AST + math alignment passed"
+        ]
+      }
+    ]
+  },
+  "render_review": {
+    "verdict": "PASS",
+    "rounds": [
+      {
+        "run": 1,
+        "verdict": "PASS",
+        "thread_id": "019e3fb7-1ed9-7012-978e-5ea5e1b9be50",
+        "reviewer": "codex gpt-5.5 xhigh, fresh thread (main session)",
+        "notes": "13/13 functional checks pass. 41 headings, 6 python code fences, 8 tables, 11 callouts (intentional callout+separate-list pattern preserved), 17 display equations. Source SHA256 e860589270ed matches."
+      }
+    ]
+  },
+  "summary": "MoE tutorial: original draft (no subagent rounds) received first independent codex review from main session. Caught 4 substantive issues (Q20 arithmetic, §4.4 missing Jacobian terms, capacity int vs ceil, H100 memory). All fixed. Final 13/13 render PASS. 1023+ lines.",
+  "rendered_at": "2026-05-19",
+  "post_ship_review": [
+    {
+      "scope": "content-audit fix (holistic per-tutorial review + Codex adjudication)",
+      "verdict": "FIXED",
+      "date": "2026-06-29",
+      "fix": "Qwen2-57B-A14B shared-expert count corrected 0 to 1 (it has a shared-expert path, inherited from Qwen1.5-MoE; only Qwen3 dropped shared experts).",
+      "note": "Content-audit fix (2026-06-29): a full-collection per-tutorial content review (5 skeptical-expert subagents reading all 28 ZH tutorials) flagged this; Codex GPT-5.5 xhigh cross-model adjudication (threads 019f127e / 019f127f) confirmed it from training knowledge. Factual/citation/number correction — core math/derivations were verified CORRECT across the collection; original gating reviews remain valid; source re-rendered, sidecar hash refreshed."
+    },
+    {
+      "scope": "full-collection re-sweep audit (Codex candidate-finding → independent Claude adversarial verification)",
+      "verdict": "16 CONFIRMED + 1 NEEDS_NUANCE, all fixed",
+      "date": "2026-07-12",
+      "fix_summary": [
+        "§0/§7.1: 'k/N × dense' compute claim corrected to 'k × single expert-FFN, independent of N', matching §7.1 derivation.",
+        "§0/§2.1 table: Qwen3-MoE split out as top-8/128 (no shared); DeepSeek-V2 corrected to 6 routed+2 shared (was miswritten as +1); DeepSeek-V3 kept at 8 routed+1 shared.",
+        "§0/§6.2: 'V3 drops aux loss' softened to 'bias is primary, tiny sequence-wise aux loss remains as backstop'.",
+        "§2.2: Σf_i·P_i 'uniform = global minimum' claim corrected — uniform is only a self-consistent fixed point (counterexample N=2 added); Q3 answer aligned.",
+        "§2.3: Expert Choice '不丢 token' corrected to '不会 expert overflow' + token-side 0-hit caveat.",
+        "§2.4/§3.1/§6.1: DeepSeek-V3 biased-score formula corrected — bias is added AFTER sigmoid (s_i=σ(u_t·e_i) is already the affinity), not to raw pre-sigmoid logits; gating renormalizes the un-biased affinity directly (no second sigmoid); added missing routed_scaling_factor≈2.5 note in formula, code comments, and the §6.1 architecture diagram.",
+        "§2.5 (NEEDS_NUANCE): noisy top-k's purpose reframed as exploration + differentiable load-estimate proxy, not 'softening TopK itself to be differentiable'.",
+        "§4.2: 'Token Drop vs Residual Bypass' reframed as the same mechanism (not two alternative routes) under standard residual connections; added note that Mixtral/DeepSeek-V3 are dropless in practice and modern grouped-GEMM/block-sparse EP kernels don't require a hard capacity; Q4 answer aligned.",
+        "§4.3: Z-loss mislabeled as 'entropy regularizer' corrected to the log-partition stabilization term (cites §10 Q24's correct definition); 'enlarge capacity factor to punish collapse' removed as a false fix (enlarging capacity only reduces drops, does not punish concentration).",
+        "§4.4: gradient-w.r.t.-excluded-logit claim corrected from 'indirectly nonzero via softmax coupling' to exactly zero (full derivation showing the global partition function cancels, leaving a local top-k-only softmax); aligned with §10 Q12; fixed the original formula's misplaced indicator on the ∂Z/∂s_l term.",
+        "§6.3: Node-Limited Routing's 'each node capped at 3 experts' fabricated constraint removed; replaced with the actual mechanism (score 8 nodes by grouped top-(K_r/M) affinity sum, pick top-4 nodes, then global top-8 over their union).",
+        "§7.3: 'V3 KV cache ~5% of LLaMA-3-70B' corrected to ~21% (LLaMA-3-70B already uses GQA, not MHA; the 93.3% figure is MLA-vs-MHA, a different baseline, per §5).",
+        "§9.1/Q10: 'MoE has a bandwidth advantage at same active params' inverted claim corrected — the real advantage is MoE vs a same-total-params fully-active dense baseline, not same-active; capacity-ceiling table row also fixed (MoE has higher, not lower, ceiling at same active params).",
+        "Q18: '8×H100 minimum for V3' corrected — 8×80GB=640GB < 671GB required, does not fit; actually needs 9+ cards, in practice 16×H100 or 8×H200 (matches §7.2 table).",
+        "Q20: Mixtral 8x7B parameter breakdown replaced with an exact derivation (hidden=4096, ffn=14336, SwiGLU, 32 layers) giving 46.70B total / 12.87B active, matching official 46.7B/12.9B without a vague 'router weight' fudge factor.",
+        "Appendix: Switch Transformers citation year corrected from '(2021) JMLR' to '(2022) JMLR, arXiv preprint 2021' (conflated preprint and formal-publication years)."
+      ],
+      "note": "2026-07-12 full-collection re-sweep audit: Codex GPT-5.6-sol (candidate-finding pass) → independent fresh Claude thread (adversarial verification, attempted to overturn each candidate) → 16 CONFIRMED + 1 NEEDS_NUANCE, 0 overturned. All 17 findings applied verbatim to source with surrounding-text consistency passes (V3 routing formula, Mixtral parameter breakdown, V3 KV cache comparison, §4.2/§4.3 dropless consistency). Source re-rendered, sidecar hash refreshed."
+    }
+  ]
+}

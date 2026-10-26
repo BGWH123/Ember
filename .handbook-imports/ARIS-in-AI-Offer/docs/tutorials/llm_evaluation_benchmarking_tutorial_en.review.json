@@ -1,0 +1,19 @@
+{
+ "skill": "interview-cheatsheet (EN translation-fidelity)",
+ "source": "docs/tutorials/llm_evaluation_benchmarking_tutorial_en.md",
+ "source_sha256": "065e8d0ada793023e81a4b92faf891056130996d51892d272e8c57d1ba16fde9",
+ "output": "docs/tutorials/llm_evaluation_benchmarking_tutorial_en.html",
+ "zh_source": "docs/tutorials/llm_evaluation_benchmarking_tutorial.md",
+ "reviewer": "codex gpt-5.6-sol xhigh, fresh thread",
+ "verdict": "PASS (after 1 P1 fixed)",
+ "thread_id": "019fb619-c9a8-79a3-8ae5-c0b1c7189ddc",
+ "translated_by": "subagent, incremental section-by-section Edits (69 edits)",
+ "translation_fidelity_review": {
+  "verdict": "PASS (after 1 P1 fixed)",
+  "date": "2026-07-31",
+  "thread_id": "019fb619-c9a8-79a3-8ae5-c0b1c7189ddc",
+  "notes": "去冗余后全量重翻(69次逐节Edit)。保真审:0 P0,1 P1——PRDS展开又被译成非规范的'positive regression dependency'(与初版翻译同一处坑),已修正为'positive regression dependence on a subset'。pass@k偏差方向/BT强连通判据/'条件独立但不能替代跨prompt样本'均翻译正确。"
+ },
+ "structural_parity": "## 11/11 · ### 32/32 · fences 10/10 · $$ 13/13 · table dividers 4/4 · <details> 25/25 · 862/862 lines; 0 residual CJK characters",
+ "rendered_at": "2026-07-31"
+}
