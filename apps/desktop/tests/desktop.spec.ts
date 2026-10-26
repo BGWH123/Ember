@@ -66,13 +66,15 @@ test('offline pages, real Rust/PyTorch submission, draft and navigation',async({
   await expect(page.locator('iframe[title*=\"Cosmos 3\"]')).toBeVisible();
   await page.goto('/#/problems/relu');
   await expect(page.getByRole('tab',{name:'relu.py',exact:true})).toBeVisible();
-  await page.goto('/#/problems/sigmoid');
+  const editor=page.locator('.monaco-editor textarea').first();await expect(editor).toBeVisible();
+  await editor.focus();await page.keyboard.press('Control+a');await page.keyboard.insertText('def relu(x):\n    return x.clamp(min=0)\n');
+  await page.getByRole('button',{name:'Open another coding problem',exact:true}).click();
+  await page.getByRole('link',{name:/Sigmoid Activation/}).click();
   await expect(page.getByRole('tab',{name:'relu.py',exact:true})).toBeVisible();
   await expect(page.getByRole('tab',{name:'sigmoid.py',exact:true})).toBeVisible();
   await page.getByRole('tab',{name:'relu.py',exact:true}).click();
   await expect(page).toHaveURL(/#\/problems\/relu$/);
-  const editor=page.locator('.monaco-editor textarea').first();await expect(editor).toBeVisible();
-  await editor.focus();await page.keyboard.press('Control+a');await page.keyboard.insertText('def relu(x):\n    return x.clamp(min=0)\n');
+  await expect(page.locator('.monaco-editor').first()).toContainText('clamp');
   await page.getByRole('button',{name:/^Run/}).click();
   await expect(page.getByRole('status')).toContainText('Running');
   await expect(page.getByRole('status')).toHaveCSS('opacity','1');

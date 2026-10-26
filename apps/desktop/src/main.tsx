@@ -1,6 +1,6 @@
 import React,{lazy,Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
-import {HashRouter,Routes,Route,useParams} from 'react-router-dom';
+import {HashRouter,Routes,Route} from 'react-router-dom';
 import {LocaleProvider} from '@/context/LocaleContext';
 import {ThemeProvider} from '@/context/ThemeContext';
 import {ThemeScript} from '@/components/ThemeScript';
@@ -23,7 +23,7 @@ const BaguDetail=lazy(()=>import('./app/bagu/[slug]/page'));
 const Hot=lazy(()=>import('./app/hot/page'));
 const Interview=lazy(()=>import('./app/interview/page'));
 const Settings=lazy(()=>import('./settings'));
-function WorkspaceRoute(){const {id}=useParams();return <Problem key={id}/>;}
+function WorkspaceRoute(){return <Problem/>;}
 class ErrorBoundary extends React.Component<{children:React.ReactNode},{error:string}>{
   state={error:''};static getDerivedStateFromError(error:Error){return{error:error.message};}
   render(){return this.state.error?<main className="p-8"><h1>页面无法加载</h1><p>{this.state.error}</p><a href="#/settings">打开设置</a></main>:this.props.children;}

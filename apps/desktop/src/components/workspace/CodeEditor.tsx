@@ -17,6 +17,7 @@ loader.config({ monaco });
 interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
+  path?: string;
   readOnly?: boolean;
   height?: string;
   allowParentScrollOnWheel?: boolean;
@@ -25,6 +26,7 @@ interface CodeEditorProps {
 export function CodeEditor({
   value,
   onChange,
+  path,
   readOnly = false,
   height = '100%',
   allowParentScrollOnWheel = false,
@@ -55,6 +57,7 @@ export function CodeEditor({
       height={height}
       loading={<WaitingState compact label="Ember" />}
       language="python"
+      path={path}
       value={value}
       onChange={(v) => onChange(v || '')}
       onMount={handleMount}

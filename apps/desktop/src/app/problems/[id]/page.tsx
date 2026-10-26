@@ -28,13 +28,17 @@ export default function WorkspacePage() {
   const pathId = searchParams.get('path');
   const { locale, t } = useLocale();
   const {
+    activateProblem,
     currentCode, setCurrentCode,
     submissionResult, setSubmissionResult,
     isSubmitting, setIsSubmitting,
     drawerOpen, setDrawerOpen,
     isRunning, setIsRunning,
-    setRunResult, setBottomTab, resetTestPanel, resetAiHelp,
+    setRunResult, setBottomTab,
     submissionHistory, setSubmissionHistory,
+    leftTab, setLeftTab,
+    horizontalRatio, setHorizontalRatio,
+    verticalRatio, setVerticalRatio,
   } = useProblemStore();
 
   const [loadError,setLoadError] = useState('');
@@ -51,31 +55,32 @@ export default function WorkspacePage() {
   if (draftReady && readyId.current === id) draftSnapshot.current = {id,code:currentCode};
   useEffect(() => {
     let alive = true;
+    const cached = activateProblem(id);
     readyId.current = null;
+    draftSnapshot.current = null;
     setDraftReady(false);
-    setProblem(null);
+    setLoadError('');
     appFetch(`/api/problems/${id}`).then(async response => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Problem unavailable');
-      const draft = await invoke<string | null>('load_draft', { id });
+      const draft = cached ? null : await invoke<string | null>('load_draft', { id });
       if (!alive) return;
       readyId.current = id;
-      setCurrentCode(draft ?? data.starterCode ?? '');
+      if (!cached) setCurrentCode(draft ?? data.starterCode ?? '');
       setProblem(data);
       setDraftReady(true);
-      setSubmissionResult(null);
-      resetTestPanel();
-      resetAiHelp();
     }).catch(error => { if (alive) setLoadError(String(error)); });
     appFetch('/api/problems').then(r=>r.json()).then(data=>{if(alive)setAllProblems(data.problems || []);});
     appFetch('/api/progress').then(r=>r.json()).then(data=>{if(alive)setProgress(data.progress || {});});
-    appFetch(`/api/submissions/${id}`).then(r=>r.json()).then(data=>{if(alive&&Array.isArray(data))setSubmissionHistory(data);});
+    if (!cached) {
+      appFetch(`/api/submissions/${id}`).then(r=>r.json()).then(data=>{if(alive&&Array.isArray(data))setSubmissionHistory(data);});
+    }
     return () => {
       alive=false;
       const draft=draftSnapshot.current;
       if(draft) void invoke('save_draft',draft).catch(console.error);
     };
-  }, [id, setCurrentCode, setSubmissionResult, resetTestPanel, resetAiHelp, setSubmissionHistory]);
+  }, [id, activateProblem, setCurrentCode, setSubmissionHistory]);
   useEffect(()=>{
     let alive=true;
     if(pathId) appFetch(`/api/paths/${pathId}`).then(r=>r.json()).then(data=>{if(alive)setPathData(data);});
@@ -164,7 +169,11 @@ export default function WorkspacePage() {
 
   const leftPanel = (
     <div className="h-full flex flex-col bg-bg">
-      <Tabs.Root defaultValue="description" className="flex flex-col h-full">
+      <Tabs.Root
+        value={leftTab}
+        onValueChange={(value) => setLeftTab(value as 'description' | 'solution' | 'aiHelp')}
+        className="flex flex-col h-full"
+      >
         <div
           className="flex items-center px-3.5 h-10 gap-1 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--line)', background: 'var(--bg)' }}
@@ -226,7 +235,7 @@ export default function WorkspacePage() {
               <span className="mono text-[11.5px] text-text-3 px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-sunken)', border: '1px solid var(--line)' }}>Python</span>
             </div>
             <div className="flex-1 overflow-hidden">
-              <CodeEditor value={currentCode} onChange={setCurrentCode} />
+              <CodeEditor path={`${id}.py`} value={currentCode} onChange={setCurrentCode} />
             </div>
           </div>
         }
@@ -237,6 +246,8 @@ export default function WorkspacePage() {
           </div>
         }
         defaultRatio={0.65}
+        ratio={verticalRatio}
+        onRatioChange={setVerticalRatio}
         minTop={200}
         minBottom={150}
       />
@@ -323,7 +334,12 @@ export default function WorkspacePage() {
       </div>
 
       <div className="flex-1 overflow-hidden" style={{ background: 'var(--bg-sunken)' }}>
-        <SplitPane left={leftPanel} right={rightPanel} />
+        <SplitPane
+          left={leftPanel}
+          right={rightPanel}
+          ratio={horizontalRatio}
+          onRatioChange={setHorizontalRatio}
+        />
       </div>
       <ProblemDrawer
         open={drawerOpen}
