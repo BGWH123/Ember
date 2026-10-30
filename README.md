@@ -2,7 +2,7 @@ English | [中文](./README_CN.md)
 
 # Ember
 
-Build the internals of modern AI systems from scratch. Ember is a local-first desktop practice environment with 101 PyTorch exercises, learning paths, theory questions, and mock interviews. It uses Tauri 2, React, and a Rust core.
+Build the internals of modern AI systems from scratch. Ember is a local-first desktop practice environment with 161 PyTorch exercises, learning paths, theory questions, and mock interviews. It uses Tauri 2, React, and a Rust core.
 
 Browsing exercises and reference solutions needs no Python runtime. Install a separate local evaluator module to run code.
 

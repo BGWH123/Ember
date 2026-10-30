@@ -2,7 +2,7 @@
   "meta": {
     "title": "AI 工程师知识体系",
     "subtitle": "从数学基础到大模型系统设计的完整学习地图",
-    "description": "面向 AI 算法工程师与大模型工程师的系统化知识树。按由浅入深的七个阶段组织,每个模块都关联到本站的动手编程题、热题解析与八股专题。标注「动手」的模块已有可运行的编程练习;标注「专题」的已有理论问答;标注「规划中」的为后续扩展方向。",
+    "description": "面向 AI 算法工程师与大模型工程师的系统化知识树。按由浅入深的八个阶段组织,每个模块都关联到本站的动手编程题、热题解析与八股专题。标注「动手」的模块已有可运行的编程练习;标注「专题」的已有理论问答;标注「规划中」的为后续扩展方向。",
     "version": 1,
     "legend": [
       { "key": "hands-on", "label": "动手", "desc": "含可运行、可评测的编程题" },
@@ -24,34 +24,34 @@
           "title": "线性代数与张量运算",
           "status": "hands-on",
           "blurb": "向量、矩阵、广播、爱因斯坦求和、相似度——深度学习的计算原语。",
-          "problems": ["broadcasting", "einsum_ops", "linear", "cosine_similarity", "one_hot_encoding"],
+          "problems": ["broadcasting", "einsum_ops", "cosine_similarity", "one_hot_encoding"],
           "hotCategories": [],
           "baguChapters": []
         },
         {
           "id": "probability-stats",
           "title": "概率论与统计",
-          "status": "theory",
+          "status": "hands-on",
           "blurb": "随机变量、期望方差、最大似然、贝叶斯、KL 散度——损失函数的理论根基。",
-          "problems": ["kl_divergence", "cross_entropy"],
+          "problems": ["logsumexp_logsoftmax"],
           "hotCategories": ["math"],
           "baguChapters": []
         },
         {
           "id": "calculus-optim",
           "title": "微积分与最优化",
-          "status": "theory",
+          "status": "hands-on",
           "blurb": "梯度、链式法则、凸性、梯度下降及其变体——模型如何学习。",
-          "problems": ["linear_regression", "sgd_momentum", "adam", "cosine_lr", "gradient_clipping"],
+          "problems": ["sgd_momentum", "adam", "adamw", "lion_optimizer", "muon_orthogonalize", "cosine_lr", "wsd_lr_schedule", "gradient_clipping"],
           "hotCategories": ["math"],
           "baguChapters": []
         },
         {
           "id": "info-theory",
           "title": "信息论基础",
-          "status": "planned",
+          "status": "hands-on",
           "blurb": "熵、交叉熵、互信息、编码——量化「信息」与「不确定性」。",
-          "problems": ["cross_entropy", "kl_divergence"],
+          "problems": ["kl_divergence"],
           "hotCategories": ["math"],
           "baguChapters": []
         }
@@ -70,16 +70,16 @@
           "title": "学习范式与泛化",
           "status": "theory",
           "blurb": "监督/无监督/自监督、过拟合与欠拟合、偏差方差权衡、正则化。",
-          "problems": ["linear_regression", "l1_regularization", "l2_regularization", "dropout"],
+          "problems": [],
           "hotCategories": ["ml"],
           "baguChapters": []
         },
         {
           "id": "ml-eval",
           "title": "模型评估与指标",
-          "status": "theory",
+          "status": "hands-on",
           "blurb": "准确率/精确率/召回率/F1/AUC、交叉验证、类别不平衡处理。",
-          "problems": [],
+          "problems": ["pass_at_k", "expected_calibration_error"],
           "hotCategories": ["ml"],
           "baguChapters": []
         },
@@ -107,7 +107,7 @@
           "title": "网络基本组件",
           "status": "hands-on",
           "blurb": "线性层、MLP、残差连接、权重初始化——前向与反向的基本单元。",
-          "problems": ["linear", "mlp", "residual_connection", "weight_init"],
+          "problems": ["linear", "mlp", "residual_connection", "deepnorm_residual", "weight_init"],
           "hotCategories": ["dl"],
           "baguChapters": []
         },
@@ -116,7 +116,7 @@
           "title": "激活函数",
           "status": "hands-on",
           "blurb": "ReLU、LeakyReLU、Sigmoid、Tanh、GELU、SwiGLU、Softmax。",
-          "problems": ["relu", "leaky_relu", "sigmoid", "tanh", "gelu", "swiglu", "softmax"],
+          "problems": ["relu", "leaky_relu", "sigmoid", "tanh", "dynamic_tanh", "gelu", "swiglu", "geglu", "softmax"],
           "hotCategories": ["dl"],
           "baguChapters": []
         },
@@ -125,7 +125,7 @@
           "title": "归一化",
           "status": "hands-on",
           "blurb": "BatchNorm、LayerNorm、RMSNorm、adaLN-Zero——稳定训练的关键。",
-          "problems": ["batchnorm", "layernorm", "rmsnorm", "adaln_zero"],
+          "problems": ["batchnorm", "groupnorm", "layernorm", "rmsnorm", "adaln_zero"],
           "hotCategories": ["dl"],
           "baguChapters": []
         },
@@ -171,7 +171,7 @@
           "title": "注意力机制核心",
           "status": "hands-on",
           "blurb": "缩放点积、多头、因果、交叉注意力、注意力掩码。",
-          "problems": ["attention", "mha", "causal_attention", "cross_attention", "attention_mask", "softmax_temperature"],
+          "problems": ["attention", "mha", "causal_attention", "cross_attention", "attention_mask", "softmax_temperature", "qk_norm_attention", "axial_attention"],
           "hotCategories": ["transformer"],
           "baguChapters": ["attention"]
         },
@@ -180,7 +180,7 @@
           "title": "高效与前沿注意力",
           "status": "hands-on",
           "blurb": "Flash、滑动窗口、线性、GQA、差分注意力、MLA、环形注意力。",
-          "problems": ["flash_attention", "sliding_window", "linear_attention", "gqa", "diff_attention", "mla", "ring_attention"],
+          "problems": ["flash_attention", "sliding_window", "block_topk_attention", "linear_attention", "deltanet_recurrence", "gqa", "diff_attention", "mla", "ring_attention"],
           "hotCategories": ["transformer"],
           "baguChapters": ["linear-sparse-attention"]
         },
@@ -189,7 +189,7 @@
           "title": "位置编码与嵌入",
           "status": "hands-on",
           "blurb": "Embedding、正弦位置编码、RoPE、ALiBi、NTK-aware RoPE。",
-          "problems": ["embedding", "sinusoidal_pe", "rope", "alibi", "ntk_rope"],
+          "problems": ["embedding", "sinusoidal_pe", "rope", "alibi", "ntk_rope", "yarn_rope"],
           "hotCategories": ["transformer"],
           "baguChapters": ["long-context"]
         },
@@ -198,7 +198,7 @@
           "title": "完整 Transformer 模块",
           "status": "hands-on",
           "blurb": "GPT-2 Block、编码器/解码器、ViT Patch 与 Block、分词(BPE)。",
-          "problems": ["gpt2_block", "transformer_encoder", "transformer_decoder", "vit_patch", "vit_block", "bpe"],
+          "problems": ["gpt2_block", "transformer_encoder", "transformer_decoder", "vit_patch", "vit_block", "bpe", "wordpiece_tokenizer", "unigram_viterbi"],
           "hotCategories": ["transformer"],
           "baguChapters": ["transformer-block"]
         }
@@ -215,9 +215,9 @@
         {
           "id": "llm-fundamentals",
           "title": "LLM 基础与训练目标",
-          "status": "theory",
+          "status": "hands-on",
           "blurb": "自回归语言建模、架构选型、Scaling Law/Chinchilla、涌现能力、幻觉。",
-          "problems": ["multi_token_prediction"],
+          "problems": ["multi_token_prediction", "document_packing_mask", "chinchilla_scaling"],
           "hotCategories": ["llm"],
           "baguChapters": ["llm-pretraining", "reasoning-models"]
         },
@@ -226,7 +226,7 @@
           "title": "混合专家(MoE)",
           "status": "hands-on",
           "blurb": "MoE 路由、负载均衡、带噪声 Top-k 门控——解耦参数量与计算量。",
-          "problems": ["moe", "moe_load_balance", "noisy_topk_gating"],
+          "problems": ["moe", "moe_load_balance", "moe_router_z_loss", "noisy_topk_gating", "deepseek_moe_router"],
           "hotCategories": ["llm"],
           "baguChapters": ["moe"]
         },
@@ -244,7 +244,7 @@
           "title": "多模态",
           "status": "hands-on",
           "blurb": "CLIP 对比学习、图文对齐、多模态 LLM 的连接范式。",
-          "problems": ["clip_model"],
+          "problems": ["clip_model", "siglip_loss", "perceiver_resampler"],
           "hotCategories": ["llm"],
           "baguChapters": []
         },
@@ -253,7 +253,7 @@
           "title": "扩散与流模型",
           "status": "hands-on",
           "blurb": "噪声调度、DDIM 采样、流匹配、adaLN-Zero——生成模型核心。",
-          "problems": ["noise_schedule", "ddim_step", "flow_matching", "adaln_zero"],
+          "problems": ["noise_schedule", "ddim_step", "ddpm_posterior_and_vpred", "classifier_free_guidance", "flow_matching", "flow_heun_sampler", "vae_elbo_reparam", "vqvae_ste", "finite_scalar_quantization", "mmdit_joint_attention"],
           "hotCategories": ["llm"],
           "baguChapters": []
         }
@@ -272,7 +272,7 @@
           "title": "高效训练与显存优化",
           "status": "hands-on",
           "blurb": "混合精度、梯度累积、激活检查点——单卡也能训大模型。",
-          "problems": ["mixed_precision", "gradient_accumulation", "activation_checkpointing", "gradient_clipping"],
+          "problems": ["mixed_precision", "gradient_accumulation", "activation_checkpointing"],
           "hotCategories": ["train"],
           "baguChapters": ["quantization"]
         },
@@ -281,7 +281,7 @@
           "title": "分布式训练",
           "status": "hands-on",
           "blurb": "数据/张量/流水线并行、FSDP/ZeRO——扩展到多卡多机。",
-          "problems": ["tensor_parallel", "fsdp_step"],
+          "problems": ["tensor_parallel", "fsdp_step", "zero_memory_accounting"],
           "hotCategories": ["train"],
           "baguChapters": ["distributed-training"]
         },
@@ -290,7 +290,7 @@
           "title": "微调与参数高效方法",
           "status": "hands-on",
           "blurb": "LoRA、QLoRA、INT8 量化——低成本适配预训练模型。",
-          "problems": ["lora", "qlora", "int8_quantization"],
+          "problems": ["lora", "dora_linear", "pissa_init", "qlora", "int8_quantization"],
           "hotCategories": ["train"],
           "baguChapters": ["lora-peft", "llm-pretraining"]
         },
@@ -299,16 +299,16 @@
           "title": "推理与解码优化",
           "status": "hands-on",
           "blurb": "KV Cache、PagedAttention、投机解码、采样策略、Beam Search。",
-          "problems": ["kv_cache", "paged_attention", "speculative_decoding", "topk_sampling", "beam_search"],
+          "problems": ["kv_cache", "h2o_kv_eviction", "paged_attention", "speculative_decoding", "tree_speculative_mask", "topk_sampling", "min_p_sampling", "beam_search"],
           "hotCategories": ["infer"],
           "baguChapters": ["llm-inference-serving"]
         },
         {
           "id": "cuda-systems",
           "title": "CUDA 与系统设计",
-          "status": "planned",
+          "status": "hands-on",
           "blurb": "GPU 架构、算子融合、内存层级、推理服务化与吞吐/延迟权衡。",
-          "problems": [],
+          "problems": ["groupwise_int4_quant", "smoothquant_migration"],
           "hotCategories": ["infer"],
           "baguChapters": []
         }
@@ -327,36 +327,82 @@
           "title": "对齐与 RLHF",
           "status": "hands-on",
           "blurb": "奖励模型、PPO、DPO、GRPO、GAE、MCTS——从偏好到策略优化。",
-          "problems": ["reward_model", "ppo_loss", "dpo_loss", "grpo_loss", "gae", "mcts_search"],
+          "problems": ["reward_model", "ppo_loss", "dpo_loss", "kto_orpo_loss", "simpo_loss", "grpo_loss", "dapo_loss", "gae", "generalized_advantage_estimation", "kl_estimators_rlhf", "diffusion_dpo_repa_loss"],
           "hotCategories": ["align"],
           "baguChapters": ["rlhf-dpo-grpo-ppo"]
         },
         {
           "id": "rag",
           "title": "检索增强生成(RAG)",
-          "status": "theory",
+          "status": "hands-on",
           "blurb": "切块、嵌入、向量检索(HNSW/IVF)、重排、混合检索——给模型外部知识。",
-          "problems": ["cosine_similarity"],
+          "problems": ["bm25_rrf_retrieval", "matryoshka_colbert_loss"],
           "hotCategories": ["rag-agent"],
           "baguChapters": ["rag-embedding-retrieval"]
         },
         {
           "id": "agent",
           "title": "Agent 与工具使用",
-          "status": "theory",
+          "status": "hands-on",
           "blurb": "ReAct、function calling、规划与记忆、多智能体协作。",
-          "problems": [],
+          "problems": ["puct_selection", "mcts_search"],
           "hotCategories": ["rag-agent"],
           "baguChapters": ["agent-foundations"]
         },
         {
           "id": "distill",
           "title": "知识蒸馏与压缩",
-          "status": "theory",
+          "status": "hands-on",
           "blurb": "软标签蒸馏、自蒸馏、模型压缩——大模型能力向小模型迁移。",
-          "problems": ["kl_divergence"],
+          "problems": ["gkd_generalized_jsd"],
           "hotCategories": ["train"],
           "baguChapters": ["llm-on-policy-distillation"]
+        }
+      ]
+    },
+    {
+      "id": "embodied-world",
+      "order": 8,
+      "title": "第八阶段 · 具身智能、世界模型与三维视觉",
+      "subtitle": "Embodied AI, World Models & 3D Vision",
+      "icon": "Target",
+      "summary": "连接感知、预测与行动：从三维重建和世界模型，到视觉-语言-动作策略、机器人运动学、状态估计与强化学习控制。",
+      "modules": [
+        {
+          "id": "vision-3d",
+          "title": "三维视觉、NeRF 与 3DGS",
+          "status": "hands-on",
+          "blurb": "目标检测后处理、点云配准、体渲染与高斯溅射——构建可用于具身感知的三维表示。",
+          "problems": ["box_iou_nms", "kabsch_pointcloud_align", "nerf_volume_rendering", "gaussian_splatting_cov3d"],
+          "hotCategories": [],
+          "baguChapters": []
+        },
+        {
+          "id": "world-models",
+          "title": "世界模型",
+          "status": "hands-on",
+          "blurb": "学习环境动态与潜在状态，在想象轨迹中预测、规划并改进策略。",
+          "problems": ["dreamer_world_model"],
+          "hotCategories": [],
+          "baguChapters": []
+        },
+        {
+          "id": "vla-imitation",
+          "title": "VLA 与模仿学习",
+          "status": "hands-on",
+          "blurb": "将视觉、语言指令与连续动作连接起来，理解 ACT 与 OpenVLA 风格的动作建模。",
+          "problems": ["act_openvla_actions"],
+          "hotCategories": [],
+          "baguChapters": []
+        },
+        {
+          "id": "robotics-control",
+          "title": "机器人控制与状态估计",
+          "status": "hands-on",
+          "blurb": "逆运动学、卡尔曼滤波、LQR、连续控制和离线强化学习的核心计算。",
+          "problems": ["damped_least_squares_ik", "kalman_lqr_control", "sac_squashed_gaussian", "cql_iql_loss", "double_dqn_td3_target"],
+          "hotCategories": [],
+          "baguChapters": []
         }
       ]
     }

@@ -12,10 +12,17 @@ from torch_judge.tasks import TASKS
 
 # Plausible errors must fail assertions, rather than merely fail to import/run.
 MUTATIONS = {
+    'adamw': ('p.mul_(1.0 - self.lr * self.weight_decay)', 'p.mul_(1.0)'),
     'attention_mask': ("float('-inf')", '0.0'),
     'binary_cross_entropy': ('.mean()', '.sum()'),
+    'block_topk_attention': ('block_scores.topk(top_k', 'block_scores.topk(1'),
+    'bm25_rrf_retrieval': ('tf * (k1 + 1.0)', 'tf * k1'),
+    'chinchilla_scaling': ('beta / (alpha + beta)', 'alpha / (alpha + beta)'),
     'cosine_similarity': ('torch.dot(a_norm, b_norm)', 'torch.dot(a, b)'),
+    'generalized_advantage_estimation': ('gamma * lam * mask * gae', 'gamma * mask * gae'),
     'gru_cell': ('r_t * h_prev', 'h_prev'),
+    'groupwise_int4_quant': (' / 15.0', ' / 16.0'),
+    'kabsch_pointcloud_align': ('t = c_dst - R @ c_src', 't = c_dst - c_src'),
     'kl_divergence': ('.sum()', '.mean()'),
     'l1_regularization': ('torch.abs(w)', 'w'),
     'l2_regularization': ('0.5 * lambda_reg', 'lambda_reg'),
@@ -32,6 +39,7 @@ MUTATIONS = {
     'softmax_temperature': ('logits / temperature', 'logits * temperature'),
     'stochastic_depth': ('(x.shape[0],) + (1,) * (x.ndim - 1)', 'x.shape'),
     'tanh': ('return torch.tanh(x)', 'return x'),
+    'wordpiece_tokenizer': ('range(len(word), start, -1)', 'range(start + 1, len(word) + 1)'),
 }
 
 

@@ -7,7 +7,7 @@
       "descriptionEn": "Build every component of a Transformer from scratch — activations, normalization, attention, and the full GPT-2 block.",
       "descriptionZh": "从零构建 Transformer 的每个组件——激活函数、归一化、注意力机制到完整的 GPT-2 Block。",
       "icon": "Layers",
-      "problems": ["relu", "gelu", "swiglu", "layernorm", "batchnorm", "rmsnorm", "linear", "softmax", "attention", "mha", "mlp", "gpt2_block"],
+      "problems": ["relu", "gelu", "swiglu", "geglu", "dynamic_tanh", "layernorm", "batchnorm", "groupnorm", "rmsnorm", "linear", "softmax", "attention", "mha", "mlp", "deepnorm_residual", "gpt2_block"],
       "prerequisites": []
     },
     {
@@ -17,7 +17,7 @@
       "descriptionEn": "Master every attention variant and position encoding technique — from scaled dot-product to Flash Attention, RoPE, and ALiBi.",
       "descriptionZh": "掌握所有注意力变体和位置编码技术——从缩放点积到 Flash Attention、RoPE 和 ALiBi。",
       "icon": "Eye",
-      "problems": ["sinusoidal_pe", "rope", "alibi", "ntk_rope", "softmax", "attention", "causal_attention", "mha", "cross_attention", "gqa", "sliding_window", "linear_attention", "flash_attention"],
+      "problems": ["sinusoidal_pe", "rope", "alibi", "ntk_rope", "yarn_rope", "softmax", "attention", "causal_attention", "mha", "cross_attention", "qk_norm_attention", "gqa", "sliding_window", "block_topk_attention", "axial_attention", "linear_attention", "deltanet_recurrence", "flash_attention"],
       "prerequisites": []
     },
     {
@@ -27,7 +27,7 @@
       "descriptionEn": "Build and train a complete GPT — from embeddings and transformer blocks to Adam, cosine LR, and mixed precision.",
       "descriptionZh": "构建并训练完整的 GPT——从 Embedding 和 Transformer Block 到 Adam、余弦学习率和混合精度。",
       "icon": "Brain",
-      "problems": ["sinusoidal_pe", "embedding", "layernorm", "attention", "mha", "mlp", "gpt2_block", "cross_entropy", "label_smoothing", "weight_init", "adam", "cosine_lr", "gradient_clipping", "gradient_accumulation", "mixed_precision"],
+      "problems": ["sinusoidal_pe", "embedding", "layernorm", "attention", "mha", "mlp", "gpt2_block", "cross_entropy", "logsumexp_logsoftmax", "label_smoothing", "weight_init", "adam", "adamw", "lion_optimizer", "muon_orthogonalize", "cosine_lr", "wsd_lr_schedule", "gradient_clipping", "gradient_accumulation", "mixed_precision", "document_packing_mask", "chinchilla_scaling"],
       "prerequisites": []
     },
     {
@@ -37,7 +37,7 @@
       "descriptionEn": "Speed up inference with KV cache, quantization, and decoding strategies. Scale training with tensor parallelism, FSDP, and ring attention.",
       "descriptionZh": "通过 KV Cache、量化和解码策略加速推理。用张量并行、FSDP 和环形注意力扩展训练规模。",
       "icon": "Zap",
-      "problems": ["kv_cache", "int8_quantization", "topk_sampling", "beam_search", "speculative_decoding", "mixed_precision", "tensor_parallel", "fsdp_step", "ring_attention"],
+      "problems": ["kv_cache", "h2o_kv_eviction", "int8_quantization", "groupwise_int4_quant", "smoothquant_migration", "topk_sampling", "min_p_sampling", "beam_search", "speculative_decoding", "tree_speculative_mask", "mixed_precision", "zero_memory_accounting", "tensor_parallel", "fsdp_step", "ring_attention"],
       "prerequisites": ["transformer-internals"]
     },
     {
@@ -47,7 +47,7 @@
       "descriptionEn": "Implement the loss functions and search algorithms behind modern AI alignment — from reward modeling to PPO and MCTS.",
       "descriptionZh": "实现现代 AI 对齐背后的损失函数和搜索算法——从奖励建模到 PPO 和 MCTS。",
       "icon": "Target",
-      "problems": ["cross_entropy", "reward_model", "dpo_loss", "grpo_loss", "ppo_loss", "mcts_search"],
+      "problems": ["cross_entropy", "reward_model", "dpo_loss", "kto_orpo_loss", "simpo_loss", "grpo_loss", "dapo_loss", "ppo_loss", "generalized_advantage_estimation", "kl_estimators_rlhf", "gkd_generalized_jsd", "diffusion_dpo_repa_loss", "puct_selection", "mcts_search"],
       "prerequisites": []
     },
     {
@@ -57,7 +57,7 @@
       "descriptionEn": "Build a ViT from the ground up — convolutions, patch embeddings, attention, and the full ViT block.",
       "descriptionZh": "从零构建 ViT——卷积、Patch Embedding、注意力机制到完整的 ViT Block。",
       "icon": "Microscope",
-      "problems": ["conv2d", "max_pool2d", "depthwise_conv", "vit_patch", "attention", "mha", "vit_block"],
+      "problems": ["conv2d", "max_pool2d", "depthwise_conv", "vit_patch", "attention", "mha", "axial_attention", "siglip_loss", "perceiver_resampler", "box_iou_nms", "vit_block"],
       "prerequisites": []
     },
     {
@@ -67,7 +67,7 @@
       "descriptionEn": "From noise schedules to flow matching — implement the core algorithms behind Stable Diffusion 3, Flux, and DiT.",
       "descriptionZh": "从噪声调度到流匹配——实现 Stable Diffusion 3、Flux 和 DiT 背后的核心算法。",
       "icon": "Wand2",
-      "problems": ["noise_schedule", "ddim_step", "flow_matching", "adaln_zero", "vit_block"],
+      "problems": ["noise_schedule", "ddim_step", "ddpm_posterior_and_vpred", "classifier_free_guidance", "flow_matching", "flow_heun_sampler", "vae_elbo_reparam", "vqvae_ste", "finite_scalar_quantization", "mmdit_joint_attention", "diffusion_dpo_repa_loss", "adaln_zero", "vit_block"],
       "prerequisites": []
     },
     {
@@ -77,7 +77,7 @@
       "descriptionEn": "Implement the cutting-edge attention and routing mechanisms powering DeepSeek, Meta, and Microsoft's latest models.",
       "descriptionZh": "实现驱动 DeepSeek、Meta 和微软最新模型的前沿注意力与路由机制。",
       "icon": "Sparkles",
-      "problems": ["mha", "gqa", "diff_attention", "mla", "moe", "moe_load_balance", "multi_token_prediction"],
+      "problems": ["mha", "gqa", "qk_norm_attention", "diff_attention", "mla", "block_topk_attention", "deltanet_recurrence", "moe", "deepseek_moe_router", "moe_load_balance", "moe_router_z_loss", "multi_token_prediction"],
       "prerequisites": []
     },
     {
@@ -88,6 +88,36 @@
       "descriptionZh": "掌握图神经网络基础——从图卷积到注意力、消息传递和图级任务。",
       "icon": "Network",
       "problems": ["gcn_layer", "graph_readout", "gat_layer", "gin_layer", "mpnn_layer", "link_prediction", "graphsage_layer", "gae"],
+      "prerequisites": []
+    },
+    {
+      "id": "peft-quantization-scaling",
+      "titleEn": "PEFT, Quantization & Pretraining Scaling",
+      "titleZh": "高效微调、量化与预训练缩放",
+      "descriptionEn": "Adapt, quantize, and scale language models efficiently, from low-rank fine-tuning to memory accounting and reliable evaluation.",
+      "descriptionZh": "高效适配、量化并扩展语言模型，涵盖低秩微调、显存核算与可靠评估。",
+      "icon": "Cpu",
+      "problems": ["lora", "dora_linear", "pissa_init", "qlora", "int8_quantization", "groupwise_int4_quant", "smoothquant_migration", "chinchilla_scaling", "zero_memory_accounting", "pass_at_k", "expected_calibration_error"],
+      "prerequisites": ["train-gpt-from-scratch"]
+    },
+    {
+      "id": "rag-world-agents",
+      "titleEn": "RAG, World Models & Agentic AI",
+      "titleZh": "RAG、世界模型与智能体",
+      "descriptionEn": "Build retrieval, multimodal representation, planning, tree search, and learned world-model components for modern AI agents.",
+      "descriptionZh": "构建现代智能体所需的检索、多模态表征、规划、树搜索与学习型世界模型组件。",
+      "icon": "Brain",
+      "problems": ["cosine_similarity", "bm25_rrf_retrieval", "matryoshka_colbert_loss", "siglip_loss", "perceiver_resampler", "puct_selection", "mcts_search", "dreamer_world_model"],
+      "prerequisites": []
+    },
+    {
+      "id": "embodied-3d-robotics",
+      "titleEn": "Embodied AI, 3D Vision & Control",
+      "titleZh": "具身智能、三维视觉与机器人控制",
+      "descriptionEn": "Implement perception, 3D reconstruction, robot kinematics, control, and offline reinforcement learning for embodied systems.",
+      "descriptionZh": "实现具身系统中的感知、三维重建、机器人运动学、控制与离线强化学习。",
+      "icon": "Target",
+      "problems": ["box_iou_nms", "kabsch_pointcloud_align", "nerf_volume_rendering", "gaussian_splatting_cov3d", "damped_least_squares_ik", "kalman_lqr_control", "act_openvla_actions", "sac_squashed_gaussian", "cql_iql_loss", "double_dqn_td3_target"],
       "prerequisites": []
     }
   ]

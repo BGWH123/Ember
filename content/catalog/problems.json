@@ -3593,6 +3593,2046 @@
           "code": "\n\n\n\n\n\n\n\n\n\nimport torch\nw1 = torch.empty(64, 16)\nw2 = torch.empty(64, 256)\n{fn}(w1)\n{fn}(w2)\nassert w1.std().item() > w2.std().item(), 'Smaller fan_in should give larger std'\n\n            \n            \n            \n            \n            \n            \n            \n            \n            "
         }
       ]
+    },
+    {
+      "id": "classifier_free_guidance",
+      "title": "Classifier-Free Guidance (CFG) & Std Rescaling",
+      "titleZh": "无分类器引导（CFG）与标准差重缩放",
+      "difficulty": "Easy",
+      "functionName": "cfg_guided_prediction",
+      "hint": "Extrapolate from the unconditional prediction toward the conditional one. For rescaling, compute population standard deviations over every non-batch axis and blend the rescaled result.",
+      "hintZh": "从无条件预测向条件预测外推。重缩放时，在所有非批次维上计算总体标准差，并混合重缩放结果。",
+      "descriptionEn": "Implement classifier-free guidance for predictions shaped (B,...), with optional per-sample standard-deviation rescaling. Return a tensor with the input shape.",
+      "descriptionZh": "对形状为 (B,...) 的预测实现无分类器引导，并可选地按样本进行标准差重缩放。返回与输入形状相同的张量。",
+      "category": "扩散与流模型",
+      "theoryEn": "CFG combines conditional and unconditional model evaluations as u+s(c-u). Large scales can over-amplify predictions; matching each sample's standard deviation to the conditional prediction mitigates this effect.",
+      "theoryZh": "CFG 按 u+s(c-u) 组合条件与无条件模型输出。较大的引导尺度可能放大输出；将每个样本的标准差匹配到条件预测可缓解该问题。",
+      "diagramEn": "```text\ncond c --\\\n          u + scale*(c-u) -> optional std match -> blend -> output\nuncond u-/\n```",
+      "diagramZh": "```text\n条件 c --\\\n           u + scale*(c-u) -> 可选标准差匹配 -> 混合 -> 输出\n无条件 u-/\n```",
+      "tests": [
+        {
+          "name": "shape and standard CFG",
+          "code": "import torch\nc, u = torch.randn(2,3,4), torch.randn(2,3,4)\nout = {fn}(c, u, guidance_scale=2.5)\nassert out.shape == c.shape\nassert torch.equal(out, u + 2.5 * (c-u))\n"
+        },
+        {
+          "name": "exact rescaling reference",
+          "code": "import torch\ntorch.manual_seed(2)\nc, u = torch.randn(2,3,5), torch.randn(2,3,5)\nout = {fn}(c, u, 4.0, .7, 1e-8)\np = u + 4.0*(c-u); dims=(1,2)\nr = p * (c.std(dims, keepdim=True, unbiased=False)/(p.std(dims, keepdim=True, unbiased=False)+1e-8))\nref = .7*r + .3*p\nassert torch.allclose(out, ref, atol=1e-7, rtol=1e-6)\n"
+        },
+        {
+          "name": "zero scale and constant edge",
+          "code": "import torch\nc = torch.ones(3,4); u = torch.arange(12.).reshape(3,4)\nplain = {fn}(c, u, guidance_scale=0.0)\nrescaled = {fn}(c, u, guidance_scale=2.0, rescale_phi=1.0)\nassert torch.equal(plain, u)\nassert rescaled.shape == c.shape and torch.isfinite(rescaled).all() and torch.equal(rescaled, torch.zeros_like(c))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nc = torch.randn(2,3,4, requires_grad=True)\nu = torch.randn(2,3,4, requires_grad=True)\n{fn}(c, u, 3.0, .5).square().sum().backward()\nassert c.grad is not None and u.grad is not None\nassert torch.isfinite(c.grad).all() and torch.isfinite(u.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "dynamic_tanh",
+      "title": "Dynamic Tanh (DyT)",
+      "titleZh": "动态 Tanh 归一化替代层（DyT）",
+      "difficulty": "Easy",
+      "functionName": "dynamic_tanh",
+      "hint": "Scale x by the scalar alpha, apply tanh, then use the broadcastable feature-wise gamma and beta.",
+      "hintZh": "先用标量 alpha 缩放 x，再应用 tanh，最后使用可广播的逐特征 gamma 和 beta。",
+      "descriptionEn": "Implement Dynamic Tanh, a simple normalization-layer alternative with a learned input scale and feature-wise affine transform.",
+      "descriptionZh": "实现 Dynamic Tanh：一种使用可学习输入缩放和逐特征仿射变换的归一化层替代方案。",
+      "category": "归一化",
+      "theoryEn": "DyT bounds activations with tanh instead of computing sample statistics. Alpha controls saturation globally, while gamma and beta restore per-feature scale and offset.",
+      "theoryZh": "DyT 用 tanh 限制激活而不计算样本统计量。alpha 全局控制饱和程度，gamma 和 beta 恢复逐特征尺度与偏移。",
+      "diagramEn": "```text\nx -> alpha*x -> tanh -> gamma*(.)+beta\n```",
+      "diagramZh": "```text\nx -> alpha*x -> tanh -> gamma*(.)+beta\n```",
+      "tests": [
+        {
+          "name": "output shape",
+          "code": "import torch\nx = torch.randn(2, 3, 7)\nout = {fn}(x, torch.tensor([0.5]), torch.ones(7), torch.zeros(7))\nassert out.shape == x.shape\n"
+        },
+        {
+          "name": "exact formula",
+          "code": "import torch\ntorch.manual_seed(1)\nx = torch.randn(4, 5)\nalpha, gamma, beta = torch.tensor(0.7), torch.randn(5), torch.randn(5)\nout = {fn}(x, alpha, gamma, beta)\nref = gamma * torch.tanh(alpha * x) + beta\nassert torch.equal(out, ref)\n"
+        },
+        {
+          "name": "zero alpha edge",
+          "code": "import torch\nx = torch.tensor([[1e6, -1e6, 3.0]])\nbeta = torch.tensor([1.0, 2.0, 3.0])\nout = {fn}(x, torch.tensor(0.0), torch.randn(3), beta)\nassert torch.equal(out, beta.unsqueeze(0))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nx = torch.randn(2, 4, requires_grad=True)\nalpha = torch.tensor([0.5], requires_grad=True)\ngamma = torch.ones(4, requires_grad=True)\nbeta = torch.zeros(4, requires_grad=True)\n{fn}(x, alpha, gamma, beta).square().sum().backward()\nassert all(t.grad is not None for t in (x, alpha, gamma, beta))\n"
+        }
+      ]
+    },
+    {
+      "id": "geglu",
+      "title": "GeGLU Feed-Forward Network",
+      "titleZh": "GeGLU 前馈网络",
+      "difficulty": "Easy",
+      "functionName": "geglu",
+      "hint": "Apply GELU to the gate projection, multiply it elementwise by the up projection, then project back down.",
+      "hintZh": "对门投影应用 GELU，与上投影逐元素相乘，再投影回模型维度。",
+      "descriptionEn": "Implement a bias-free GeGLU feed-forward network using gate, up, and down weight matrices.",
+      "descriptionZh": "使用门投影、上投影和下投影权重矩阵实现无偏置 GeGLU 前馈网络。",
+      "category": "激活函数",
+      "theoryEn": "GeGLU is a gated linear unit whose nonlinear branch uses GELU. Multiplicative gating gives the feed-forward block richer feature interactions than a single activation.",
+      "theoryZh": "GeGLU 是非线性分支使用 GELU 的门控线性单元。乘法门控比单一激活提供更丰富的特征交互。",
+      "diagramEn": "```text\nx -> W_gate -> GELU --*---> W_down -> output\nx -> W_up ------------/\n```",
+      "diagramZh": "```text\nx -> W_gate -> GELU --*---> W_down -> 输出\nx -> W_up ------------/\n```",
+      "tests": [
+        {
+          "name": "arbitrary leading dimensions",
+          "code": "import torch\nx = torch.randn(2, 3, 5)\nout = {fn}(x, torch.randn(5, 9), torch.randn(5, 9), torch.randn(9, 5))\nassert out.shape == (2, 3, 5)\n"
+        },
+        {
+          "name": "exact numerical formula",
+          "code": "import torch\nimport torch.nn.functional as F\ntorch.manual_seed(0)\nx = torch.randn(4, 6)\nwg, wu, wd = torch.randn(6, 10), torch.randn(6, 10), torch.randn(10, 6)\nout = {fn}(x, wg, wu, wd)\nref = (F.gelu(x @ wg) * (x @ wu)) @ wd\nassert torch.equal(out, ref)\n"
+        },
+        {
+          "name": "zero up projection edge",
+          "code": "import torch\nx = torch.randn(3, 4)\nout = {fn}(x, torch.randn(4, 7), torch.zeros(4, 7), torch.randn(7, 4))\nassert torch.count_nonzero(out) == 0\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nx = torch.randn(2, 4, requires_grad=True)\nwg = torch.randn(4, 8, requires_grad=True)\nwu = torch.randn(4, 8, requires_grad=True)\nwd = torch.randn(8, 4, requires_grad=True)\n{fn}(x, wg, wu, wd).square().sum().backward()\nassert all(t.grad is not None for t in (x, wg, wu, wd))\n"
+        }
+      ]
+    },
+    {
+      "id": "logsumexp_logsoftmax",
+      "title": "Numerically Stable LogSumExp & Log-Softmax",
+      "titleZh": "数值稳定 LogSumExp 与 Log-Softmax",
+      "difficulty": "Easy",
+      "functionName": "logsumexp_logsoftmax",
+      "hint": "Subtract the maximum with `keepdim=True` before exponentiation; retain that dimension for log-probabilities and squeeze it only for LogSumExp.",
+      "hintZh": "指数运算前减去 `keepdim=True` 的最大值；计算对数概率时保留该维，仅对 LogSumExp 结果压缩该维。",
+      "descriptionEn": "Implement numerically stable LogSumExp and log-softmax together using the max-subtraction trick.",
+      "descriptionZh": "使用减最大值技巧，同时实现数值稳定的 LogSumExp 和 log-softmax。",
+      "category": "基础网络组件",
+      "theoryEn": "Because `log(sum(exp(x)))` is shift-equivariant, subtracting the largest entry prevents overflow. Adding the maximum back recovers the exact result, while `x-lse` yields log-softmax.",
+      "theoryZh": "由于 `log(sum(exp(x)))` 对平移具有等变性，先减最大值可避免溢出；随后加回最大值得到原结果，而 `x-lse` 即 log-softmax。",
+      "diagramEn": "```text\nx -> max m -> exp(x-m) -> sum -> log -> +m -> lse\nx --------------------------------------------- lse -> x-lse -> log_probs\n```",
+      "diagramZh": "```text\nx -> 最大值 m -> exp(x-m) -> 求和 -> log -> +m -> lse\nx ---------------------------------------------- lse -> x-lse -> log_probs\n```",
+      "tests": [
+        {
+          "name": "output shapes",
+          "code": "import torch\nx = torch.randn(2, 3, 4)\nlse, logp = {fn}(x, dim=1)\nassert lse.shape == (2, 4) and logp.shape == x.shape\n"
+        },
+        {
+          "name": "matches reference",
+          "code": "import torch\ntorch.manual_seed(3)\nx = torch.randn(2, 5, 7, dtype=torch.float64)\nlse, logp = {fn}(x, -1)\nassert torch.allclose(lse, torch.logsumexp(x, -1), atol=1e-12)\nassert torch.allclose(logp, torch.log_softmax(x, -1), atol=1e-12)\n"
+        },
+        {
+          "name": "extreme shift stability",
+          "code": "import torch\nx = torch.tensor([[1000.0, 1001.0, 999.0], [-1000.0, -1001.0, -999.0]])\nlse, logp = {fn}(x)\nassert torch.isfinite(lse).all() and torch.isfinite(logp).all()\nassert torch.allclose(logp.exp().sum(-1), torch.ones(2), atol=2e-5)\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nx = torch.randn(3, 6, requires_grad=True)\nlse, logp = {fn}(x, 1)\n(lse.sum() + logp.square().mean()).backward()\nassert x.grad is not None and torch.isfinite(x.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "moe_router_z_loss",
+      "title": "MoE Router Z-Loss",
+      "titleZh": "MoE 路由器 Z-Loss",
+      "difficulty": "Easy",
+      "functionName": "moe_router_z_loss",
+      "hint": "Use `torch.logsumexp` over the expert dimension, square each log-partition value, average, and multiply by `coef`.",
+      "hintZh": "沿专家维使用 `torch.logsumexp`，对每个对数配分函数值平方、取均值，再乘以 `coef`。",
+      "descriptionEn": "Compute the router z-loss for logits whose final dimension indexes experts.",
+      "descriptionZh": "计算路由器 Z-Loss，其中 logits 的最后一维表示专家。",
+      "category": "混合专家模型",
+      "theoryEn": "The squared log-partition penalty discourages router logits from growing without bound while stable log-sum-exp avoids overflow.",
+      "theoryZh": "对数配分函数的平方惩罚可抑制路由 logits 无界增大，稳定的 log-sum-exp 可避免溢出。",
+      "diagramEn": "```text\nrouter logits (..., N) -> logsumexp over N -> square -> mean -> coefficient\n```",
+      "diagramZh": "```text\n路由 logits (..., N) -> 沿 N 做 logsumexp -> 平方 -> 均值 -> 系数\n```",
+      "tests": [
+        {
+          "name": "scalar shape",
+          "code": "import torch\nlogits = torch.randn(2, 3, 5)\nloss = {fn}(logits)\nassert loss.shape == torch.Size([])\nassert loss.dtype == logits.dtype\n"
+        },
+        {
+          "name": "exact numerical reference",
+          "code": "import torch\nlogits = torch.tensor([[1., -2., 0.5], [3., 1., -1.]])\nloss = {fn}(logits, coef=0.2)\nref = 0.2 * torch.logsumexp(logits, dim=-1).square().mean()\nassert torch.equal(loss, ref)\n"
+        },
+        {
+          "name": "large logits remain finite",
+          "code": "import torch\nlogits = torch.tensor([[10000., 9999.], [-10000., -10001.]])\nloss = {fn}(logits, coef=0.0)\nassert loss.ndim == 0\nassert torch.isfinite(loss) and loss.item() == 0.0\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nlogits = torch.randn(4, 7, requires_grad=True)\nloss = {fn}(logits, coef=1e-3)\nloss.backward()\nassert logits.grad is not None\nassert logits.grad.shape == logits.shape and torch.isfinite(logits.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "perceiver_resampler",
+      "title": "VLM Pixel Unshuffle Visual Token Compression",
+      "titleZh": "VLM Pixel Unshuffle 视觉 Token 压缩",
+      "difficulty": "Easy",
+      "functionName": "pixel_unshuffle_tokens",
+      "hint": "Split each spatial axis into a coarse coordinate and an r-sized local coordinate, move both local coordinates next to the channel axis, then flatten.",
+      "hintZh": "将每个空间轴拆为粗粒度坐标和大小为 r 的局部坐标，把两个局部坐标移到通道轴旁再展平。",
+      "descriptionEn": "Compress a channels-last visual patch grid into fewer, wider tokens using pixel unshuffle, with an optional linear projection.",
+      "descriptionZh": "使用 pixel unshuffle 将通道后置的视觉 patch 网格压缩为数量更少、维度更宽的 token，并支持可选线性投影。",
+      "category": "多模态",
+      "theoryEn": "An r by r neighborhood is rearranged into channels, reducing token count by r squared while preserving all values. A projection can then map the expanded feature dimension.",
+      "theoryZh": "每个 r×r 邻域被重排到通道维，使 token 数量缩小 r² 倍且不丢失数值，随后可用投影映射扩展后的特征维。",
+      "diagramEn": "```text\n(B,H,W,D) -> split H,W by r -> move local axes -> (B,H/r*W/r,r*r*D) -> optional @W\n```",
+      "diagramZh": "```text\n(B,H,W,D) -> 按 r 拆分 H,W -> 移动局部轴 -> (B,H/r*W/r,r*r*D) -> 可选 @W\n```",
+      "tests": [
+        {
+          "name": "compressed shape",
+          "code": "import torch\nx = torch.randn(2, 6, 4, 3)\nout = {fn}(x, 2)\nassert out.shape == (2, 6, 12)\n"
+        },
+        {
+          "name": "exact ordering",
+          "code": "import torch\nx = torch.arange(16.).reshape(1, 4, 4, 1)\nout = {fn}(x, 2)\nref = x.reshape(1, 2, 2, 2, 2, 1).permute(0, 1, 3, 2, 4, 5).reshape(1, 4, 4)\nassert torch.equal(out, ref)\n"
+        },
+        {
+          "name": "scale one edge case",
+          "code": "import torch\nx = torch.randn(1, 2, 3, 4)\nout = {fn}(x, scale_factor=1)\nassert out.shape == (1, 6, 4) and torch.equal(out, x.reshape(1, 6, 4))\n"
+        },
+        {
+          "name": "projection gradient flow",
+          "code": "import torch\nx = torch.randn(2, 4, 4, 3, requires_grad=True)\nw = torch.randn(12, 5, requires_grad=True)\nout = {fn}(x, 2, w)\nout.sum().backward()\nassert out.shape == (2, 4, 5) and x.grad is not None and w.grad is not None\n"
+        }
+      ]
+    },
+    {
+      "id": "puct_selection",
+      "title": "AlphaZero / Reasoning MCTS PUCT Selection",
+      "titleZh": "PUCT 树搜索节点选择评分",
+      "difficulty": "Easy",
+      "functionName": "puct_scores",
+      "hint": "Add Q-values to a prior-weighted exploration bonus proportional to sqrt(parent visits) and inversely proportional to one plus child visits; then take argmax.",
+      "hintZh": "将 Q 值与探索奖励相加：奖励正比于先验概率和父节点访问次数平方根，反比于子节点访问次数加一；最后取最大值索引。",
+      "descriptionEn": "Compute PUCT scores for all child actions and return both the score vector and selected action index.",
+      "descriptionZh": "计算所有子动作的 PUCT 分数，并返回分数向量和所选动作索引。",
+      "category": "采样与解码",
+      "theoryEn": "PUCT balances exploitation through Q with exploration through a policy prior. Frequently visited children receive a smaller exploration bonus.",
+      "theoryZh": "PUCT 通过 Q 值利用已知收益，并通过策略先验探索；访问越频繁的子节点，其探索奖励越小。",
+      "diagramEn": "```mermaid\nflowchart LR\nQ[Q values] --> S[PUCT scores]\nP[priors] --> B[exploration bonus]\nN[parent/child visits] --> B\nB --> S\nS --> A[argmax action]\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nQ[Q 值] --> S[PUCT 分数]\nP[先验] --> B[探索奖励]\nN[父/子访问次数] --> B\nB --> S\nS --> A[最大分数动作]\n```",
+      "tests": [
+        {
+          "name": "shape and index",
+          "code": "import torch\nscores, action = {fn}(torch.tensor([0.1, 0.2, 0.0]), torch.tensor([0.2, 0.7, 0.1]), torch.tensor([1, 0, 3]), 4.0)\nassert scores.shape == (3,) and isinstance(action, int)\nassert action == int(torch.argmax(scores).item())\n"
+        },
+        {
+          "name": "exact PUCT reference",
+          "code": "import torch\nimport math\nq = torch.tensor([0.3, -0.1, 0.4], dtype=torch.double)\np = torch.tensor([0.2, 0.5, 0.3], dtype=torch.double)\nn = torch.tensor([2, 1, 4])\ngot, selected = {fn}(q, p, n, torch.tensor(9.0), c_puct=2.0)\nref = q + 2.0 * p * (math.sqrt(9.0) / (1.0 + n.float()))\nassert torch.allclose(got, ref, atol=1e-12, rtol=1e-12) and selected == ref.argmax().item()\n"
+        },
+        {
+          "name": "zero parent visits",
+          "code": "import torch\nq = torch.tensor([-1.0, 2.0])\nscores, selected = {fn}(q, torch.tensor([0.9, 0.1]), torch.tensor([0, 0]), 0.0)\nassert torch.equal(scores, q)\nassert selected == 1\n"
+        },
+        {
+          "name": "score gradient flow",
+          "code": "import torch\nq = torch.randn(4, dtype=torch.double, requires_grad=True)\np = torch.rand(4, dtype=torch.double, requires_grad=True)\nscores, selected = {fn}(q, p, torch.arange(4), 10.0)\nscores.sum().backward()\nassert q.grad is not None and p.grad is not None\nassert q.grad.shape == q.shape and torch.isfinite(p.grad).all() and 0 <= selected < 4\n"
+        }
+      ]
+    },
+    {
+      "id": "simpo_loss",
+      "title": "SimPO (Simple Preference Optimization) Loss",
+      "titleZh": "SimPO（无参考模型偏好优化）损失",
+      "difficulty": "Easy",
+      "functionName": "simpo_loss",
+      "hint": "Divide each sequence log-probability by its own floating-point length, scale by beta, subtract the rejected score and target margin, then use negative log-sigmoid.",
+      "hintZh": "将每个序列的对数概率除以对应的浮点长度，乘以 beta，减去拒绝样本分数和目标间隔，再计算负 log-sigmoid。",
+      "descriptionEn": "Implement reference-free SimPO from sums of response-token log-probabilities and response lengths. The chosen normalized score should exceed the rejected score by gamma.",
+      "descriptionZh": "根据回复 token 对数概率之和及回复长度实现无参考模型的 SimPO。选中回复的归一化分数应比拒绝回复高 gamma。",
+      "category": "损失函数",
+      "theoryEn": "Length normalization removes preference for short responses. A logistic loss trains the beta-scaled chosen-minus-rejected score to clear a fixed margin gamma.",
+      "theoryZh": "长度归一化消除对短回复的偏好；逻辑损失促使经 beta 缩放的选中与拒绝分数之差超过固定间隔 gamma。",
+      "diagramEn": "```mermaid\nflowchart LR\nC[chosen sum / length] --> D[beta score difference]\nR[rejected sum / length] --> D\nG[gamma] --> D\nD --> L[-log sigmoid mean]\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nC[选中总分/长度] --> D[beta 分数差]\nR[拒绝总分/长度] --> D\nG[gamma] --> D\nD --> L[负 log-sigmoid 均值]\n```",
+      "tests": [
+        {
+          "name": "scalar shape",
+          "code": "import torch\nc = torch.tensor([-2.0, -4.0])\nr = torch.tensor([-3.0, -6.0])\nloss = {fn}(c, r, torch.tensor([2, 4]), torch.tensor([3, 6]))\nassert loss.shape == torch.Size([]) and torch.isfinite(loss)\n"
+        },
+        {
+          "name": "exact reference",
+          "code": "import torch\nimport torch.nn.functional as F\nc = torch.tensor([-2.0, -9.0], dtype=torch.double)\nr = torch.tensor([-4.0, -8.0], dtype=torch.double)\ncl, rl = torch.tensor([2, 3]), torch.tensor([4, 2])\ngot = {fn}(c, r, cl, rl, beta=1.7, gamma=0.3)\nlogits = 1.7 / cl.float() * c - 1.7 / rl.float() * r - 0.3\nassert torch.allclose(got, -F.logsigmoid(logits).mean(), atol=1e-12, rtol=1e-12)\n"
+        },
+        {
+          "name": "single item edge case",
+          "code": "import torch\nimport torch.nn.functional as F\ngot = {fn}(torch.tensor([-1.0]), torch.tensor([-1.0]), torch.tensor([1]), torch.tensor([1]), gamma=0.0)\nassert got.shape == torch.Size([])\nassert torch.equal(got, torch.tensor(float(torch.log(torch.tensor(2.0)))))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nc = torch.randn(4, dtype=torch.double, requires_grad=True)\nr = torch.randn(4, dtype=torch.double, requires_grad=True)\nloss = {fn}(c, r, torch.tensor([1, 2, 3, 4]), torch.tensor([4, 3, 2, 1]))\nloss.backward()\nassert c.grad is not None and r.grad is not None\nassert c.grad.shape == c.shape and torch.isfinite(r.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "wsd_lr_schedule",
+      "title": "Warmup-Stable-Decay (WSD) LR Scheduler",
+      "titleZh": "WSD（预热-稳定-衰减）学习率调度",
+      "difficulty": "Easy",
+      "functionName": "wsd_lr_schedule",
+      "hint": "Use three ordered boundary checks: warmup, stable plateau, and cosine decay. Return `min_lr` after the total duration.",
+      "hintZh": "依次判断预热、稳定平台和余弦衰减三个区间；超过总步数后返回 `min_lr`。",
+      "descriptionEn": "Implement a Warmup-Stable-Decay learning-rate schedule: linear warmup, a constant plateau, then cosine decay to a minimum learning rate.",
+      "descriptionZh": "实现预热-稳定-衰减学习率调度：线性预热、恒定平台，最后余弦衰减至最小学习率。",
+      "category": "优化器与学习率",
+      "theoryEn": "Warmup limits early optimization shocks, the stable phase performs most training at peak rate, and smooth cosine decay reduces the step size toward convergence.",
+      "theoryZh": "预热减轻训练初期冲击，稳定阶段以峰值学习率完成主要训练，平滑余弦衰减则逐步减小步长以收敛。",
+      "diagramEn": "```mermaid\nflowchart LR\nW[linear warmup] --> S[stable max LR] --> D[cosine decay] --> M[min LR]\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nW[线性预热] --> S[峰值稳定期] --> D[余弦衰减] --> M[最小学习率]\n```",
+      "tests": [
+        {
+          "name": "linear warmup",
+          "code": "import torch\nlr = {fn}(2, 4, 3, 5, 0.01, 0.001)\nassert isinstance(lr, float)\nassert abs(lr - 0.005) < 1e-12\nassert torch.tensor(lr).shape == ()\n"
+        },
+        {
+          "name": "stable boundaries",
+          "code": "import torch\na = {fn}(4, 4, 3, 5, 0.01, 0.001)\nb = {fn}(6, 4, 3, 5, 0.01, 0.001)\nassert torch.tensor([a, b]).shape == (2,)\nassert a == 0.01 and b == 0.01\n"
+        },
+        {
+          "name": "cosine exact reference",
+          "code": "import torch\nimport math\nlr = {fn}(9, 4, 3, 5, 0.01, 0.001)\nprogress = (9 - 4 - 3) / 5\nexpected = 0.001 + 0.5 * 0.009 * (1.0 + math.cos(math.pi * progress))\nassert torch.allclose(torch.tensor(lr), torch.tensor(expected), atol=0, rtol=0)\n"
+        },
+        {
+          "name": "end and after end",
+          "code": "import torch\nend = {fn}(12, 4, 3, 5, 0.01, 0.001)\nafter = {fn}(99, 4, 3, 5, 0.01, 0.001)\nassert torch.tensor([end, after]).shape == (2,)\nassert abs(end - 0.001) < 1e-12\nassert after == 0.001\n"
+        }
+      ]
+    },
+    {
+      "id": "zero_memory_accounting",
+      "title": "ZeRO Memory Accounting & 1F1B Pipeline Bubble",
+      "titleZh": "ZeRO 显存核算与 1F1B 流水线气泡率",
+      "difficulty": "Easy",
+      "functionName": "distributed_efficiency_stats",
+      "hint": "Start from 2P parameter bytes, 2P gradient bytes, and 12P optimizer bytes. Divide optimizer, then gradients, then parameters by world size as the ZeRO stage increases.",
+      "hintZh": "从参数 2P、梯度 2P、优化器 12P 字节开始；随着 ZeRO 阶段提高，依次将优化器、梯度、参数按 world size 分片。",
+      "descriptionEn": "Report per-rank mixed-precision Adam model-state memory under ZeRO stages 0–3 and the idealized 1F1B pipeline bubble fraction.",
+      "descriptionZh": "报告 ZeRO 0–3 阶段下每个 rank 的混合精度 Adam 模型状态显存，以及理想化 1F1B 流水线气泡率。",
+      "category": "高效训练",
+      "theoryEn": "ZeRO progressively shards optimizer state, gradients, and parameters. For 1F1B scheduling, pipeline fill and drain cost `stages-1` slots around the useful microbatches.",
+      "theoryZh": "ZeRO 依次对优化器状态、梯度和参数分片。对 1F1B 调度，流水线填充与排空相对有效微批次需要 `stages-1` 个时隙。",
+      "diagramEn": "```text\nstage 0: P G O replicated\nstage 1: P G | O sharded\nstage 2: P | G O sharded\nstage 3: P G O sharded\nbubble = (S-1)/(M+S-1)\n```",
+      "diagramZh": "```text\n阶段 0: 参数/梯度/优化器均复制\n阶段 1: 仅优化器分片\n阶段 2: 梯度与优化器分片\n阶段 3: 三者均分片\n气泡率 = (S-1)/(M+S-1)\n```",
+      "tests": [
+        {
+          "name": "dictionary shape and float values",
+          "code": "import torch\nstats = {fn}(1_000_000, 8, stage=2, num_stages=4, num_microbatches=16)\nkeys = {\"param_bytes\", \"grad_bytes\", \"optim_bytes\", \"total_bytes\", \"bubble_fraction\"}\nassert set(stats) == keys\nassert all(isinstance(stats[k], float) for k in keys)\n"
+        },
+        {
+          "name": "exact ZeRO stage accounting",
+          "code": "import torch\nP, N = 120.0, 4\nexpected = {\n    0: (240.0, 240.0, 1440.0),\n    1: (240.0, 240.0, 360.0),\n    2: (240.0, 60.0, 360.0),\n    3: (60.0, 60.0, 360.0),\n}\nfor stage, ref in expected.items():\n    stats = {fn}(P, N, stage=stage)\n    actual = (stats[\"param_bytes\"], stats[\"grad_bytes\"], stats[\"optim_bytes\"])\n    assert actual == ref and stats[\"total_bytes\"] == sum(ref)\n"
+        },
+        {
+          "name": "pipeline edge cases",
+          "code": "import torch\nno_pipe = {fn}(10, 2, num_stages=1, num_microbatches=1)\ndeep = {fn}(10, 2, num_stages=8, num_microbatches=1)\nmany = {fn}(10, 2, num_stages=8, num_microbatches=1000)\nassert no_pipe[\"bubble_fraction\"] == 0.0\nassert deep[\"bubble_fraction\"] == 7.0 / 8.0\nassert many[\"bubble_fraction\"] == 7.0 / 1007.0\n"
+        },
+        {
+          "name": "tensor scalar and gradient compatibility",
+          "code": "import torch\nP = torch.tensor(1e9, requires_grad=True)\nstats = {fn}(P, 4, stage=3, num_stages=2, num_microbatches=8)\nprobe = P * stats[\"bubble_fraction\"]\nprobe.backward()\nassert stats[\"total_bytes\"] == 16.0e9 / 4.0\nassert P.grad is not None and torch.isfinite(P.grad)\n"
+        }
+      ]
+    },
+    {
+      "id": "act_openvla_actions",
+      "title": "VLA Action Chunking Temporal Ensemble & OpenVLA Tokenizer",
+      "titleZh": "VLA 动作分块时序集成与 OpenVLA 离散化",
+      "difficulty": "Medium",
+      "functionName": "vla_action_ensemble_and_tokenize",
+      "hint": "Use index zero as age zero for exponential temporal weights. Clamp normalized actions before converting them to integer bins, then decode bin centers.",
+      "hintZh": "令索引 0 对应年龄 0 以计算指数时序权重；将归一化动作截断后转为整数 bin，再解码 bin 中心。",
+      "descriptionEn": "Ensemble overlapping action-chunk predictions and uniformly tokenize bounded continuous actions in the OpenVLA style.",
+      "descriptionZh": "集成重叠动作块预测，并以 OpenVLA 风格对有界连续动作进行均匀离散化。",
+      "category": "具身智能与控制",
+      "theoryEn": "Exponential weighting favors newer chunk predictions while retaining older estimates. Uniform bins map continuous controls to token IDs, and bin centers provide deterministic approximate decoding.",
+      "theoryZh": "指数加权偏重新动作块预测，同时保留较旧估计。均匀分箱将连续控制映射到 token ID，箱中心提供确定性的近似解码。",
+      "diagramEn": "```text\nchunks -> age decay -> weighted action\nactions,bounds -> normalize -> bins -> bin centers\n```",
+      "diagramZh": "```text\n动作块 -> 年龄衰减 -> 加权动作\n动作、边界 -> 归一化 -> 分箱 -> 箱中心\n```",
+      "tests": [
+        {
+          "name": "output shapes",
+          "code": "import torch\nchunks = torch.randn(4, 3)\nactions = torch.randn(2, 3)\nens, ids, recon = {fn}(chunks, .2, actions, -torch.ones(3), torch.ones(3))\nassert ens.shape == (3,) and ids.shape == recon.shape == (2, 3)\n"
+        },
+        {
+          "name": "exact reference",
+          "code": "import torch\nchunks = torch.tensor([[1., 2.], [3., 4.]])\na = torch.tensor([[0., 1.]])\nlow, high = torch.tensor([-1., 0.]), torch.tensor([1., 2.])\nens, ids, recon = {fn}(chunks, torch.tensor(.5), a, low, high, n_bins=4)\nw = torch.exp(-torch.tensor(.5) * torch.arange(2.)); w = w / w.sum()\nref_ids = torch.tensor([[2, 2]])\nref_recon = low + ((ref_ids.float() + .5) / 4) * (high - low)\nassert torch.allclose(ens, (w[:, None] * chunks).sum(0)) and torch.equal(ids, ref_ids) and torch.allclose(recon, ref_recon)\n"
+        },
+        {
+          "name": "bounds clipping edge case",
+          "code": "import torch\na = torch.tensor([[-5., 5.]])\nlow, high = torch.tensor([0., 0.]), torch.tensor([1., 1.])\nens, ids, recon = {fn}(torch.tensor([[2., 3.]]), 1., a, low, high, n_bins=2)\nassert torch.equal(ens, torch.tensor([2., 3.])) and torch.equal(ids, torch.tensor([[0, 1]])) and torch.allclose(recon, torch.tensor([[.25, .75]]))\n"
+        },
+        {
+          "name": "ensemble gradient flow",
+          "code": "import torch\nchunks = torch.randn(3, 2, requires_grad=True)\ndecay = torch.tensor(.3, requires_grad=True)\nens, ids, recon = {fn}(chunks, decay, torch.zeros(1, 2), -torch.ones(2), torch.ones(2))\nens.sum().backward()\nassert chunks.grad is not None and decay.grad is not None and ids.dtype == torch.long and recon.shape == (1, 2)\n"
+        }
+      ]
+    },
+    {
+      "id": "adamw",
+      "title": "AdamW Optimizer (Decoupled Weight Decay)",
+      "titleZh": "AdamW 优化器（解耦权重衰减）",
+      "difficulty": "Medium",
+      "functionName": "MyAdamW",
+      "hint": "Keep one first moment, second moment, and step counter per parameter. Apply weight decay directly to the parameter before the Adam update.",
+      "hintZh": "为每个参数保存一阶矩、二阶矩和步数。在 Adam 更新前直接对参数应用权重衰减。",
+      "descriptionEn": "Implement AdamW with decoupled weight decay. For every parameter with a gradient, first multiply the parameter by `1 - lr * weight_decay`, then perform a bias-corrected Adam update. Provide `step()` and `zero_grad()` methods and match `torch.optim.AdamW` numerically.",
+      "descriptionZh": "实现带解耦权重衰减的 AdamW。对每个有梯度的参数，先乘以 `1 - lr * weight_decay`，再执行带偏差校正的 Adam 更新。提供 `step()` 与 `zero_grad()`，并与 `torch.optim.AdamW` 数值一致。",
+      "category": "优化器与学习率",
+      "theoryEn": "AdamW separates regularization from the gradient: `p <- (1-lr*wd)p`. It then computes exponential moving averages `m` and `v`, corrects their initialization bias, and scales the update by the root second moment.",
+      "theoryZh": "AdamW 将正则化与梯度分离：`p <- (1-lr*wd)p`。随后计算一阶、二阶指数移动平均，进行初始化偏差校正，并用二阶矩平方根缩放更新。",
+      "diagramEn": "```mermaid\nflowchart LR\nG[gradient] --> M[moment updates]\nP[parameter] --> D[decoupled decay]\nD --> U[Adam update]\nM --> U\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nG[梯度] --> M[矩更新]\nP[参数] --> D[解耦衰减]\nD --> U[Adam 更新]\nM --> U\n```",
+      "tests": [
+        {
+          "name": "matches PyTorch",
+          "code": "import torch\ntorch.manual_seed(0)\np = torch.randn(4, 3, requires_grad=True)\nq = p.detach().clone().requires_grad_(True)\nmine = {fn}([p], lr=3e-3, betas=(0.8, 0.95), eps=1e-8, weight_decay=0.1)\nref = torch.optim.AdamW([q], lr=3e-3, betas=(0.8, 0.95), eps=1e-8, weight_decay=0.1)\nfor _ in range(4):\n    (p.square().sum()).backward(); (q.square().sum()).backward()\n    mine.step(); ref.step(); mine.zero_grad(); ref.zero_grad()\nassert p.shape == q.shape\nassert torch.allclose(p, q, atol=1e-7, rtol=1e-6), (p-q).abs().max()\n"
+        },
+        {
+          "name": "decay is decoupled",
+          "code": "import torch\np = torch.tensor([2.0], requires_grad=True)\nopt = {fn}([p], lr=0.1, betas=(0.0, 0.0), eps=0.0, weight_decay=0.2)\np.grad = torch.tensor([1.0])\nopt.step()\nexpected = torch.tensor([2.0 * 0.98 - 0.1])\nassert p.shape == (1,)\nassert torch.equal(p.detach(), expected)\n"
+        },
+        {
+          "name": "zero grad and gradient flow",
+          "code": "import torch\np = torch.randn(5, requires_grad=True)\nopt = {fn}([p])\np.square().sum().backward()\nassert p.grad is not None and p.grad.abs().sum() > 0\nopt.zero_grad()\nassert torch.equal(p.grad, torch.zeros_like(p))\n"
+        },
+        {
+          "name": "missing gradient is skipped",
+          "code": "import torch\np = torch.tensor([1.0], requires_grad=True)\nq = torch.tensor([2.0], requires_grad=True)\nopt = {fn}([p, q], lr=0.1, weight_decay=0.5)\np.grad = torch.tensor([0.25])\nbefore = q.detach().clone()\nopt.step()\nassert q.shape == before.shape\nassert torch.equal(q.detach(), before)\n"
+        }
+      ]
+    },
+    {
+      "id": "axial_attention",
+      "title": "2D Axial Self-Attention",
+      "titleZh": "二维轴向自注意力（Axial Attention）",
+      "difficulty": "Medium",
+      "functionName": "axial_attention",
+      "hint": "Permute BCHW to `(B*W,H,C)` for height or `(B*H,W,C)` for width, then use scaled dot-product attention.",
+      "hintZh": "高度注意力将 BCHW 排列为 `(B*W,H,C)`，宽度注意力排列为 `(B*H,W,C)`，再执行缩放点积注意力。",
+      "descriptionEn": "Implement axial self-attention on a BCHW tensor. Attention is computed along exactly one spatial axis while the other spatial axis is folded into the batch.",
+      "descriptionZh": "在 BCHW 张量上实现轴向自注意力。仅沿一个空间轴计算注意力，另一个空间轴折叠进批次维。",
+      "category": "注意力机制",
+      "theoryEn": "Axial attention replaces full HW-by-HW attention with separate one-dimensional attention. For one axis, project Q, K, V and compute `softmax(QK^T/sqrt(C))V`.",
+      "theoryZh": "轴向注意力用一维注意力替代完整的 HW×HW 注意力。沿指定轴投影 Q、K、V，并计算 `softmax(QK^T/sqrt(C))V`。",
+      "diagramEn": "```text\nB,C,H,W -> fold other axis -> batch,axis,C -> QK attention -> B,C,H,W\n```",
+      "diagramZh": "```text\nB,C,H,W -> 折叠另一空间轴 -> 批次,轴,C -> QK 注意力 -> B,C,H,W\n```",
+      "tests": [
+        {
+          "name": "height shape",
+          "code": "import torch\ntorch.manual_seed(0)\nx = torch.randn(2, 3, 4, 5)\nw = torch.randn(3, 3)\nout = {fn}(x, w, w, w, \"height\")\nassert out.shape == x.shape\n"
+        },
+        {
+          "name": "width numerical reference",
+          "code": "import torch\ntorch.manual_seed(1)\nx = torch.randn(2, 3, 2, 4)\nwq, wk, wv = [torch.randn(3, 3) for _ in range(3)]\nout = {fn}(x, wq, wk, wv, \"width\")\nseq = x.permute(0, 2, 3, 1).reshape(4, 4, 3)\nref = torch.softmax((seq @ wq) @ (seq @ wk).transpose(-2, -1) / (3 ** 0.5), -1) @ (seq @ wv)\nref = ref.reshape(2, 2, 4, 3).permute(0, 3, 1, 2)\nassert torch.allclose(out, ref, atol=1e-6)\n"
+        },
+        {
+          "name": "singleton attended axis",
+          "code": "import torch\nx = torch.randn(1, 2, 1, 3)\neye = torch.eye(2)\nout = {fn}(x, eye, eye, eye, \"height\")\nassert torch.allclose(out, x, atol=1e-6)\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nx = torch.randn(1, 2, 3, 4, requires_grad=True)\nwq = torch.randn(2, 2, requires_grad=True)\nwk = torch.randn(2, 2, requires_grad=True)\nwv = torch.randn(2, 2, requires_grad=True)\nout = {fn}(x, wq, wk, wv, \"height\")\nout.square().sum().backward()\nassert all(t.grad is not None for t in (x, wq, wk, wv))\n"
+        }
+      ]
+    },
+    {
+      "id": "bm25_rrf_retrieval",
+      "title": "BM25 Scoring & Reciprocal Rank Fusion (RRF)",
+      "titleZh": "BM25 检索评分与倒数排名融合（RRF）",
+      "difficulty": "Medium",
+      "functionName": "bm25_and_rrf",
+      "hint": "Compute BM25 term contributions with broadcasted document-length normalization, then convert each score vector to 1-based ranks using argsort twice.",
+      "hintZh": "通过广播的文档长度归一化计算 BM25 词项贡献，再对每个分数向量执行两次 argsort 得到从 1 开始的排名。",
+      "descriptionEn": "Compute sparse BM25 document scores and fuse their ranks with dense-retrieval ranks using reciprocal rank fusion.",
+      "descriptionZh": "计算稀疏 BM25 文档分数，并使用倒数排名融合将其排名与稠密检索排名结合。",
+      "category": "检索与智能体",
+      "theoryEn": "BM25 combines inverse document frequency with saturating term frequency and length normalization. RRF combines rankings without requiring their score scales to be comparable.",
+      "theoryZh": "BM25 结合逆文档频率、饱和词频和长度归一化；RRF 无需不同检索器的分数尺度可比即可融合排名。",
+      "diagramEn": "```text\nquery, corpus stats -> BM25 -> rank --+--> reciprocal sums\ndense scores ----------------> rank --+\n```",
+      "diagramZh": "```text\n查询、语料统计 -> BM25 -> 排名 --+--> 倒数求和\n稠密分数 --------------------> 排名 --+\n```",
+      "tests": [
+        {
+          "name": "output shapes",
+          "code": "import torch\nq = torch.tensor([1, 0, 1])\ntf = torch.tensor([[2, 0, 1], [0, 3, 1]])\nbm, rrf = {fn}(q, tf, torch.tensor([1, 1, 2]), torch.tensor([3, 4]), torch.tensor([.2, .8]))\nassert bm.shape == (2,) and rrf.shape == (2,)\n"
+        },
+        {
+          "name": "exact reference",
+          "code": "import torch\nq = torch.tensor([1., 1.])\ntf = torch.tensor([[2., 0.], [1., 3.]])\ndf = torch.tensor([2., 1.])\nlens = torch.tensor([2., 4.])\ndense = torch.tensor([.9, .1])\nbm, rrf = {fn}(q, tf, df, lens, dense, rrf_k=10)\navg = lens.mean()\nidf = torch.log(1 + (2 - df + .5) / (df + .5))\nnorm = tf * 2.5 / (tf + 1.5 * (1 - .75 + .75 * lens[:, None] / avg))\nref_bm = (norm * idf * q).sum(-1)\nrb = torch.argsort(torch.argsort(ref_bm, descending=True)) + 1\nrd = torch.argsort(torch.argsort(dense, descending=True)) + 1\nref_rrf = 1 / (10 + rb.float()) + 1 / (10 + rd.float())\nassert torch.allclose(bm, ref_bm) and torch.allclose(rrf, ref_rrf)\n"
+        },
+        {
+          "name": "single document edge case",
+          "code": "import torch\nbm, rrf = {fn}(torch.tensor([0, 1]), torch.tensor([[0, 2]]), torch.tensor([0, 1]), torch.tensor([2]), torch.tensor([-3.]), rrf_k=60)\nassert bm.shape == (1,) and torch.allclose(rrf, torch.tensor([2 / 61]))\n"
+        },
+        {
+          "name": "bm25 gradient flow",
+          "code": "import torch\ntf = torch.tensor([[1., 2.], [3., 1.]], requires_grad=True)\nbm, rrf = {fn}(torch.ones(2), tf, torch.ones(2), torch.tensor([3., 4.]), torch.tensor([.1, .2]))\n(bm.sum() + rrf.sum() * 0).backward()\nassert tf.grad is not None and tf.grad.shape == tf.shape and torch.isfinite(tf.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "box_iou_nms",
+      "title": "2D Bounding Box IoU & Non-Maximum Suppression (NMS)",
+      "titleZh": "二维边界框 IoU 与非极大值抑制（NMS）",
+      "difficulty": "Medium",
+      "functionName": "box_iou_and_nms",
+      "hint": "Broadcast box coordinates to construct all pairwise intersections, then repeatedly keep the first score-sorted index and filter the remainder by its IoU row.",
+      "hintZh": "广播框坐标以构造全部成对交集，然后反复保留按分数排序后的首个索引，并用其 IoU 行过滤剩余索引。",
+      "descriptionEn": "Compute a full pairwise IoU matrix for axis-aligned boxes and perform greedy score-ordered non-maximum suppression.",
+      "descriptionZh": "计算轴对齐边界框的完整成对 IoU 矩阵，并执行按置信度排序的贪心非极大值抑制。",
+      "category": "三维与具身感知",
+      "theoryEn": "IoU divides intersection area by union area. NMS keeps each highest-scoring remaining box and suppresses lower-scoring boxes whose overlap is strictly above the threshold.",
+      "theoryZh": "IoU 为交集面积除以并集面积。NMS 保留当前剩余框中分数最高者，并抑制与其重叠严格超过阈值的低分框。",
+      "diagramEn": "```text\nboxes -> pairwise intersections/unions -> IoU matrix -> score sort -> greedy suppression\n```",
+      "diagramZh": "```text\n边界框 -> 成对交集/并集 -> IoU 矩阵 -> 分数排序 -> 贪心抑制\n```",
+      "tests": [
+        {
+          "name": "matrix and indices shapes",
+          "code": "import torch\nboxes = torch.tensor([[0., 0., 1., 1.], [2., 2., 3., 3.]])\niou, keep = {fn}(boxes, torch.tensor([.2, .8]))\nassert iou.shape == (2, 2) and keep.shape == (2,) and keep.dtype == torch.long\n"
+        },
+        {
+          "name": "exact IoU and suppression",
+          "code": "import torch\nboxes = torch.tensor([[0., 0., 2., 2.], [1., 1., 3., 3.], [0., 0., 2., 2.]])\niou, keep = {fn}(boxes, torch.tensor([.9, .8, .7]), iou_threshold=.5)\nref = torch.tensor([[1., 1/7, 1.], [1/7, 1., 1/7], [1., 1/7, 1.]])\nassert torch.allclose(iou, ref, atol=1e-7) and torch.equal(keep, torch.tensor([0, 1]))\n"
+        },
+        {
+          "name": "degenerate box edge case",
+          "code": "import torch\nboxes = torch.tensor([[1., 1., 1., 2.]])\niou, keep = {fn}(boxes, torch.tensor([1.]))\nassert torch.equal(iou, torch.zeros(1, 1)) and torch.equal(keep, torch.tensor([0]))\n"
+        },
+        {
+          "name": "IoU gradient flow",
+          "code": "import torch\nboxes = torch.tensor([[0., 0., 2., 2.], [.5, .5, 3., 3.]], requires_grad=True)\niou, keep = {fn}(boxes, torch.tensor([1., .5]))\niou.sum().backward()\nassert boxes.grad is not None and torch.isfinite(boxes.grad).all() and keep.ndim == 1\n"
+        }
+      ]
+    },
+    {
+      "id": "chinchilla_scaling",
+      "title": "Chinchilla Compute-Optimal Scaling Law",
+      "titleZh": "Chinchilla 算力最优缩放定律",
+      "difficulty": "Medium",
+      "functionName": "chinchilla_optimal_allocation",
+      "hint": "Convert `C` with `torch.as_tensor`, compute the constant `G`, then apply the two complementary powers whose exponents sum to one.",
+      "hintZh": "用 `torch.as_tensor` 转换 `C`，计算常数 `G`，再应用两个指数和为 1 的互补幂。",
+      "descriptionEn": "Compute the parameter count, token count, and predicted loss at the Chinchilla compute-optimal allocation.",
+      "descriptionZh": "计算 Chinchilla 算力最优分配下的参数量、token 数和预测损失。",
+      "category": "高效训练",
+      "theoryEn": "Balancing the marginal loss reduction from parameters and data under the product constraint `C=kND` yields power-law allocations in compute.",
+      "theoryZh": "在乘积约束 `C=kND` 下平衡参数和数据带来的边际损失下降，可得到关于算力的幂律分配。",
+      "diagramEn": "```text\ncompute C --C=kND--> balance A/N^alpha and B/D^beta -> N_opt, D_opt -> L_opt\n```",
+      "diagramZh": "```text\n算力 C --C=kND--> 平衡 A/N^alpha 与 B/D^beta -> N_opt、D_opt -> L_opt\n```",
+      "tests": [
+        {
+          "name": "scalar tensor outputs",
+          "code": "import torch\ntorch.tensor(0.0)  # Initialize PyTorch storage types before invoking sandboxed code.\nN, D, L = {fn}(1e20)\nassert N.shape == D.shape == L.shape == torch.Size([])\nassert N > 0 and D > 0 and L > 1.69\n"
+        },
+        {
+          "name": "exact formula reference",
+          "code": "import torch\nC = torch.tensor([1e18, 1e20], dtype=torch.float64)\nN, D, L = {fn}(C)\nalpha, beta, A, B, E, k = 0.34, 0.28, 406.4, 410.7, 1.69, 6.0\nG = ((alpha * A) / (beta * B)) ** (1.0 / (alpha + beta))\nrN = G * (C / k) ** (beta / (alpha + beta))\nrD = (1.0 / G) * (C / k) ** (alpha / (alpha + beta))\nrL = E + A / rN ** alpha + B / rD ** beta\nassert torch.equal(N, rN) and torch.equal(D, rD) and torch.equal(L, rL)\n"
+        },
+        {
+          "name": "compute constraint edge",
+          "code": "import torch\nC = torch.tensor([6.0, 60.0, 600.0])\nN, D, L = {fn}(C)\nassert N.shape == D.shape == L.shape == C.shape\nassert torch.allclose(6.0 * N * D, C, rtol=1e-6, atol=1e-6)\nassert torch.all(L[1:] < L[:-1])\n"
+        },
+        {
+          "name": "gradient with respect to compute",
+          "code": "import torch\nC = torch.tensor(1e12, dtype=torch.float64, requires_grad=True)\nN, D, L = {fn}(C)\nL.backward()\nassert N.requires_grad and D.requires_grad\nassert C.grad is not None and torch.isfinite(C.grad)\nassert C.grad.item() < 0\n"
+        }
+      ]
+    },
+    {
+      "id": "damped_least_squares_ik",
+      "title": "Robotics Damped Least Squares IK & Joint PD Control",
+      "titleZh": "阻尼最小二乘逆运动学（DLS IK）与关节 PD 控制",
+      "difficulty": "Medium",
+      "functionName": "dls_ik_and_pd",
+      "hint": "Solve the damped task-space M by M system before left-multiplying by J.T; compute proportional and derivative torque terms elementwise.",
+      "hintZh": "先求解带阻尼的任务空间 M×M 线性系统，再左乘 J.T；逐元素计算比例与微分力矩项。",
+      "descriptionEn": "Compute one damped least-squares inverse-kinematics joint step and a joint-space PD control torque.",
+      "descriptionZh": "计算一步阻尼最小二乘逆运动学关节增量及关节空间 PD 控制力矩。",
+      "category": "具身智能与控制",
+      "theoryEn": "Damping regularizes Jacobian inversion near singularities. PD control combines position-error restoring torque with velocity-error damping.",
+      "theoryZh": "阻尼在雅可比矩阵接近奇异时正则化其求逆；PD 控制将位置误差恢复力矩与速度误差阻尼结合。",
+      "diagramEn": "```text\nJ,error -> solve(JJ^T + lambda^2 I) -> J^T -> delta_q\njoint targets/current -> P + D -> torque\n```",
+      "diagramZh": "```text\nJ、误差 -> 求解(JJ^T + lambda^2 I) -> J^T -> delta_q\n关节目标/当前状态 -> P + D -> 力矩\n```",
+      "tests": [
+        {
+          "name": "joint output shapes",
+          "code": "import torch\nJ = torch.randn(3, 5)\ndq, tau = {fn}(J, torch.randn(3), .1, *[torch.randn(5) for _ in range(4)], 2., .5)\nassert dq.shape == (5,) and tau.shape == (5,)\n"
+        },
+        {
+          "name": "exact reference",
+          "code": "import torch\nJ = torch.tensor([[1., 2.], [0., 1.]])\ne = torch.tensor([.5, -1.])\nq, qd = torch.tensor([1., 2.]), torch.tensor([.1, -.2])\nqdes, qddes = torch.tensor([2., 0.]), torch.tensor([0., .3])\ndq, tau = {fn}(J, e, .2, q, qd, qdes, qddes, torch.tensor([3., 4.]), .5)\nref_dq = J.T @ torch.linalg.solve(J @ J.T + .2 ** 2 * torch.eye(2), e)\nref_tau = torch.tensor([3., 4.]) * (qdes - q) + .5 * (qddes - qd)\nassert torch.allclose(dq, ref_dq) and torch.allclose(tau, ref_tau)\n"
+        },
+        {
+          "name": "zero Jacobian edge case",
+          "code": "import torch\nz = torch.zeros(2)\ndq, tau = {fn}(torch.zeros(2, 3), torch.ones(2), 1., torch.zeros(3), torch.zeros(3), torch.zeros(3), torch.zeros(3), 2., 3.)\nassert torch.equal(dq, torch.zeros(3)) and torch.equal(tau, torch.zeros(3))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nJ = torch.randn(2, 3, requires_grad=True)\ne = torch.randn(2, requires_grad=True)\nq = torch.randn(3, requires_grad=True)\nqd = torch.randn(3, requires_grad=True)\ndq, tau = {fn}(J, e, .3, q, qd, torch.zeros(3), torch.zeros(3), 2., .5)\n(dq.sum() + tau.sum()).backward()\nassert J.grad is not None and e.grad is not None and q.grad is not None and qd.grad is not None\n"
+        }
+      ]
+    },
+    {
+      "id": "ddpm_posterior_and_vpred",
+      "title": "DDPM Posterior Distribution & v-Prediction Conversion",
+      "titleZh": "DDPM 后验分布与 v-Prediction 转换",
+      "difficulty": "Medium",
+      "functionName": "ddpm_posterior_and_vpred",
+      "hint": "First recover x_0 and epsilon from v-prediction, then substitute x_0 into the closed-form DDPM posterior mean and variance.",
+      "hintZh": "先从 v-prediction 恢复 x_0 和 epsilon，再将 x_0 代入 DDPM 后验均值与方差的闭式公式。",
+      "descriptionEn": "Convert a v-prediction into clean-sample and noise predictions, then compute the DDPM posterior q(x_{t-1}|x_t,x_0). Inputs x_t and v_pred have shape (B,D); schedule tensors are scalar or (B,1). Return (x0_pred, eps_pred, posterior_mean, posterior_var).",
+      "descriptionZh": "将 v-prediction 转换为干净样本与噪声预测，并计算 DDPM 后验 q(x_{t-1}|x_t,x_0)。x_t 和 v_pred 形状为 (B,D)，调度张量为标量或 (B,1)。返回 (x0_pred, eps_pred, posterior_mean, posterior_var)。",
+      "category": "扩散与流模型",
+      "theoryEn": "The v parameterization is an orthogonal rotation of (x_0, epsilon). Its inverse gives x_0=sqrt(alpha_bar_t)x_t-sqrt(1-alpha_bar_t)v and epsilon=sqrt(1-alpha_bar_t)x_t+sqrt(alpha_bar_t)v. The Gaussian forward process then gives an analytic posterior.",
+      "theoryZh": "v 参数化是 (x_0, epsilon) 的正交旋转。逆变换为 x_0=sqrt(alpha_bar_t)x_t-sqrt(1-alpha_bar_t)v、epsilon=sqrt(1-alpha_bar_t)x_t+sqrt(alpha_bar_t)v，随后高斯前向过程给出解析后验。",
+      "diagramEn": "```text\n(x_t, v) -> inverse rotation -> (x0_pred, eps_pred) -> DDPM posterior -> (mean, variance)\n```",
+      "diagramZh": "```text\n(x_t, v) -> 逆旋转 -> (x0_pred, eps_pred) -> DDPM 后验 -> (均值, 方差)\n```",
+      "tests": [
+        {
+          "name": "shapes and scalar schedules",
+          "code": "import torch\nx = torch.randn(3, 5)\nv = torch.randn(3, 5)\nout = {fn}(x, v, torch.tensor(.8), torch.tensor(.6), torch.tensor(.75), torch.tensor(.2))\nassert [t.shape for t in out] == [(3, 5), (3, 5), (3, 5), torch.Size([])]\n"
+        },
+        {
+          "name": "exact batched reference",
+          "code": "import torch\ntorch.manual_seed(1)\nx, v = torch.randn(2, 4), torch.randn(2, 4)\na = torch.tensor([[.8], [.7]]); ab = torch.tensor([[.6], [.5]])\nabp = torch.tensor([[.75], [.65]]); b = torch.tensor([[.2], [.3]])\ngot = {fn}(x, v, a, ab, abp, b)\nx0 = torch.sqrt(ab)*x-torch.sqrt(1-ab)*v\nep = torch.sqrt(1-ab)*x+torch.sqrt(ab)*v\nmean = torch.sqrt(abp)*b/(1-ab)*x0+torch.sqrt(a)*(1-abp)/(1-ab)*x\nvar = (1-abp)/(1-ab)*b\nassert all(torch.equal(g, r) for g, r in zip(got, (x0, ep, mean, var)))\n"
+        },
+        {
+          "name": "zero v edge case",
+          "code": "import torch\nx = torch.tensor([[2., -1.]])\nz = torch.zeros_like(x)\nab = torch.tensor([[.25]])\nx0, ep, mean, var = {fn}(x, z, torch.tensor([[.5]]), ab, torch.tensor([[.5]]), torch.tensor([[.5]]))\nassert torch.allclose(x0, .5*x) and torch.allclose(ep, torch.sqrt(torch.tensor(.75))*x)\nassert mean.shape == x.shape and var.shape == (1, 1) and torch.isfinite(mean).all()\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nx = torch.randn(2, 3, requires_grad=True)\nv = torch.randn(2, 3, requires_grad=True)\nab = torch.full((2, 1), .6, requires_grad=True)\nout = {fn}(x, v, torch.full((2,1),.8), ab, torch.full((2,1),.75), torch.full((2,1),.2))\nsum(t.sum() for t in out).backward()\nassert x.grad is not None and v.grad is not None and ab.grad is not None\n"
+        }
+      ]
+    },
+    {
+      "id": "deepnorm_residual",
+      "title": "DeepNorm Residual Scaling & Init Gain",
+      "titleZh": "DeepNorm 残差缩放与初始化增益",
+      "difficulty": "Medium",
+      "functionName": "deepnorm_step",
+      "hint": "Compute the two fourth-root constants, form `alpha*x+sublayer_out`, and manually LayerNorm the last dimension.",
+      "hintZh": "计算两个四次方根常数，构造 `alpha*x+sublayer_out`，再沿最后一维手动执行 LayerNorm。",
+      "descriptionEn": "Implement one DeepNorm residual-and-normalization step and return its recommended parameter initialization gain.",
+      "descriptionZh": "实现一次 DeepNorm 残差与归一化步骤，并返回推荐的参数初始化增益。",
+      "category": "归一化",
+      "theoryEn": "DeepNorm scales the residual stream by `alpha=(2N)^(1/4)` and uses initialization gain `(8N)^(-1/4)` to stabilize very deep Transformer stacks.",
+      "theoryZh": "DeepNorm 用 `alpha=(2N)^(1/4)` 缩放残差流，并使用初始化增益 `(8N)^(-1/4)` 稳定超深 Transformer。",
+      "diagramEn": "```text\nx --*alpha--\\\n              + -> LayerNorm(gamma,beta) -> output\nsublayer -----/                    beta_gain returned\n```",
+      "diagramZh": "```text\nx --*alpha--\\\n              + -> LayerNorm(gamma,beta) -> 输出\n子层输出 -----/                    同时返回 beta_gain\n```",
+      "tests": [
+        {
+          "name": "shape and gain",
+          "code": "import torch\nx = torch.randn(2, 3, 8)\nout, gain = {fn}(x, torch.randn_like(x), torch.ones(8), torch.zeros(8), 12)\nassert out.shape == x.shape and isinstance(gain, float)\nassert abs(gain - float((8.0 * 12) ** -0.25)) < 1e-12\n"
+        },
+        {
+          "name": "numerical reference",
+          "code": "import torch\ntorch.manual_seed(2)\nx, sub = torch.randn(3, 6), torch.randn(3, 6)\ngamma, beta = torch.randn(6), torch.randn(6)\nout, gain = {fn}(x, sub, gamma, beta, 24)\nu = x * ((2.0 * 24) ** 0.25) + sub\nmean, var = u.mean(-1, keepdim=True), u.var(-1, keepdim=True, unbiased=False)\nref = gamma * (u - mean) / torch.sqrt(var + 1e-5) + beta\nassert torch.allclose(out, ref, atol=1e-6) and gain == float((8.0 * 24) ** -0.25)\n"
+        },
+        {
+          "name": "constant input edge",
+          "code": "import torch\nx = torch.ones(2, 4)\nsub = torch.ones(2, 4)\nbeta = torch.arange(4, dtype=x.dtype)\nout, gain = {fn}(x, sub, torch.randn(4), beta, 1)\nassert torch.allclose(out, beta.expand_as(out), atol=1e-6) and torch.isfinite(torch.tensor(gain))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nx = torch.randn(2, 5, requires_grad=True)\nsub = torch.randn(2, 5, requires_grad=True)\ngamma = torch.ones(5, requires_grad=True)\nbeta = torch.zeros(5, requires_grad=True)\nout, gain = {fn}(x, sub, gamma, beta, 8)\nout.square().sum().backward()\nassert all(t.grad is not None for t in (x, sub, gamma, beta)) and gain > 0\n"
+        }
+      ]
+    },
+    {
+      "id": "document_packing_mask",
+      "title": "Document Packing & Intra-Document Causal Mask",
+      "titleZh": "预训练文档拼接与文档内因果掩码",
+      "difficulty": "Medium",
+      "functionName": "pack_documents_mask",
+      "hint": "Broadcast query IDs as `(B,L,1)` and key IDs as `(B,1,L)`, combine equality with a lower-triangular position comparison and valid-query test.",
+      "hintZh": "将查询文档 ID 广播为 `(B,L,1)`、键文档 ID 广播为 `(B,1,L)`，再与下三角位置比较和有效查询判断组合。",
+      "descriptionEn": "Build causal attention and next-token loss masks for multiple documents packed into each sequence, excluding padding and cross-document boundaries.",
+      "descriptionZh": "为每条序列中拼接的多个文档构造因果注意力掩码和下一 token 损失掩码，排除 padding 与跨文档边界。",
+      "category": "高效训练",
+      "theoryEn": "Packing removes padding waste, but document identity must constrain attention and training targets so unrelated documents do not leak into one another.",
+      "theoryZh": "文档拼接可减少 padding 浪费，但必须用文档身份约束注意力和训练目标，以避免无关文档间的信息泄漏。",
+      "diagramEn": "```text\npacked IDs: [0 0 0 | 1 1 | pad]\nattention: causal blocks on the diagonal\nloss:      1 1 0   1 0\n```",
+      "diagramZh": "```text\n拼接 ID: [0 0 0 | 1 1 | padding]\n注意力:   对角线上的因果块\n损失:     1 1 0   1 0\n```",
+      "tests": [
+        {
+          "name": "mask shapes and dtypes",
+          "code": "import torch\nids = torch.tensor([[0, 0, 1, 1, -1], [3, 3, 3, 4, 4]])\nattn, loss = {fn}(ids)\nassert attn.shape == (2, 5, 5) and loss.shape == (2, 4)\nassert attn.dtype == torch.bool and loss.dtype == torch.bool\n"
+        },
+        {
+          "name": "exact packed masks",
+          "code": "import torch\nids = torch.tensor([[0, 0, 1, 1, -1]])\nattn, loss = {fn}(ids)\nref_attn = torch.tensor([[\n    [1,0,0,0,0],\n    [1,1,0,0,0],\n    [0,0,1,0,0],\n    [0,0,1,1,0],\n    [0,0,0,0,0],\n]], dtype=torch.bool)\nref_loss = torch.tensor([[1,0,1,0]], dtype=torch.bool)\nassert torch.equal(attn, ref_attn)\nassert torch.equal(loss, ref_loss)\n"
+        },
+        {
+          "name": "all padding and length-one edges",
+          "code": "import torch\nids = torch.full((3, 1), -1)\nattn, loss = {fn}(ids)\nassert attn.shape == (3, 1, 1) and not attn.any()\nassert loss.shape == (3, 0) and loss.numel() == 0\n"
+        },
+        {
+          "name": "attention mask preserves gradient",
+          "code": "import torch\nids = torch.tensor([[0, 0, 1, 1]])\nattn, loss = {fn}(ids)\nscores = torch.randn(1, 4, 4, requires_grad=True)\nscores.masked_fill(~attn, 0.0).sum().backward()\nassert loss.tolist() == [[True, False, True]]\nassert scores.grad is not None and torch.equal(scores.grad != 0, attn)\n"
+        }
+      ]
+    },
+    {
+      "id": "double_dqn_td3_target",
+      "title": "Double DQN & TD3 Clipped Double-Q Targets",
+      "titleZh": "Double DQN 与 TD3 双 Q 目标计算",
+      "difficulty": "Medium",
+      "functionName": "double_q_targets",
+      "hint": "Choose one greedy action per batch row from online Q. Gather q1 for Double DQN and gather min(q1,q2) for the clipped target, detach bootstraps, and mask terminals.",
+      "hintZh": "从在线 Q 的每个批次行选择贪心动作。Double DQN 收集 q1，裁剪双 Q 目标收集 min(q1,q2)；分离 bootstrap 并屏蔽终止状态。",
+      "descriptionEn": "Compute Double DQN and TD3-style clipped Double-Q temporal-difference targets at the action selected greedily by the online network.",
+      "descriptionZh": "在在线网络贪心选择的动作上，计算 Double DQN 和 TD3 风格的裁剪双 Q 时序差分目标。",
+      "category": "强化学习",
+      "theoryEn": "Decoupling action selection from target evaluation reduces maximization bias. Taking the smaller of two target critics adds a conservative clipped Double-Q estimate.",
+      "theoryZh": "将动作选择与目标评估解耦可减少最大化偏差；取两个目标评论家的较小值可得到更保守的裁剪双 Q 估计。",
+      "diagramEn": "```mermaid\nflowchart LR\nO[online next Q] --> A[argmax action]\nQ1[target Q1] --> G1[gather action]\nQ1 --> M[elementwise minimum]\nQ2[target Q2] --> M\nA --> G1\nA --> G2[gather action]\nM --> G2\nG1 --> D[Double DQN target]\nG2 --> T[clipped Double-Q target]\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nO[在线下一状态 Q] --> A[贪心动作]\nQ1[目标 Q1] --> G1[收集动作值]\nQ1 --> M[逐元素最小]\nQ2[目标 Q2] --> M\nA --> G1\nA --> G2[收集动作值]\nM --> G2\nG1 --> D[Double DQN 目标]\nG2 --> T[裁剪双 Q 目标]\n```",
+      "tests": [
+        {
+          "name": "target vector shapes",
+          "code": "import torch\nq = torch.randn(4, 3)\nddqn, td3 = {fn}(q, torch.randn(4, 3), torch.randn(4, 3), torch.randn(4), torch.zeros(4))\nassert ddqn.shape == (4,) and td3.shape == (4,)\nassert torch.isfinite(ddqn).all() and torch.isfinite(td3).all()\n"
+        },
+        {
+          "name": "exact selected-action targets",
+          "code": "import torch\nqo = torch.tensor([[1., 3., 2.], [4., 0., 1.]], dtype=torch.double)\nq1 = torch.tensor([[5., 6., 7.], [2., 3., 4.]], dtype=torch.double)\nq2 = torch.tensor([[8., 1., 9.], [1., 9., 5.]], dtype=torch.double)\nr = torch.tensor([.5, -1.], dtype=torch.double); d = torch.tensor([0., 0.])\nddqn, td3 = {fn}(qo, q1, q2, r, d, gamma=.9)\na=qo.argmax(-1,keepdim=True)\nmask = 1.0 - d.float()\nref1=r+.9*mask*q1.gather(-1,a).squeeze(-1)\nref2=r+.9*mask*torch.minimum(q1,q2).gather(-1,a).squeeze(-1)\nassert torch.equal(ddqn, ref1) and torch.equal(td3, ref2)\n"
+        },
+        {
+          "name": "terminal transitions",
+          "code": "import torch\nr = torch.tensor([2.0, -3.0])\nq = torch.tensor([[1., 2.], [3., 4.]])\nddqn, td3 = {fn}(q, q*10, q*-10, r, torch.ones(2))\nassert torch.equal(ddqn, r) and torch.equal(td3, r)\nassert ddqn.shape == r.shape\n"
+        },
+        {
+          "name": "bootstrap detached",
+          "code": "import torch\nqo = torch.randn(3, 2, dtype=torch.double, requires_grad=True)\nq1 = torch.randn(3, 2, dtype=torch.double, requires_grad=True)\nq2 = torch.randn(3, 2, dtype=torch.double, requires_grad=True)\nr = torch.randn(3, dtype=torch.double, requires_grad=True)\nddqn, td3 = {fn}(qo, q1, q2, r, torch.zeros(3)); (ddqn+td3).sum().backward()\nassert r.grad is not None and torch.equal(r.grad, torch.full_like(r, 2.0))\nassert qo.grad is None and q1.grad is None and q2.grad is None\n"
+        }
+      ]
+    },
+    {
+      "id": "expected_calibration_error",
+      "title": "Expected Calibration Error (ECE) & Brier Score",
+      "titleZh": "期望校准误差（ECE）与 Brier 分数",
+      "difficulty": "Medium",
+      "functionName": "calibration_metrics",
+      "hint": "Use top-1 confidence for ECE and one-hot targets for Brier score. Skip empty bins so their means are never evaluated.",
+      "hintZh": "ECE 使用 top-1 置信度，Brier 分数使用 one-hot 标签。跳过空桶，避免对其求均值。",
+      "descriptionEn": "Compute top-1 expected calibration error using equal-width confidence bins and the multiclass Brier score. Return both as scalar tensors.",
+      "descriptionZh": "使用等宽置信度分桶计算 top-1 期望校准误差，并计算多分类 Brier 分数。返回两个标量张量。",
+      "category": "评测与基准",
+      "theoryEn": "ECE compares average confidence with empirical accuracy inside each bin and weights the gap by bin frequency. Brier score measures the squared distance from the full probability vector to the one-hot outcome.",
+      "theoryZh": "ECE 比较每个桶内的平均置信度与经验准确率，并按桶频率加权差距。Brier 分数衡量完整概率向量与 one-hot 结果之间的平方距离。",
+      "diagramEn": "```mermaid\nflowchart LR\nP[probabilities] --> T[top-1 confidence]\nT --> B[confidence bins]\nB --> E[weighted calibration gaps]\nP --> R[squared one-hot error]\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nP[概率] --> T[top-1 置信度]\nT --> B[置信度分桶]\nB --> E[加权校准差]\nP --> R[one-hot 平方误差]\n```",
+      "tests": [
+        {
+          "name": "exact two-bin reference",
+          "code": "import torch\nprobs = torch.tensor([[0.8, 0.2], [0.6, 0.4], [0.3, 0.7], [0.1, 0.9]])\ntargets = torch.tensor([0, 1, 1, 0])\nece, brier = {fn}(probs, targets, n_bins=2)\nexpected_ece = 0.5 * abs(0.5 - 0.65) + 0.5 * abs(0.5 - 0.85)\none_hot = torch.nn.functional.one_hot(targets, 2).float()\nexpected_brier = ((probs - one_hot) ** 2).sum(1).mean()\nassert ece.shape == () and brier.shape == ()\nassert torch.allclose(ece, torch.tensor(expected_ece), atol=1e-7)\nassert torch.allclose(brier, expected_brier)\n"
+        },
+        {
+          "name": "perfect predictions",
+          "code": "import torch\nprobs = torch.eye(3)\ntargets = torch.arange(3)\nece, brier = {fn}(probs, targets, n_bins=5)\nassert ece.shape == () and brier.shape == ()\nassert torch.equal(ece, torch.tensor(0.0))\nassert torch.equal(brier, torch.tensor(0.0))\n"
+        },
+        {
+          "name": "lower boundary belongs to first bin",
+          "code": "import torch\nprobs = torch.zeros(2, 2)\ntargets = torch.tensor([0, 1])\nece, brier = {fn}(probs, targets, n_bins=2)\nassert ece.shape == () and brier.shape == ()\nassert torch.allclose(ece, torch.tensor(0.5))\nassert torch.allclose(brier, torch.tensor(1.0))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nraw = torch.randn(5, 3, requires_grad=True)\nprobs = raw.softmax(-1)\ntargets = torch.tensor([0, 1, 2, 1, 0])\nece, brier = {fn}(probs, targets, n_bins=4)\n(ece + brier).backward()\nassert ece.shape == () and brier.shape == ()\nassert raw.grad is not None and raw.grad.shape == raw.shape\nassert torch.isfinite(raw.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "finite_scalar_quantization",
+      "title": "Finite Scalar Quantization (FSQ)",
+      "titleZh": "有限标量量化（FSQ）",
+      "difficulty": "Medium",
+      "functionName": "fsq_quantize",
+      "hint": "Process each final-axis coordinate with tanh, straight-through rounding, and normalization. Accumulate integer digits using a basis multiplied by each preceding level.",
+      "hintZh": "逐个处理最后一维坐标：tanh、有直通梯度的舍入、归一化。使用由先前各级别累乘得到的基数累加整数位。",
+      "descriptionEn": "Implement FSQ for z shaped (...,D) and D integer levels, each at least 2. Bound and straight-through round each scalar, normalize it to [-1,1], and return (z_hat,code), where code is a mixed-radix integer.",
+      "descriptionZh": "为形状 (...,D) 的 z 和 D 个不小于 2 的整数级别实现 FSQ。对各标量限幅并直通舍入，再归一化到 [-1,1]，返回 (z_hat,code)，其中 code 是混合进制整数。",
+      "category": "扩散与流模型",
+      "theoryEn": "FSQ replaces vector-codebook lookup with independent scalar grids. Mixed-radix encoding maps the D quantized digits bijectively to integers from zero to product(levels)-1.",
+      "theoryZh": "FSQ 用独立标量网格替代向量码本查找。混合进制编码将 D 个量化数字双射到 0 至各级别乘积减一的整数。",
+      "diagramEn": "```text\nz_i -> tanh bound -> STE round -> normalize -> z_hat_i\n                         \\-> integer digits -> mixed-radix code\n```",
+      "diagramZh": "```text\nz_i -> tanh 限幅 -> STE 舍入 -> 归一化 -> z_hat_i\n                         \\-> 整数位 -> 混合进制编码\n```",
+      "tests": [
+        {
+          "name": "output shapes and code range",
+          "code": "import torch\nz=torch.randn(2,3,3)\nq,code={fn}(z,[3,4,5])\nassert q.shape==z.shape and code.shape==(2,3) and code.dtype==torch.long\nassert q.min()>=-1 and q.max()<=1 and code.min()>=0 and code.max()<60\n"
+        },
+        {
+          "name": "exact scalar reference",
+          "code": "import torch\nz=torch.tensor([[0.,.5,-.7],[2.,-2.,.1]])\nlevels=[3,4,5]\nq,code={fn}(z,levels)\nvals=[]; ref_code=torch.zeros(2,dtype=torch.long); basis=1\nfor i,L in enumerate(levels):\n    h=(L-1)/2.; b=h*(torch.tanh(z[:,i])+1); r=torch.round(b)\n    vals.append(r/h-1); ref_code += r.long()*basis; basis*=L\nassert torch.equal(q,torch.stack(vals,-1)) and torch.equal(code,ref_code)\n"
+        },
+        {
+          "name": "extreme-value edge codes",
+          "code": "import torch\nz=torch.tensor([[-100.,-100.],[100.,100.]])\nq,code={fn}(z,(2,3))\nassert torch.equal(code,torch.tensor([0,5]))\nassert torch.equal(q,torch.tensor([[-1.,-1.],[1.,1.]]))\n"
+        },
+        {
+          "name": "straight-through gradient flow",
+          "code": "import torch\nz=torch.randn(4,3,requires_grad=True)\nq,code={fn}(z,[3,5,7])\nq.sum().backward()\nexpected=torch.stack([1-torch.tanh(z.detach()[:,i]).square() for i in range(3)],-1)\nassert z.grad is not None and torch.allclose(z.grad,expected,atol=1e-6)\nassert code.requires_grad is False\n"
+        }
+      ]
+    },
+    {
+      "id": "flow_heun_sampler",
+      "title": "Flow Matching Heun (2nd-Order RK2) ODE Step",
+      "titleZh": "流匹配 Heun 二阶 ODE 采样步",
+      "difficulty": "Medium",
+      "functionName": "flow_heun_step",
+      "hint": "Evaluate velocity at the current state, make an Euler predictor, evaluate again at the endpoint, then average the two slopes.",
+      "hintZh": "先在当前状态计算速度并执行 Euler 预测，再在终点计算速度，最后平均两次斜率。",
+      "descriptionEn": "Implement one explicit trapezoidal (Heun/RK2) ODE step for a flow-matching velocity field. x is (B,D), velocity_fn maps (state,time) to (B,D), and times are floats. Return (x_heun,x_euler).",
+      "descriptionZh": "为流匹配速度场实现一个显式梯形（Heun/RK2）ODE 步。x 为 (B,D)，velocity_fn 将 (状态,时间) 映射到 (B,D)，时间为浮点数。返回 (x_heun,x_euler)。",
+      "category": "扩散与流模型",
+      "theoryEn": "Euler uses the initial slope only. Heun predicts an endpoint with Euler and averages the initial and endpoint slopes, giving second-order local accuracy for smooth fields.",
+      "theoryZh": "Euler 仅使用初始斜率。Heun 先用 Euler 预测终点，再平均初始与终点斜率，对光滑速度场达到二阶精度。",
+      "diagramEn": "```text\nx --v(t_curr)--> Euler predictor --v(t_next)-->\n \\---------- average both slopes ----------> Heun state\n```",
+      "diagramZh": "```text\nx --v(t_curr)--> Euler 预测 --v(t_next)-->\n \\----------- 平均两次斜率 -----------> Heun 状态\n```",
+      "tests": [
+        {
+          "name": "shape and constant field",
+          "code": "import torch\nx = torch.randn(2,4); velocity = torch.full_like(x, 3.)\nh, e = {fn}(x, lambda state, t: velocity, .2, .7)\nassert h.shape == x.shape and e.shape == x.shape\nassert torch.allclose(h, x+1.5) and torch.equal(h, e)\n"
+        },
+        {
+          "name": "exact linear field reference",
+          "code": "import torch\nx = torch.tensor([[1.,2.],[-1.,3.]])\ndef vel(state, t): return 2*state+t\nh, e = {fn}(x, vel, .25, .5)\ndt=.25; v1=2*x+.25; ref_e=x+dt*v1; v2=2*ref_e+.5\nassert torch.equal(e, ref_e) and torch.equal(h, x+.5*dt*(v1+v2))\n"
+        },
+        {
+          "name": "zero step edge case",
+          "code": "import torch\nx = torch.randn(3,2); calls=[]\ndef vel(state, t):\n    calls.append(t); return state.square()\nh, e = {fn}(x, vel, 1.0, 1.0)\nassert torch.equal(h, x) and torch.equal(e, x)\nassert calls == [1.0, 1.0]\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nx = torch.randn(2,3, requires_grad=True)\nw = torch.randn(3,3, requires_grad=True)\ndef vel(state, t): return state @ w * t\nh, e = {fn}(x, vel, .1, .6)\n(h.sum()+e.sum()).backward()\nassert x.grad is not None and w.grad is not None\nassert torch.isfinite(x.grad).all() and torch.isfinite(w.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "generalized_advantage_estimation",
+      "title": "Generalized Advantage Estimation (GAE)",
+      "titleZh": "广义优势估计（GAE）",
+      "difficulty": "Medium",
+      "functionName": "compute_gae",
+      "hint": "Allocate advantages like rewards and scan time backward. At each step mask both bootstrap and recursive carry at episode boundaries, then add values to get returns.",
+      "hintZh": "创建与 rewards 同形的优势张量并反向遍历时间。每步在 episode 终止处屏蔽 bootstrap 和递归项，最后加上 values 得到回报。",
+      "descriptionEn": "Compute generalized advantage estimates and value-function returns for either one trajectory or a batch of trajectories, respecting terminal boundaries.",
+      "descriptionZh": "为单条或批量轨迹计算广义优势估计和值函数回报，并正确处理 episode 终止边界。",
+      "category": "强化学习",
+      "theoryEn": "GAE exponentially weights temporal-difference residuals with gamma*lambda. Done masks stop both value bootstrapping and residual propagation across episode boundaries.",
+      "theoryZh": "GAE 使用 gamma*lambda 对时序差分残差进行指数加权。done 掩码阻止值 bootstrap 和残差跨 episode 边界传播。",
+      "diagramEn": "```mermaid\nflowchart RL\nVT[next value] --> D[TD residual]\nR[reward] --> D\nV[current value] --> D\nD --> G[delta + gamma lambda mask GAE]\nG --> A[advantages]\nA --> Ret[returns = A + V]\n```",
+      "diagramZh": "```mermaid\nflowchart RL\nVT[下一状态值] --> D[TD 残差]\nR[奖励] --> D\nV[当前状态值] --> D\nD --> G[delta + gamma lambda mask GAE]\nG --> A[优势]\nA --> Ret[回报 = A + V]\n```",
+      "tests": [
+        {
+          "name": "batched output shapes",
+          "code": "import torch\nr = torch.randn(2, 4)\nv = torch.randn(2, 4)\na, ret = {fn}(r, v, torch.zeros(2, 4), torch.randn(2))\nassert a.shape == r.shape and ret.shape == r.shape\nassert torch.allclose(ret, a + v)\n"
+        },
+        {
+          "name": "exact reverse recursion",
+          "code": "import torch\nr = torch.tensor([[1., 2., 3.], [0., 1., 0.]], dtype=torch.double)\nv = torch.tensor([[.2, .4, .6], [.1, .3, .2]], dtype=torch.double)\nd = torch.tensor([[0., 0., 1.], [0., 0., 0.]])\nlv = torch.tensor([9., .5], dtype=torch.double)\ngot_a, got_r = {fn}(r, v, d, lv, gamma=.9, lam=.8)\nref = torch.zeros_like(r); carry = torch.zeros(2, dtype=torch.double)\nfor i in range(2, -1, -1):\n    nv = lv if i == 2 else v[:, i+1]; m = 1-d[:, i]\n    delta = r[:, i] + .9*nv*m - v[:, i]\n    carry = delta + .9*.8*m*carry; ref[:, i] = carry\nassert torch.allclose(got_a, ref, atol=1e-12, rtol=1e-12) and torch.allclose(got_r, ref+v)\n"
+        },
+        {
+          "name": "one-dimensional terminal edge",
+          "code": "import torch\nr = torch.tensor([1.0, 2.0])\nv = torch.tensor([0.5, 0.7])\na, ret = {fn}(r, v, torch.tensor([0.0, 1.0]), torch.tensor(100.0), gamma=1.0, lam=1.0)\nassert a.shape == (2,) and ret.shape == (2,)\nassert torch.allclose(a, torch.tensor([2.5, 1.3])) and torch.allclose(ret, torch.tensor([3.0, 2.0]))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nr = torch.randn(2, 3, dtype=torch.double, requires_grad=True)\nv = torch.randn(2, 3, dtype=torch.double, requires_grad=True)\nlv = torch.randn(2, dtype=torch.double, requires_grad=True)\na, ret = {fn}(r, v, torch.zeros(2, 3), lv)\n(a.sum() + ret.sum()).backward()\nassert r.grad is not None and v.grad is not None and lv.grad is not None\nassert r.grad.shape == r.shape and torch.isfinite(v.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "gkd_generalized_jsd",
+      "title": "On-Policy Distillation: Generalized JSD (GKD) Loss",
+      "titleZh": "在线策略蒸馏：广义 JS 散度（GKD）损失",
+      "difficulty": "Medium",
+      "functionName": "gkd_jsd_loss",
+      "hint": "Detach teacher logits, temperature-scale both softmaxes, construct the beta mixture, compute both KL divergences along vocabulary, and average.",
+      "hintZh": "分离教师 logits，对两者进行温度缩放 softmax，构造 beta 混合分布，沿词表维计算两个 KL 散度并取均值。",
+      "descriptionEn": "Implement generalized Jensen-Shannon divergence for on-policy knowledge distillation over batched token logits. Teacher logits are fixed targets.",
+      "descriptionZh": "针对批量 token logits 实现在线知识蒸馏的广义 Jensen-Shannon 散度。教师 logits 必须作为固定目标。",
+      "category": "损失函数",
+      "theoryEn": "The mixture m=beta*p_t+(1-beta)*p_s gives a finite interpolation target. Weighted forward KL terms yield generalized JSD and coincide at zero when distributions match.",
+      "theoryZh": "混合分布 m=beta*p_t+(1-beta)*p_s 提供有限的插值目标。加权前向 KL 构成广义 JSD，两分布相同时为零。",
+      "diagramEn": "```mermaid\nflowchart LR\nS[student logits / T] --> PS[softmax]\nT[detached teacher logits / T] --> PT[softmax]\nPS --> M[beta mixture]\nPT --> M\nM --> J[weighted KL mean]\nPS --> J\nPT --> J\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nS[学生 logits / T] --> PS[softmax]\nT[分离教师 logits / T] --> PT[softmax]\nPS --> M[beta 混合]\nPT --> M\nM --> J[加权 KL 均值]\nPS --> J\nPT --> J\n```",
+      "tests": [
+        {
+          "name": "scalar nonnegative output",
+          "code": "import torch\ns = torch.randn(2, 3, 5)\nt = torch.randn(2, 3, 5)\nloss = {fn}(s, t)\nassert loss.shape == torch.Size([])\nassert torch.isfinite(loss) and loss >= -1e-7\n"
+        },
+        {
+          "name": "exact generalized JSD",
+          "code": "import torch\ns = torch.tensor([[[1.0, -1.0, 0.5]]], dtype=torch.double)\nt = torch.tensor([[[0.0, 2.0, -0.5]]], dtype=torch.double)\ngot = {fn}(s, t, beta=.3, temperature=.7, eps=1e-12)\nps, pt = torch.softmax(s/.7, -1), torch.softmax(t/.7, -1)\nm = .3*pt + .7*ps\nklt = (pt*(torch.log(pt.clamp(min=1e-12))-torch.log(m.clamp(min=1e-12)))).sum(-1)\nkls = (ps*(torch.log(ps.clamp(min=1e-12))-torch.log(m.clamp(min=1e-12)))).sum(-1)\nassert torch.allclose(got, (.3*klt+.7*kls).mean(), atol=1e-12, rtol=1e-12)\n"
+        },
+        {
+          "name": "identical distributions edge",
+          "code": "import torch\nx = torch.randn(1, 2, 4)\nloss = {fn}(x, x.clone(), beta=0.8, temperature=2.0)\nassert loss.shape == torch.Size([])\nassert torch.allclose(loss, torch.tensor(0.0), atol=1e-7)\n"
+        },
+        {
+          "name": "teacher detached",
+          "code": "import torch\ns = torch.randn(2, 2, 3, dtype=torch.double, requires_grad=True)\nt = torch.randn(2, 2, 3, dtype=torch.double, requires_grad=True)\n{fn}(s, t, beta=.4).backward()\nassert s.grad is not None and s.grad.shape == s.shape\nassert t.grad is None and torch.isfinite(s.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "groupnorm",
+      "title": "Group Normalization",
+      "titleZh": "组归一化（GroupNorm）",
+      "difficulty": "Medium",
+      "functionName": "my_group_norm",
+      "hint": "Reshape to `(B,G,C/G,H,W)`, compute population mean/variance over the last three dimensions, restore BCHW, and apply channel-wise affine parameters.",
+      "hintZh": "重塑为 `(B,G,C/G,H,W)`，在后三维计算总体均值/方差，恢复 BCHW 后应用逐通道仿射参数。",
+      "descriptionEn": "Implement Group Normalization manually for BCHW inputs with channel-wise scale and bias.",
+      "descriptionZh": "为 BCHW 输入手动实现组归一化，并应用逐通道缩放和偏置。",
+      "category": "归一化",
+      "theoryEn": "GroupNorm partitions channels into groups and normalizes each group independently over channels and spatial positions. Unlike BatchNorm, it does not depend on other batch samples.",
+      "theoryZh": "GroupNorm 将通道划分为若干组，在每组的通道和空间位置上独立归一化；与 BatchNorm 不同，它不依赖其他批次样本。",
+      "diagramEn": "```text\nB,C,H,W -> B,G,C/G,H,W -> group mean/var -> B,C,H,W -> gamma,beta\n```",
+      "diagramZh": "```text\nB,C,H,W -> B,G,C/G,H,W -> 组均值/方差 -> B,C,H,W -> gamma,beta\n```",
+      "tests": [
+        {
+          "name": "output shape",
+          "code": "import torch\nx = torch.randn(2, 8, 3, 5)\nout = {fn}(x, 4, torch.ones(8), torch.zeros(8))\nassert out.shape == x.shape\n"
+        },
+        {
+          "name": "matches PyTorch reference",
+          "code": "import torch\ntorch.manual_seed(0)\nx = torch.randn(3, 6, 4, 2)\ngamma, beta = torch.randn(6), torch.randn(6)\nout = {fn}(x, 3, gamma, beta, 1e-5)\nref = torch.nn.functional.group_norm(x, 3, gamma, beta, 1e-5)\nassert torch.allclose(out, ref, atol=1e-6)\n"
+        },
+        {
+          "name": "one channel per group edge",
+          "code": "import torch\nx = torch.randn(1, 4, 2, 3)\nout = {fn}(x, 4, torch.ones(4), torch.zeros(4))\nmeans = out.mean(dim=(2, 3))\nvars = out.var(dim=(2, 3), unbiased=False)\nassert torch.allclose(means, torch.zeros_like(means), atol=1e-5) and torch.allclose(vars, torch.ones_like(vars), atol=2e-4)\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nx = torch.randn(2, 4, 3, 3, requires_grad=True)\ngamma = torch.ones(4, requires_grad=True)\nbeta = torch.zeros(4, requires_grad=True)\n{fn}(x, 2, gamma, beta).square().sum().backward()\nassert x.grad is not None and gamma.grad is not None and beta.grad is not None\n"
+        }
+      ]
+    },
+    {
+      "id": "groupwise_int4_quant",
+      "title": "Group-Wise Asymmetric INT4 Quantization",
+      "titleZh": "分组非对称 INT4 量化",
+      "difficulty": "Medium",
+      "functionName": "groupwise_int4_quantize",
+      "hint": "View the input as `(out_features, num_groups, group_size)`, compute one min, max, scale, and zero point per group, then reshape q and its dequantization back.",
+      "hintZh": "将输入视为 `(out_features, num_groups, group_size)`，逐组计算最小值、最大值、尺度和零点，再将量化值与反量化值恢复原形状。",
+      "descriptionEn": "Implement per-group asymmetric 4-bit quantization with integer levels from 0 through 15.",
+      "descriptionZh": "实现逐组非对称 4 位量化，整数表示范围为 0 到 15。",
+      "category": "量化",
+      "theoryEn": "Small groups adapt their scale and zero point to local weight ranges, reducing error compared with one tensor-wide quantizer.",
+      "theoryZh": "小分组可使尺度与零点适应局部权重范围，相比整张量共用量化器可减小误差。",
+      "diagramEn": "```text\nW -> groups -> min/max -> scale & zero point -> round/clamp [0,15] -> dequantize\n```",
+      "diagramZh": "```text\nW -> 分组 -> 最小/最大值 -> 尺度与零点 -> 舍入/截断到 [0,15] -> 反量化\n```",
+      "tests": [
+        {
+          "name": "shapes and dtypes",
+          "code": "import torch\nW = torch.randn(3, 8)\nq, scale, zp, deq = {fn}(W, group_size=4)\nassert q.shape == deq.shape == W.shape\nassert scale.shape == zp.shape == (3, 2)\nassert q.dtype == torch.int32 and deq.dtype == torch.float32\n"
+        },
+        {
+          "name": "exact asymmetric reference",
+          "code": "import torch\nW = torch.tensor([[-2., -1., 0., 4., 1., 3., 5., 7.]])\nq, scale, zp, deq = {fn}(W, group_size=4)\ng = W.reshape(1, 2, 4)\nlo, hi = g.amin(-1, keepdim=True), g.amax(-1, keepdim=True)\nrs = (hi - lo).clamp(min=1e-8) / 15.0\nrz = torch.clamp(torch.round(-lo / rs), 0., 15.)\nrq = torch.clamp(torch.round(g / rs + rz), 0., 15.).to(torch.int32)\nrd = ((rq.float() - rz) * rs).reshape_as(W)\nassert torch.equal(q, rq.reshape_as(W))\nassert torch.equal(scale, rs.squeeze(-1)) and torch.equal(zp, rz.squeeze(-1))\nassert torch.equal(deq, rd)\n"
+        },
+        {
+          "name": "constant group edge case",
+          "code": "import torch\nW = torch.full((2, 4), 3.0)\nq, scale, zp, deq = {fn}(W, group_size=2, eps=1e-6)\nassert q.min() >= 0 and q.max() <= 15\nassert torch.allclose(scale, torch.full((2, 2), 1e-6 / 15.0))\nassert torch.isfinite(deq).all()\n"
+        },
+        {
+          "name": "gradient through dequantization scale",
+          "code": "import torch\nW = torch.tensor([[-2., -0.5, 1., 4.], [-3., 0., 2., 5.]], requires_grad=True)\nq, scale, zp, deq = {fn}(W, group_size=4)\ndeq.square().sum().backward()\nassert q.shape == W.shape and scale.requires_grad\nassert W.grad is not None and W.grad.shape == W.shape\nassert torch.isfinite(W.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "kl_estimators_rlhf",
+      "title": "Schulman KL Estimators (k1, k2, k3) for RLHF",
+      "titleZh": "RLHF 中的 Schulman KL 估计器（k1, k2, k3）",
+      "difficulty": "Medium",
+      "functionName": "schulman_kl_estimators",
+      "hint": "Form the policy/reference log-ratio, compute all three pointwise estimators, then apply either a regular mean or one shared masked-mean rule.",
+      "hintZh": "先计算策略与参考模型的对数概率比，再逐元素计算三个估计器，最后使用普通均值或统一的掩码均值。",
+      "descriptionEn": "Given tokens sampled from the policy, implement Schulman's k1, k2, and nonnegative k3 KL estimators. Return their scalar means, optionally over only positions selected by a mask.",
+      "descriptionZh": "给定从策略模型采样的 token，实现 Schulman 的 k1、k2 和非负 k3 KL 估计器。返回三个标量均值，并可通过掩码仅统计有效位置。",
+      "category": "强化学习",
+      "theoryEn": "For l=log pi-log q, k1=l is unbiased but noisy, k2=l^2/2 is a local quadratic approximation, and k3=exp(-l)+l-1 is a low-variance nonnegative estimator.",
+      "theoryZh": "令 l=log pi-log q。k1=l 无偏但方差较大；k2=l²/2 是局部二次近似；k3=exp(-l)+l-1 是低方差且非负的估计器。",
+      "diagramEn": "```mermaid\nflowchart LR\nP[policy logp] --> L[log ratio]\nR[reference logp] --> L\nL --> K1[k1]\nL --> K2[k2]\nL --> K3[k3]\nK1 --> M[mean / masked mean]\nK2 --> M\nK3 --> M\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nP[策略 logp] --> L[对数比]\nR[参考 logp] --> L\nL --> K1[k1]\nL --> K2[k2]\nL --> K3[k3]\nK1 --> M[均值或掩码均值]\nK2 --> M\nK3 --> M\n```",
+      "tests": [
+        {
+          "name": "shapes without mask",
+          "code": "import torch\nx = torch.tensor([[0.2, -0.1], [0.4, 0.0]], requires_grad=True)\nout = {fn}(x, torch.zeros_like(x))\nassert isinstance(out, tuple) and len(out) == 3\nassert all(v.shape == torch.Size([]) for v in out)\nassert torch.allclose(out[0], x.mean())\n"
+        },
+        {
+          "name": "exact estimator reference",
+          "code": "import torch\np = torch.tensor([0.0, -0.5, -1.0], dtype=torch.double)\nr = torch.tensor([-0.2, -0.1, -1.4], dtype=torch.double)\nl = p - r\ngot = {fn}(p, r)\nref = (l.mean(), (0.5 * l.square()).mean(), (torch.exp(-l) + l - 1.0).mean())\nassert all(torch.allclose(a, b, atol=1e-12, rtol=1e-12) for a, b in zip(got, ref))\n"
+        },
+        {
+          "name": "masked mean and empty mask",
+          "code": "import torch\np = torch.tensor([[1.0, 2.0], [3.0, 4.0]])\nr = torch.zeros_like(p)\nm = torch.tensor([[1.0, 0.0], [0.0, 1.0]])\ngot = {fn}(p, r, m)\nassert torch.equal(got[0], torch.tensor(2.5))\nempty = {fn}(p, r, torch.zeros_like(p))\nassert all(torch.equal(v, torch.tensor(0.0)) for v in empty)\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\np = torch.randn(2, 3, dtype=torch.double, requires_grad=True)\nr = torch.randn(2, 3, dtype=torch.double, requires_grad=True)\nvals = {fn}(p, r, torch.ones_like(p))\nsum(vals).backward()\nassert p.grad is not None and r.grad is not None\nassert p.grad.shape == p.shape and torch.isfinite(p.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "kto_orpo_loss",
+      "title": "ORPO (Odds Ratio Preference Optimization) Loss",
+      "titleZh": "ORPO（优势比偏好优化）损失",
+      "difficulty": "Medium",
+      "functionName": "orpo_loss",
+      "hint": "Convert each log-probability to log odds with logp-log(1-exp(logp)), compare chosen and rejected odds using log-sigmoid, and add the chosen SFT loss.",
+      "hintZh": "用 logp-log(1-exp(logp)) 转为对数优势，使用 log-sigmoid 比较选中和拒绝优势，再加上选中样本的 SFT 损失。",
+      "descriptionEn": "Implement ORPO using length-normalized sequence log-probabilities. Return the combined objective, chosen-response SFT term, and odds-ratio preference term.",
+      "descriptionZh": "使用长度归一化的序列对数概率实现 ORPO，并返回总目标、选中回复的 SFT 项和优势比偏好项。",
+      "category": "损失函数",
+      "theoryEn": "ORPO jointly raises chosen likelihood and separates chosen from rejected responses in odds space, avoiding a separate reference model.",
+      "theoryZh": "ORPO 同时提高选中回复的似然，并在优势空间中分离选中与拒绝回复，因此不需要独立参考模型。",
+      "diagramEn": "```mermaid\nflowchart LR\nC[chosen log p] --> S[SFT]\nC --> OC[chosen log odds]\nR[rejected log p] --> OR[rejected log odds]\nOC --> P[preference loss]\nOR --> P\nS --> T[total]\nP --> T\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nC[选中 log p] --> S[SFT]\nC --> OC[选中对数优势]\nR[拒绝 log p] --> OR[拒绝对数优势]\nOC --> P[偏好损失]\nOR --> P\nS --> T[总损失]\nP --> T\n```",
+      "tests": [
+        {
+          "name": "output shapes",
+          "code": "import torch\nc = torch.tensor([-0.2, -0.7])\nr = torch.tensor([-0.9, -1.2])\nout = {fn}(c, r)\nassert isinstance(out, tuple) and len(out) == 3\nassert all(x.shape == torch.Size([]) for x in out)\n"
+        },
+        {
+          "name": "exact odds reference",
+          "code": "import torch\nimport torch.nn.functional as F\nc = torch.tensor([-0.2, -1.3], dtype=torch.double)\nr = torch.tensor([-0.8, -2.0], dtype=torch.double)\ntotal, sft, pref = {fn}(c, r, lambda_or=0.25, eps=1e-9)\nodds = lambda x: x - torch.log((1.0 - torch.exp(x)).clamp(min=1e-9))\nref_sft = -c.mean()\nref_pref = -F.logsigmoid(odds(c) - odds(r)).mean()\nassert torch.allclose(sft, ref_sft, atol=1e-12, rtol=1e-12)\nassert torch.allclose(pref, ref_pref, atol=1e-12, rtol=1e-12) and torch.allclose(total, ref_sft + .25 * ref_pref)\n"
+        },
+        {
+          "name": "epsilon boundary",
+          "code": "import torch\nc = torch.tensor([0.0])\nr = torch.tensor([-1.0])\ntotal, sft, pref = {fn}(c, r, eps=1e-4)\nassert total.shape == torch.Size([])\nassert torch.isfinite(total) and torch.isfinite(pref) and torch.equal(sft, torch.tensor(0.0))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nc = torch.tensor([-0.3, -0.6], dtype=torch.double, requires_grad=True)\nr = torch.tensor([-1.0, -1.4], dtype=torch.double, requires_grad=True)\ntotal, sft, pref = {fn}(c, r)\ntotal.backward()\nassert c.grad is not None and r.grad is not None\nassert c.grad.shape == c.shape and torch.isfinite(c.grad).all() and torch.isfinite(r.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "lion_optimizer",
+      "title": "Lion Optimizer (EvoLved Sign Momentum)",
+      "titleZh": "Lion 优化器（符号动量）",
+      "difficulty": "Medium",
+      "functionName": "LionOptimizer",
+      "hint": "Compute the signed update from the old momentum and current gradient, step the parameter, and only then update the momentum with beta2.",
+      "hintZh": "先用旧动量和当前梯度计算符号更新并更新参数，之后再用 beta2 更新动量。",
+      "descriptionEn": "Implement Lion, a memory-efficient optimizer using a signed interpolation of momentum and gradient. Apply decoupled weight decay before the signed parameter update.",
+      "descriptionZh": "实现 Lion：它使用动量与梯度插值的符号进行更新，内存占用较低。在符号参数更新前应用解耦权重衰减。",
+      "category": "优化器与学习率",
+      "theoryEn": "Lion stores one momentum tensor. Its update direction is `sign(beta1*m + (1-beta1)*g)`, while the persistent momentum is updated with beta2 after the parameter step.",
+      "theoryZh": "Lion 仅保存一个动量张量。更新方向为 `sign(beta1*m + (1-beta1)*g)`，持久动量在参数更新后使用 beta2 更新。",
+      "diagramEn": "```mermaid\nflowchart LR\nM[old momentum] --> S[sign direction]\nG[gradient] --> S\nP[parameter] --> D[weight decay]\nD --> U[parameter step]\nS --> U\nG --> N[new momentum]\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nM[旧动量] --> S[符号方向]\nG[梯度] --> S\nP[参数] --> D[权重衰减]\nD --> U[参数更新]\nS --> U\nG --> N[新动量]\n```",
+      "tests": [
+        {
+          "name": "first step reference",
+          "code": "import torch\np = torch.tensor([1.0, -2.0], requires_grad=True)\nopt = {fn}([p], lr=0.1, betas=(0.9, 0.99), weight_decay=0.2)\np.grad = torch.tensor([3.0, -4.0])\nopt.step()\nexpected = torch.tensor([1.0, -2.0]) * 0.98 - 0.1 * torch.tensor([1.0, -1.0])\nassert p.shape == (2,)\nassert torch.equal(p.detach(), expected)\n"
+        },
+        {
+          "name": "multiple steps match reference",
+          "code": "import torch\np = torch.tensor([0.5, -0.25], requires_grad=True)\nopt = {fn}([p], lr=0.03, betas=(0.8, 0.9))\nref = p.detach().clone(); m = torch.zeros_like(ref)\nfor g in [torch.tensor([1.0, -2.0]), torch.tensor([-3.0, 1.0])]:\n    p.grad = g.clone()\n    ref.sub_(0.03 * torch.sign(0.8 * m + 0.2 * g))\n    m.mul_(0.9).add_(g, alpha=0.1)\n    opt.step()\nassert torch.equal(p.detach(), ref)\n"
+        },
+        {
+          "name": "zero grad supports autograd",
+          "code": "import torch\np = torch.randn(3, requires_grad=True)\nopt = {fn}([p])\np.sum().backward()\nassert p.grad is not None and p.grad.shape == p.shape\nopt.zero_grad()\nassert torch.equal(p.grad, torch.zeros_like(p))\n"
+        },
+        {
+          "name": "no gradient no update",
+          "code": "import torch\np = torch.randn(2, 3, requires_grad=True)\nbefore = p.detach().clone()\nopt = {fn}([p], lr=1.0, weight_decay=1.0)\nopt.step()\nassert p.shape == (2, 3)\nassert torch.equal(p.detach(), before)\n"
+        }
+      ]
+    },
+    {
+      "id": "matryoshka_colbert_loss",
+      "title": "ColBERT Late-Interaction MaxSim & Matryoshka Scoring",
+      "titleZh": "ColBERT 晚期交互 MaxSim 评分",
+      "difficulty": "Medium",
+      "functionName": "colbert_maxsim",
+      "hint": "Normalize token vectors, mask invalid document columns before taking each query token's maximum, then mask and sum query-token maxima.",
+      "hintZh": "归一化 token 向量，在每个查询 token 取最大值前屏蔽无效文档列，再屏蔽并求和查询 token 的最大相似度。",
+      "descriptionEn": "Implement batched ColBERT late-interaction scoring with optional query and document padding masks.",
+      "descriptionZh": "实现带可选查询和文档填充掩码的批量 ColBERT 晚期交互评分。",
+      "category": "检索与智能体",
+      "theoryEn": "MaxSim lets each query token independently select its closest document token. Summing these maxima preserves token-level matching while producing one retrieval score per pair.",
+      "theoryZh": "MaxSim 允许每个查询 token 独立选择最相近的文档 token；对最大值求和既保留 token 级匹配，又为每个配对产生一个检索分数。",
+      "diagramEn": "```text\nnormalized Q @ normalized D^T -> mask D -> max over D -> mask Q -> sum\n```",
+      "diagramZh": "```text\n归一化 Q @ 归一化 D^T -> 屏蔽 D -> 对 D 取最大 -> 屏蔽 Q -> 求和\n```",
+      "tests": [
+        {
+          "name": "batch shape",
+          "code": "import torch\nq = torch.randn(3, 4, 6)\nd = torch.randn(3, 7, 6)\nout = {fn}(q, d)\nassert out.shape == (3,)\n"
+        },
+        {
+          "name": "exact masked reference",
+          "code": "import torch\nq = torch.tensor([[[1., 0.], [0., 1.]]])\nd = torch.tensor([[[1., 0.], [0., 1.], [-1., 0.]]])\nqm = torch.tensor([[1, 1]])\ndm = torch.tensor([[1, 0, 1]])\nout = {fn}(q, d, qm, dm)\nqn = q / (q.norm(dim=-1, keepdim=True) + 1e-8)\ndn = d / (d.norm(dim=-1, keepdim=True) + 1e-8)\nsim = (qn @ dn.transpose(-1, -2)).masked_fill(dm[:, None, :] == 0, float(\"-inf\"))\nref = (sim.max(-1).values * qm).sum(-1)\nassert torch.equal(out, ref)\n"
+        },
+        {
+          "name": "zero query mask edge case",
+          "code": "import torch\nq = torch.randn(1, 2, 3)\nd = torch.randn(1, 1, 3)\nout = {fn}(q, d, query_mask=torch.zeros(1, 2))\nassert out.shape == (1,) and torch.equal(out, torch.zeros(1))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nq = torch.randn(2, 3, 4, requires_grad=True)\nd = torch.randn(2, 5, 4, requires_grad=True)\nout = {fn}(q, d, doc_mask=torch.ones(2, 5, dtype=torch.bool))\nout.sum().backward()\nassert q.grad is not None and d.grad is not None and torch.isfinite(q.grad).all() and torch.isfinite(d.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "min_p_sampling",
+      "title": "Min-P & Repetition Penalty Sampling Filter",
+      "titleZh": "Min-P 采样与重复惩罚过滤",
+      "difficulty": "Medium",
+      "functionName": "min_p_sampling_probs",
+      "hint": "Scatter seen token IDs into a boolean `(B,V)` mask, apply the sign-aware penalty with `torch.where`, softmax temperature-scaled logits, then threshold relative to each row's maximum probability.",
+      "hintZh": "把已见 token ID scatter 到 `(B,V)` 布尔掩码，用 `torch.where` 应用符号相关惩罚；温度缩放后 softmax，再按每行最大概率的相对阈值过滤。",
+      "descriptionEn": "Return normalized sampling probabilities after a sign-aware repetition penalty and min-p filtering.",
+      "descriptionZh": "在应用符号相关的重复惩罚与 Min-P 过滤后，返回归一化采样概率。",
+      "category": "采样与解码",
+      "theoryEn": "Min-p adapts its cutoff to model confidence by retaining tokens whose probability is at least a fraction of the most likely token.",
+      "theoryZh": "Min-P 通过保留概率至少为最高概率一定比例的 token，使截断阈值随模型置信度自适应。",
+      "diagramEn": "```text\nlogits -> repetition penalty -> / temperature -> softmax -> p >= min_p*p_max -> renormalize\n```",
+      "diagramZh": "```text\nlogits -> 重复惩罚 -> / 温度 -> softmax -> p >= min_p*p_max -> 重归一化\n```",
+      "tests": [
+        {
+          "name": "probability shape and normalization",
+          "code": "import torch\nlogits = torch.randn(4, 20)\nprobs = {fn}(logits, temperature=0.8, min_p=0.15)\nassert probs.shape == logits.shape\nassert torch.allclose(probs.sum(-1), torch.ones(4), atol=1e-6)\nassert (probs >= 0).all()\n"
+        },
+        {
+          "name": "exact penalty and filtering reference",
+          "code": "import torch\nlogits = torch.tensor([[2., 1., -1., 0.5], [-2., 3., 1., -0.5]])\nseen = torch.tensor([[0, 2], [0, 3]])\nactual = {fn}(logits, temperature=0.7, min_p=0.2, seen_tokens=seen, repetition_penalty=2.0)\nadjusted = logits.clone()\nadjusted[0, 0] /= 2.0; adjusted[0, 2] *= 2.0\nadjusted[1, 0] *= 2.0; adjusted[1, 3] *= 2.0\nref = torch.softmax(adjusted / 0.7, dim=-1)\nref = torch.where(ref >= 0.2 * ref.max(-1, keepdim=True).values, ref, torch.zeros_like(ref))\nref = ref / ref.sum(-1, keepdim=True)\nassert torch.allclose(actual, ref, atol=1e-7)\n"
+        },
+        {
+          "name": "duplicate seen tokens and min-p edge",
+          "code": "import torch\nlogits = torch.tensor([[3., 2., 1.]])\nseen = torch.tensor([[0, 0, 0]])\nprobs = {fn}(logits, min_p=1.0, seen_tokens=seen, repetition_penalty=2.0)\nadjusted = logits.clone(); adjusted[:, 0] /= 2.0\nwinner = torch.softmax(adjusted, -1).argmax(-1)\nassert torch.equal(probs.argmax(-1), winner)\nassert torch.count_nonzero(probs).item() == 1 and probs.max().item() == 1.0\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nlogits = torch.tensor([[1.5, 1.0, 0.5], [0.3, 0.2, 0.1]], requires_grad=True)\nseen = torch.tensor([[0], [2]])\nprobs = {fn}(logits, min_p=0.0, seen_tokens=seen, repetition_penalty=1.2)\nprobs[:, 0].sum().backward()\nassert logits.grad is not None and logits.grad.shape == logits.shape\nassert torch.isfinite(logits.grad).all() and logits.grad.abs().sum() > 0\n"
+        }
+      ]
+    },
+    {
+      "id": "mmdit_joint_attention",
+      "title": "MMDiT Joint Image-Text Attention",
+      "titleZh": "MMDiT 图文联合注意力机制",
+      "difficulty": "Medium",
+      "functionName": "mmdit_joint_attention",
+      "hint": "Concatenate each modality's Q, K, and V on sequence axis 2, apply scaled dot-product attention once, then split at the text sequence length.",
+      "hintZh": "沿序列轴 2 分别拼接两种模态的 Q、K、V，执行一次缩放点积注意力，再在文本序列长度处拆分。",
+      "descriptionEn": "Implement MMDiT joint attention over text tensors (B,H,L_txt,D) and image tensors (B,H,L_img,D). Concatenate tokens, attend jointly, and return modality-specific outputs.",
+      "descriptionZh": "对文本张量 (B,H,L_txt,D) 与图像张量 (B,H,L_img,D) 实现 MMDiT 联合注意力。拼接 token、执行联合注意力并返回各模态输出。",
+      "category": "扩散与流模型",
+      "theoryEn": "Joint attention lets every text and image query attend to keys and values from both modalities. Splitting only after attention preserves modality streams while enabling full cross-modal interaction.",
+      "theoryZh": "联合注意力让每个文本与图像查询都能关注两种模态的键和值。注意力后再拆分既保留模态流，又实现完整跨模态交互。",
+      "diagramEn": "```text\ntext Q/K/V --\\\n               concatenate -> joint attention -> split -> text out, image out\nimage Q/K/V --/\n```",
+      "diagramZh": "```text\n文本 Q/K/V --\\\n                拼接 -> 联合注意力 -> 拆分 -> 文本输出、图像输出\n图像 Q/K/V --/\n```",
+      "tests": [
+        {
+          "name": "split output shapes",
+          "code": "import torch\nargs=[torch.randn(2,3,4,5) for _ in range(3)]+[torch.randn(2,3,7,5) for _ in range(3)]\nt,i={fn}(*args)\nassert t.shape==(2,3,4,5) and i.shape==(2,3,7,5)\n"
+        },
+        {
+          "name": "exact joint reference",
+          "code": "import torch\ntorch.manual_seed(5)\nqt,kt,vt=[torch.randn(1,2,3,4) for _ in range(3)]\nqi,ki,vi=[torch.randn(1,2,2,4) for _ in range(3)]\not,oi={fn}(qt,kt,vt,qi,ki,vi)\nQ=torch.cat((qt,qi),2); K=torch.cat((kt,ki),2); V=torch.cat((vt,vi),2)\nref=torch.softmax((Q@K.transpose(-2,-1))/(4**.5),-1)@V\nassert torch.equal(ot,ref[:,:,:3]) and torch.equal(oi,ref[:,:,3:])\n"
+        },
+        {
+          "name": "zero-query uniform edge case",
+          "code": "import torch\nqt=torch.zeros(1,1,1,2); qi=torch.zeros(1,1,2,2)\nkt=torch.randn_like(qt); ki=torch.randn_like(qi)\nvt=torch.tensor([[[[1.,2.]]]]); vi=torch.tensor([[[[3.,4.],[5.,6.]]]])\not,oi={fn}(qt,kt,vt,qi,ki,vi)\nmean=torch.tensor([3.,4.])\nassert torch.allclose(ot,mean.reshape(1,1,1,2)) and torch.allclose(oi,mean.reshape(1,1,1,2).expand_as(oi))\n"
+        },
+        {
+          "name": "gradient flow through both streams",
+          "code": "import torch\nxs=[torch.randn(1,2,3,4,requires_grad=True) for _ in range(3)]\nys=[torch.randn(1,2,2,4,requires_grad=True) for _ in range(3)]\na,b={fn}(*(xs+ys)); (a.square().sum()+b.square().sum()).backward()\nassert all(t.grad is not None and torch.isfinite(t.grad).all() for t in xs+ys)\n"
+        }
+      ]
+    },
+    {
+      "id": "pass_at_k",
+      "title": "Unbiased Pass@k Estimator (Chen et al.)",
+      "titleZh": "Pass@k 无偏估计器",
+      "difficulty": "Medium",
+      "functionName": "pass_at_k",
+      "hint": "Compute the probability that all k draws are incorrect as a short product, then subtract it from one. Handle fewer than k incorrect samples first.",
+      "hintZh": "先用乘积计算 k 次抽样全部错误的概率，再用 1 减去它。首先处理错误样本少于 k 的情况。",
+      "descriptionEn": "Implement the unbiased per-problem pass@k estimator from sample totals and correct counts. Return one float32 value for each problem.",
+      "descriptionZh": "根据每道题的采样总数与正确数，实现无偏 pass@k 估计器。为每道题返回一个 float32 数值。",
+      "category": "评测与基准",
+      "theoryEn": "Under sampling without replacement, failure means choosing all k candidates from the `n-c` incorrect samples. Its probability is a ratio of combinations, evaluated stably as a product of k ratios.",
+      "theoryZh": "在无放回抽样下，失败意味着 k 个候选全部来自 `n-c` 个错误样本。其概率是组合数之比，可表示为 k 个比值的乘积。",
+      "diagramEn": "```mermaid\nflowchart LR\nN[n total, c correct] --> F[probability all k fail]\nF --> P[pass@k = 1 - failure]\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nN[n 个总样本，c 个正确] --> F[k 个全错的概率]\nF --> P[pass@k = 1 - 失败概率]\n```",
+      "tests": [
+        {
+          "name": "exact reference values",
+          "code": "import torch\nn = torch.tensor([10, 20])\nc = torch.tensor([2, 5])\nout = {fn}(n, c, 3)\nexpected = torch.tensor([\n    1.0 - (8/10) * (7/9) * (6/8),\n    1.0 - (15/20) * (14/19) * (13/18),\n], dtype=torch.float32)\nassert out.shape == (2,) and out.dtype == torch.float32\nassert torch.allclose(out, expected, atol=1e-7)\n"
+        },
+        {
+          "name": "certain pass branch",
+          "code": "import torch\nout = {fn}(torch.tensor([5, 5]), torch.tensor([3, 5]), 3)\nassert out.shape == (2,)\nassert torch.equal(out, torch.ones(2))\n"
+        },
+        {
+          "name": "k one",
+          "code": "import torch\nn = torch.tensor([4.0, 10.0])\nc = torch.tensor([1.0, 7.0])\nout = {fn}(n, c, 1)\nexpected = c.float() / n.float()\nassert out.shape == n.shape\nassert torch.allclose(out, expected, atol=0, rtol=0)\n"
+        },
+        {
+          "name": "zero correct and device",
+          "code": "import torch\nn = torch.tensor([3, 8])\nc = torch.zeros(2, dtype=torch.long)\nout = {fn}(n, c, 2)\nassert out.device == n.device and out.shape == (2,)\nassert torch.equal(out, torch.zeros(2, dtype=torch.float32))\n"
+        }
+      ]
+    },
+    {
+      "id": "pissa_init",
+      "title": "PiSSA (Principal Singular Value Adaptation) Initialization",
+      "titleZh": "PiSSA 主奇异值低秩初始化",
+      "difficulty": "Medium",
+      "functionName": "pissa_init",
+      "hint": "Split each retained singular value equally between B and A after dividing by LoRA scaling. Subtract the resulting scaled product from W.",
+      "hintZh": "先除以 LoRA 缩放，再将每个保留奇异值的平方根分别放入 B 和 A，最后从 W 中减去缩放后的乘积。",
+      "descriptionEn": "Initialize PiSSA factors from the leading singular components of a weight matrix. Return a residual base weight and low-rank factors whose scaled sum exactly reconstructs the original matrix.",
+      "descriptionZh": "使用权重矩阵的主奇异分量初始化 PiSSA 因子。返回残差基础权重和低秩因子，使其缩放后的和精确重建原矩阵。",
+      "category": "参数高效微调",
+      "theoryEn": "The truncated SVD is the optimal rank-r approximation in Frobenius norm. PiSSA assigns that principal component to the adapter at initialization and leaves the complementary residual in the frozen base.",
+      "theoryZh": "截断 SVD 是 Frobenius 范数下的最优秩 r 近似。PiSSA 在初始化时将主分量分配给适配器，并把其余残差留在冻结基础权重中。",
+      "diagramEn": "```mermaid\nflowchart LR\nW[W] --> S[SVD]\nS --> P[top-r principal part]\nP --> BA[B and A factors]\nW --> R[residual Wres]\nBA --> C[Wres+sBA=W]\nR --> C\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nW[W] --> S[SVD]\nS --> P[前 r 个主分量]\nP --> BA[B 与 A 因子]\nW --> R[残差 Wres]\nBA --> C[Wres+sBA=W]\nR --> C\n```",
+      "tests": [
+        {
+          "name": "shapes and reconstruction",
+          "code": "import torch\ntorch.manual_seed(0)\nW = torch.randn(6, 4)\nW_res, B, A = {fn}(W, rank=2, alpha=4.0)\nassert W_res.shape == W.shape and B.shape == (6, 2) and A.shape == (2, 4)\nreconstructed = W_res + 2.0 * (B @ A)\nassert torch.allclose(reconstructed, W, atol=1e-6, rtol=1e-6)\n"
+        },
+        {
+          "name": "principal product exact reference",
+          "code": "import torch\ntorch.manual_seed(1)\nW = torch.randn(5, 3, dtype=torch.double)\nW_res, B, A = {fn}(W, rank=2, alpha=1.0)\nU, S, Vh = torch.linalg.svd(W, full_matrices=False)\ns = 0.5\nexpected = (U[:, :2] * S[:2].unsqueeze(0)) @ Vh[:2]\nassert B.shape == (5, 2) and A.shape == (2, 3)\nassert torch.allclose(s * (B @ A), expected, atol=1e-10)\nassert torch.allclose(W_res, W - expected, atol=1e-10)\n"
+        },
+        {
+          "name": "full rank leaves zero residual",
+          "code": "import torch\nW = torch.diag(torch.tensor([4.0, 2.0, 1.0]))\nW_res, B, A = {fn}(W, rank=3, alpha=3.0)\nassert B.shape == (3, 3) and A.shape == (3, 3)\nassert torch.allclose(W_res, torch.zeros_like(W), atol=1e-6)\nassert torch.allclose(B @ A, W, atol=1e-6)\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\ntorch.manual_seed(2)\nW = torch.randn(4, 3, dtype=torch.double, requires_grad=True)\nW_res, B, A = {fn}(W, rank=2, alpha=2.0)\nloss = W_res.square().sum() + B.square().sum() + A.square().sum()\nloss.backward()\nassert W_res.shape == W.shape\nassert W.grad is not None and W.grad.shape == W.shape\nassert torch.isfinite(W.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "qk_norm_attention",
+      "title": "QK-Norm Scaled Dot-Product Attention",
+      "titleZh": "QK-Norm 注意力机制",
+      "difficulty": "Medium",
+      "functionName": "qk_norm_attention",
+      "hint": "RMS-normalize q and k over D, apply their scale vectors, then use ordinary scaled dot-product attention.",
+      "hintZh": "沿 D 维对 q 和 k 做 RMS 归一化并乘各自缩放向量，然后执行标准缩放点积注意力。",
+      "descriptionEn": "Implement multi-head scaled dot-product attention after applying independently scaled RMSNorm to queries and keys.",
+      "descriptionZh": "先对查询和键应用带独立缩放参数的 RMSNorm，再实现多头缩放点积注意力。",
+      "category": "注意力机制",
+      "theoryEn": "QK-Norm controls query/key magnitudes before their dot product. This can prevent attention logits from growing excessively while preserving learned per-feature scales.",
+      "theoryZh": "QK-Norm 在点积前控制查询和键的幅值，可避免注意力 logits 过大，同时保留逐特征可学习缩放。",
+      "diagramEn": "```text\nq -> RMSNorm(gamma_q) --\\\n                         QK^T/sqrt(D) -> softmax -> @v\nk -> RMSNorm(gamma_k) --/\n```",
+      "diagramZh": "```text\nq -> RMSNorm(gamma_q) --\\\n                         QK^T/sqrt(D) -> softmax -> @v\nk -> RMSNorm(gamma_k) --/\n```",
+      "tests": [
+        {
+          "name": "output shape",
+          "code": "import torch\nq = torch.randn(2, 3, 5, 4)\nk = torch.randn(2, 3, 7, 4)\nv = torch.randn(2, 3, 7, 6)\nout = {fn}(q, k, v, torch.ones(4), torch.ones(4))\nassert out.shape == (2, 3, 5, 6)\n"
+        },
+        {
+          "name": "numerical reference",
+          "code": "import torch\ntorch.manual_seed(2)\nq, k, v = [torch.randn(1, 2, 4, 8) for _ in range(3)]\ngq, gk = torch.randn(8), torch.randn(8)\nout = {fn}(q, k, v, gq, gk)\nqn = q * torch.rsqrt(q.square().mean(-1, keepdim=True) + 1e-6) * gq\nkn = k * torch.rsqrt(k.square().mean(-1, keepdim=True) + 1e-6) * gk\nref = torch.softmax(qn @ kn.transpose(-2, -1) / (8 ** 0.5), -1) @ v\nassert torch.allclose(out, ref, atol=1e-6)\n"
+        },
+        {
+          "name": "zero q edge case",
+          "code": "import torch\nq = torch.zeros(1, 1, 2, 3)\nk = torch.randn(1, 1, 4, 3)\nv = torch.randn(1, 1, 4, 5)\nout = {fn}(q, k, v, torch.ones(3), torch.ones(3))\nref = v.mean(dim=-2, keepdim=True).expand(1, 1, 2, 5)\nassert torch.allclose(out, ref, atol=1e-6) and torch.isfinite(out).all()\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nq = torch.randn(1, 2, 3, 4, requires_grad=True)\nk = torch.randn(1, 2, 3, 4, requires_grad=True)\nv = torch.randn(1, 2, 3, 4, requires_grad=True)\ngq = torch.ones(4, requires_grad=True)\ngk = torch.ones(4, requires_grad=True)\n{fn}(q, k, v, gq, gk).square().sum().backward()\nassert all(t.grad is not None for t in (q, k, v, gq, gk))\n"
+        }
+      ]
+    },
+    {
+      "id": "sac_squashed_gaussian",
+      "title": "SAC Squashed Gaussian Policy & Tanh Jacobian Log-Prob",
+      "titleZh": "SAC 压缩高斯策略与雅可比修正对数概率",
+      "difficulty": "Medium",
+      "functionName": "sac_squashed_gaussian",
+      "hint": "Reparameterize u=mu+exp(log_std)*noise, apply tanh, compute the diagonal Gaussian log-density, subtract log(1-action^2+eps), then sum over action dimensions.",
+      "hintZh": "先重参数化 u=mu+exp(log_std)*noise，再应用 tanh；计算对角高斯对数密度，减去 log(1-action²+eps)，最后沿动作维求和。",
+      "descriptionEn": "Implement a reparameterized Gaussian SAC action sample and its log-probability after tanh squashing, including the change-of-variables Jacobian.",
+      "descriptionZh": "实现 SAC 中重参数化高斯动作采样及 tanh 压缩后的对数概率，并包含变量变换的雅可比修正。",
+      "category": "强化学习",
+      "theoryEn": "Tanh maps unconstrained Gaussian samples into (-1,1). Density under this transform must subtract log|1-tanh(u)^2| for every action dimension.",
+      "theoryZh": "tanh 将无约束高斯样本映射到 (-1,1)。变换后的密度必须在每个动作维减去 log|1-tanh(u)²|。",
+      "diagramEn": "```mermaid\nflowchart LR\nM[mu] --> U[u = mu + std noise]\nS[log std] --> U\nN[noise] --> U\nU --> A[tanh action]\nU --> G[Gaussian log p]\nA --> J[Jacobian correction]\nG --> L[corrected log prob]\nJ --> L\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nM[均值] --> U[u = 均值 + 标准差*噪声]\nS[log 标准差] --> U\nN[噪声] --> U\nU --> A[tanh 动作]\nU --> G[高斯 log p]\nA --> J[雅可比修正]\nG --> L[修正后 log 概率]\nJ --> L\n```",
+      "tests": [
+        {
+          "name": "documented output shapes",
+          "code": "import torch\nmu = torch.randn(3, 4)\naction, logp = {fn}(mu, torch.zeros_like(mu), torch.randn_like(mu))\nassert action.shape == (3, 4) and logp.shape == (3,)\nassert (action.abs() < 1).all() and torch.isfinite(logp).all()\n"
+        },
+        {
+          "name": "exact density reference",
+          "code": "import torch\nimport math\nmu = torch.tensor([[.2, -.3], [.5, .1]], dtype=torch.double)\nls = torch.tensor([[-.4, .2], [.0, -.7]], dtype=torch.double)\nn = torch.tensor([[.1, -1.], [.7, .3]], dtype=torch.double)\na, lp = {fn}(mu, ls, n, eps=1e-9)\nstd = torch.exp(ls); u = mu + std*n; ref_a = torch.tanh(u)\nbase = -.5*(((u-mu)/(std+1e-9))**2 + 2*ls + math.log(2*math.pi))\nref_lp = (base-torch.log(1-ref_a.square()+1e-9)).sum(-1)\nassert torch.allclose(a, ref_a, atol=1e-12, rtol=1e-12) and torch.allclose(lp, ref_lp, atol=1e-12, rtol=1e-12)\n"
+        },
+        {
+          "name": "zero noise edge",
+          "code": "import torch\nmu = torch.tensor([[0.0, 0.5]])\nls = torch.zeros_like(mu)\na, lp = {fn}(mu, ls, torch.zeros_like(mu))\nassert torch.allclose(a, torch.tanh(mu))\nassert lp.shape == (1,) and torch.isfinite(lp).all()\n"
+        },
+        {
+          "name": "reparameterization gradients",
+          "code": "import torch\nmu = torch.randn(2, 3, dtype=torch.double, requires_grad=True)\nls = torch.randn(2, 3, dtype=torch.double, requires_grad=True)\nnoise = torch.randn(2, 3, dtype=torch.double)\na, lp = {fn}(mu, ls, noise)\n(a.sum() + lp.sum()).backward()\nassert mu.grad is not None and ls.grad is not None\nassert mu.grad.shape == mu.shape and torch.isfinite(mu.grad).all() and torch.isfinite(ls.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "siglip_loss",
+      "title": "SigLIP Pairwise Sigmoid Contrastive Loss",
+      "titleZh": "SigLIP 成对 Sigmoid 对比损失",
+      "difficulty": "Medium",
+      "functionName": "siglip_loss",
+      "hint": "Normalize both embedding sets, form every image-text logit, label diagonal pairs +1 and off-diagonal pairs -1, then average the summed log-sigmoid loss by N.",
+      "hintZh": "归一化两组嵌入，构造所有图文 logits，将对角配对标为 +1、其余标为 -1，再将 log-sigmoid 损失总和除以 N。",
+      "descriptionEn": "Implement the SigLIP pairwise sigmoid contrastive objective for matching image and text embeddings.",
+      "descriptionZh": "实现用于匹配图像与文本嵌入的 SigLIP 成对 sigmoid 对比目标。",
+      "category": "多模态",
+      "theoryEn": "Unlike softmax contrastive learning, SigLIP treats every entry of the N by N similarity matrix as an independent binary pair. The learned log-temperature controls scale and the bias controls the positive prior.",
+      "theoryZh": "不同于 softmax 对比学习，SigLIP 将 N×N 相似度矩阵的每个元素视为独立二元配对；可学习的对数温度控制尺度，偏置控制正样本先验。",
+      "diagramEn": "```text\nimage,text -> L2 normalize -> pairwise logits -> signed log-sigmoid -> sum / N\n```",
+      "diagramZh": "```text\n图像、文本 -> L2 归一化 -> 成对 logits -> 带符号 log-sigmoid -> 求和 / N\n```",
+      "tests": [
+        {
+          "name": "scalar shape",
+          "code": "import torch\nx = torch.randn(4, 6)\ny = torch.randn(4, 6)\nout = {fn}(x, y, torch.tensor(0.2), torch.tensor(-1.0))\nassert out.shape == torch.Size([]) and torch.isfinite(out)\n"
+        },
+        {
+          "name": "exact reference",
+          "code": "import torch\nimport torch.nn.functional as F\nx = torch.tensor([[1., 0.], [1., 1.]])\ny = torch.tensor([[0., 1.], [1., 0.]])\nt, b = torch.tensor(0.3), torch.tensor(-0.2)\nout = {fn}(x, y, t, b)\nxn = x / (x.norm(dim=-1, keepdim=True) + 1e-8)\nyn = y / (y.norm(dim=-1, keepdim=True) + 1e-8)\ns = t.exp() * (xn @ yn.T) + b\nlabels = 2 * torch.eye(2) - 1\nref = -F.logsigmoid(labels * s).sum() / 2\nassert torch.allclose(out, ref, atol=1e-7)\n"
+        },
+        {
+          "name": "single pair edge case",
+          "code": "import torch\nimport torch.nn.functional as F\nx = torch.zeros(1, 3)\ny = torch.zeros(1, 3)\nb = torch.tensor(0.7)\nout = {fn}(x, y, torch.tensor(0.), b)\nassert torch.allclose(out, -F.logsigmoid(b)) and out.ndim == 0\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nx = torch.randn(3, 5, requires_grad=True)\ny = torch.randn(3, 5, requires_grad=True)\nt = torch.tensor(0.1, requires_grad=True)\nb = torch.tensor(-0.5, requires_grad=True)\n{fn}(x, y, t, b).backward()\nassert all(v.grad is not None and torch.isfinite(v.grad).all() for v in (x, y, t, b))\n"
+        }
+      ]
+    },
+    {
+      "id": "smoothquant_migration",
+      "title": "SmoothQuant Activation-Weight Migration",
+      "titleZh": "SmoothQuant 激活-权重迁移",
+      "difficulty": "Medium",
+      "functionName": "smoothquant_transform",
+      "hint": "Compute channel maxima over `(B,S)` for activations and over output channels for weights. Divide X and multiply W by the same channel scale.",
+      "hintZh": "激活沿 `(B,S)` 求逐通道最大值，权重沿输出通道求最大值；用同一通道缩放除激活、乘权重。",
+      "descriptionEn": "Implement SmoothQuant's exact activation-to-weight scale migration for a linear layer.",
+      "descriptionZh": "实现 SmoothQuant 在线性层中的精确激活到权重缩放迁移。",
+      "category": "量化",
+      "theoryEn": "Reciprocal channel scaling leaves the linear result unchanged while moving difficult activation magnitude into weights, which are easier to quantize per channel.",
+      "theoryZh": "互逆的通道缩放保持线性层结果不变，同时把难量化的激活幅值迁移到更易逐通道量化的权重中。",
+      "diagramEn": "```text\nX maxima, W maxima -> channel scale -> X / scale, W * scale -> unchanged XW^T\n```",
+      "diagramZh": "```text\nX 最大值、W 最大值 -> 通道尺度 -> X / scale、W * scale -> XW^T 不变\n```",
+      "tests": [
+        {
+          "name": "output shapes",
+          "code": "import torch\nX = torch.randn(2, 4, 6)\nW = torch.randn(3, 6)\nXs, Ws, scale = {fn}(X, W)\nassert Xs.shape == X.shape and Ws.shape == W.shape\nassert scale.shape == (6,)\n"
+        },
+        {
+          "name": "exact scale reference",
+          "code": "import torch\nX = torch.tensor([[[1., -2.], [4., 1.]], [[-3., 0.5], [2., -1.]]])\nW = torch.tensor([[2., -8.], [-1., 4.], [0.5, -2.]])\nXs, Ws, scale = {fn}(X, W, alpha=0.25)\nam = X.abs().amax(dim=(0, 1)).clamp(min=1e-5)\nwm = W.abs().amax(dim=0).clamp(min=1e-5)\nref = am.pow(0.25) / wm.pow(0.75)\nassert torch.equal(scale, ref)\nassert torch.equal(Xs, X / ref) and torch.equal(Ws, W * ref.unsqueeze(0))\n"
+        },
+        {
+          "name": "zero channels and invariant output",
+          "code": "import torch\ntorch.manual_seed(2)\nX = torch.randn(2, 3, 4)\nW = torch.randn(5, 4)\nX[..., 1] = 0\nW[:, 2] = 0\nXs, Ws, scale = {fn}(X, W, eps=1e-4)\nassert torch.isfinite(scale).all() and (scale > 0).all()\nassert torch.allclose(Xs @ Ws.T, X @ W.T, atol=2e-6)\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nX = torch.randn(2, 3, 4, requires_grad=True)\nW = torch.randn(5, 4, requires_grad=True)\nXs, Ws, scale = {fn}(X, W, alpha=0.5)\n(Xs.square().mean() + Ws.square().mean() + scale.mean()).backward()\nassert X.grad is not None and W.grad is not None\nassert X.grad.shape == X.shape and W.grad.shape == W.shape\n"
+        }
+      ]
+    },
+    {
+      "id": "tree_speculative_mask",
+      "title": "Tree Speculative Decoding Attention Mask",
+      "titleZh": "树状推测解码注意力掩码（Medusa / EAGLE）",
+      "difficulty": "Medium",
+      "functionName": "tree_speculative_mask",
+      "hint": "Process nodes in index order. Copy the parent's already-computed ancestor row, then mark the node's own diagonal entry true.",
+      "hintZh": "按索引顺序处理节点：复制父节点已计算好的祖先行，再把当前节点自身的对角位置设为 True。",
+      "descriptionEn": "Construct the ancestor visibility mask for a parent-before-child speculative decoding tree.",
+      "descriptionZh": "为父节点先于子节点排列的推测解码树构造祖先可见性掩码。",
+      "category": "推理优化",
+      "theoryEn": "A draft-tree node may attend only to tokens on its own root-to-node path; sibling branches must remain isolated.",
+      "theoryZh": "草稿树节点只能关注自身从根到该节点的路径，兄弟分支必须相互隔离。",
+      "diagramEn": "```text\n0\n+- 1 +- 3\n|    \\- 4\n\\- 2\nrow(4) sees {0,1,4}\n```",
+      "diagramZh": "```text\n0\n+- 1 +- 3\n|    \\- 4\n\\- 2\n第 4 行可见 {0,1,4}\n```",
+      "tests": [
+        {
+          "name": "shape dtype and diagonal",
+          "code": "import torch\nmask = {fn}(torch.tensor([-1, 0, 0, 1, 1, 2]))\nassert mask.shape == (6, 6) and mask.dtype == torch.bool\nassert torch.equal(mask.diagonal(), torch.ones(6, dtype=torch.bool))\n"
+        },
+        {
+          "name": "exact branching tree",
+          "code": "import torch\nmask = {fn}([-1, 0, 0, 1, 1, 2])\nref = torch.tensor([\n    [1,0,0,0,0,0],\n    [1,1,0,0,0,0],\n    [1,0,1,0,0,0],\n    [1,1,0,1,0,0],\n    [1,1,0,0,1,0],\n    [1,0,1,0,0,1],\n], dtype=torch.bool)\nassert torch.equal(mask, ref)\n"
+        },
+        {
+          "name": "single root edge case",
+          "code": "import torch\nmask = {fn}([-1])\nassert torch.equal(mask, torch.ones(1, 1, dtype=torch.bool))\nassert mask.sum().item() == 1\n"
+        },
+        {
+          "name": "mask preserves downstream gradient",
+          "code": "import torch\nmask = {fn}(torch.tensor([-1, 0, 1, 1]))\nscores = torch.randn(4, 4, requires_grad=True)\nvisible = scores.masked_fill(~mask, 0.0).sum()\nvisible.backward()\nassert scores.grad is not None and scores.grad.shape == scores.shape\nassert torch.equal(scores.grad != 0, mask)\n"
+        }
+      ]
+    },
+    {
+      "id": "vae_elbo_reparam",
+      "title": "VAE Reparameterization Trick & Beta-ELBO Loss",
+      "titleZh": "VAE 重参数化技巧与 Beta-ELBO 损失",
+      "difficulty": "Medium",
+      "functionName": "vae_forward_loss",
+      "hint": "Sample with mu + exp(0.5*logvar)*eps_noise. Sum reconstruction and KL terms per sample, then average over the batch.",
+      "hintZh": "用 mu + exp(0.5*logvar)*eps_noise 采样。重建项和 KL 项先按样本求和，再对批次取平均。",
+      "descriptionEn": "Apply the VAE reparameterization trick and compute a beta-weighted ELBO loss. Data tensors are (B,D), latent tensors are (B,Z), and the function returns (z,total_loss,kl_loss).",
+      "descriptionZh": "应用 VAE 重参数化技巧并计算 beta 加权 ELBO 损失。数据张量为 (B,D)，潜变量张量为 (B,Z)，返回 (z,total_loss,kl_loss)。",
+      "category": "扩散与流模型",
+      "theoryEn": "Writing z=mu+sigma*epsilon moves randomness into parameter-free epsilon, allowing gradients through mu and log-variance. The KL from a diagonal Gaussian to N(0,I) has a closed form.",
+      "theoryZh": "写成 z=mu+sigma*epsilon 可将随机性移到无参数的 epsilon，使梯度能通过 mu 和对数方差。对角高斯到 N(0,I) 的 KL 有闭式解。",
+      "diagramEn": "```text\n(mu, logvar, epsilon) -> reparameterize -> z\n(x, reconstruction) -> MSE --\\\nGaussian parameters -> KL -----+-> recon + beta*KL\n```",
+      "diagramZh": "```text\n(mu, logvar, epsilon) -> 重参数化 -> z\n(x, 重建结果) -> MSE --\\\n高斯参数 -> KL --------+-> 重建 + beta*KL\n```",
+      "tests": [
+        {
+          "name": "output shapes",
+          "code": "import torch\nx, r = torch.randn(4,6), torch.randn(4,6)\nmu, lv, e = torch.randn(4,3), torch.randn(4,3), torch.randn(4,3)\nz, total, kl = {fn}(x, r, mu, lv, e)\nassert z.shape == (4,3) and total.shape == torch.Size([]) and kl.shape == torch.Size([])\n"
+        },
+        {
+          "name": "exact numerical reference",
+          "code": "import torch\ntorch.manual_seed(3)\nx,r,mu,lv,e = [torch.randn(2,5) for _ in range(5)]\nz,total,kl = {fn}(x,r,mu,lv,e,beta=.4)\nrz = mu+torch.exp(.5*lv)*e\nrr=((r-x)**2).sum(-1).mean()\nrk=-.5*(1+lv-mu.pow(2)-lv.exp()).sum(-1).mean()\nassert torch.equal(z,rz) and torch.equal(kl,rk) and torch.equal(total,rr+.4*rk)\n"
+        },
+        {
+          "name": "standard normal edge case",
+          "code": "import torch\nx = torch.zeros(3,4); r=x.clone(); mu=torch.zeros(3,2); lv=torch.zeros_like(mu); e=torch.ones_like(mu)\nz,total,kl = {fn}(x,r,mu,lv,e,beta=9.0)\nassert torch.equal(z,e) and kl.item() == 0.0 and total.item() == 0.0\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nx=torch.randn(2,4); r=torch.randn(2,4,requires_grad=True)\nmu=torch.randn(2,3,requires_grad=True); lv=torch.randn(2,3,requires_grad=True); e=torch.randn(2,3)\nz,total,kl={fn}(x,r,mu,lv,e)\n(z.sum()+total+kl).backward()\nassert r.grad is not None and mu.grad is not None and lv.grad is not None\n"
+        }
+      ]
+    },
+    {
+      "id": "wordpiece_tokenizer",
+      "title": "WordPiece Subword Tokenizer",
+      "titleZh": "WordPiece 子词分词器",
+      "difficulty": "Medium",
+      "functionName": "wordpiece_encode",
+      "hint": "For each start position, scan candidate ends backward. Buffer a word's pieces and append them only if the whole word can be segmented.",
+      "hintZh": "对每个起点从后向前扫描候选终点。先缓存单词的子词，只有整个单词都能切分时才加入结果。",
+      "descriptionEn": "Implement greedy longest-match-first WordPiece encoding. Continuation pieces use the `##` prefix, and any failed word is replaced as a whole by the unknown token.",
+      "descriptionZh": "实现最长匹配优先的贪心 WordPiece 编码。续接子词使用 `##` 前缀；任一位置匹配失败时，整个单词替换为未知标记。",
+      "category": "分词",
+      "theoryEn": "WordPiece segments each whitespace-delimited word independently. Greedy longest matching prefers fewer, longer vocabulary pieces while the continuation marker distinguishes word-internal pieces.",
+      "theoryZh": "WordPiece 独立切分每个由空白分隔的单词。贪心最长匹配倾向于更少、更长的词表片段，续接标记用于区分词内片段。",
+      "diagramEn": "```mermaid\nflowchart LR\nW[word] --> L[longest prefix]\nL --> C[longest ## continuation]\nC --> O[pieces]\nL -->|failure| U[UNK]\nC -->|failure| U\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nW[单词] --> L[最长前缀]\nL --> C[最长 ## 续接]\nC --> O[子词列表]\nL -->|失败| U[未知标记]\nC -->|失败| U\n```",
+      "tests": [
+        {
+          "name": "greedy segmentation",
+          "code": "import torch\nvocab = {'play', '##ing', '##er', 'player'}\nout = {fn}('playing player', vocab)\nassert isinstance(out, list) and len(out) == 3\nassert out == ['play', '##ing', 'player']\nassert torch.tensor([len(out)]).shape == (1,)\n"
+        },
+        {
+          "name": "longest match wins",
+          "code": "import torch\nvocab = {'a', 'ab', 'abc', '##b', '##bc'}\nout = {fn}('abc', vocab)\nassert out == ['abc']\nassert torch.tensor(len(out)).item() == 1\n"
+        },
+        {
+          "name": "failed word becomes one unknown",
+          "code": "import torch\nvocab = {'foo', 'bar', '##x'}\nout = {fn}('fooz bar', vocab, unk_token='<unk>')\nassert out == ['<unk>', 'bar']\nassert torch.tensor([len(x) for x in out]).shape == (2,)\n"
+        },
+        {
+          "name": "length limit and whitespace",
+          "code": "import torch\nvocab = {'ok'}\nout = {fn}('   toolong   ok  ', vocab, max_chars=3)\nassert out == ['[UNK]', 'ok']\nassert torch.tensor(len(out)).shape == ()\n"
+        }
+      ]
+    },
+    {
+      "id": "block_topk_attention",
+      "title": "Block Top-K Sparse Attention",
+      "titleZh": "分块 Top-K 稀疏注意力",
+      "difficulty": "Hard",
+      "functionName": "block_topk_attention",
+      "hint": "Score mean-pooled key blocks, scatter the top-k indices into a boolean block mask, then repeat each block decision across its tokens.",
+      "hintZh": "对均值池化的键块打分，将 top-k 索引散射成布尔块掩码，再把每个块选择重复到块内 token。",
+      "descriptionEn": "Implement sparse attention that routes each query to the tokens in its top-scoring mean-pooled key blocks.",
+      "descriptionZh": "实现分块稀疏注意力：每个查询仅关注均值池化得分最高的若干键块中的 token。",
+      "category": "注意力机制",
+      "theoryEn": "Coarse block scores cheaply choose a subset of keys. Exact token-level attention is then computed only over selected blocks, reducing the effective attention support.",
+      "theoryZh": "粗粒度块分数以较低成本筛选键子集，随后仅在选中块内计算精确 token 级注意力，缩小注意力范围。",
+      "diagramEn": "```text\nk -> block means -> block scores -> top-k mask -> token scores -> softmax -> @v\n```",
+      "diagramZh": "```text\nk -> 分块均值 -> 块分数 -> top-k 掩码 -> token 分数 -> softmax -> @v\n```",
+      "tests": [
+        {
+          "name": "output shape",
+          "code": "import torch\nq, k, v = [torch.randn(2, 8, 4) for _ in range(3)]\nout = {fn}(q, k, v, block_size=2, top_k=2)\nassert out.shape == (2, 8, 4)\n"
+        },
+        {
+          "name": "numerical sparse reference",
+          "code": "import torch\ntorch.manual_seed(3)\nq, k, v = [torch.randn(1, 6, 3) for _ in range(3)]\nout = {fn}(q, k, v, 2, 1)\nkb = k.view(1, 3, 2, 3).mean(2)\nidx = (q @ kb.transpose(-1, -2) / (3 ** 0.5)).topk(1, dim=-1).indices\nbm = torch.zeros(1, 6, 3, dtype=torch.bool).scatter(-1, idx, True)\nmask = bm.repeat_interleave(2, dim=-1)\nscores = (q @ k.transpose(-1, -2) / (3 ** 0.5)).masked_fill(~mask, float(\"-inf\"))\nref = torch.softmax(scores, -1) @ v\nassert torch.allclose(out, ref, atol=1e-6)\n"
+        },
+        {
+          "name": "all blocks equals dense attention",
+          "code": "import torch\ntorch.manual_seed(4)\nq, k, v = [torch.randn(2, 8, 5) for _ in range(3)]\nout = {fn}(q, k, v, block_size=2, top_k=4)\nref = torch.softmax(q @ k.transpose(-1, -2) / (5 ** 0.5), -1) @ v\nassert torch.allclose(out, ref, atol=1e-6)\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nq = torch.randn(1, 6, 4, requires_grad=True)\nk = torch.randn(1, 6, 4, requires_grad=True)\nv = torch.randn(1, 6, 4, requires_grad=True)\n{fn}(q, k, v, 3, 1).square().sum().backward()\nassert q.grad is not None and k.grad is not None and v.grad is not None\n"
+        }
+      ]
+    },
+    {
+      "id": "cql_iql_loss",
+      "title": "Offline RL: CQL & IQL Expectile Regression Loss",
+      "titleZh": "离线强化学习：CQL 与 IQL 期望分位数损失",
+      "difficulty": "Hard",
+      "functionName": "offline_rl_losses",
+      "hint": "Add detached-target Bellman MSE to alpha times logsumexp(all actions)-dataset Q. For IQL, detach dataset Q, choose tau or 1-tau by residual sign, and weight its square.",
+      "hintZh": "将使用分离目标的 Bellman MSE 与 alpha 倍的 logsumexp(全部动作)-数据动作 Q 相加。IQL 中分离数据 Q，按残差符号选择 tau 或 1-tau 并加权平方。",
+      "descriptionEn": "Compute a discrete-action Conservative Q-Learning objective and an Implicit Q-Learning expectile value objective from an offline batch.",
+      "descriptionZh": "根据离线批次计算离散动作 Conservative Q-Learning 目标和 Implicit Q-Learning 的期望分位值目标。",
+      "category": "强化学习",
+      "theoryEn": "CQL penalizes Q-values spread over unsupported actions while fitting Bellman targets. IQL fits V to an asymmetric expectile of fixed dataset-action Q-values.",
+      "theoryZh": "CQL 在拟合 Bellman 目标的同时惩罚未被数据支持动作的高 Q 值。IQL 将 V 拟合到固定数据动作 Q 值的非对称期望分位数。",
+      "diagramEn": "```mermaid\nflowchart LR\nQA[all-action Q] --> C[logsumexp penalty]\nQD[data-action Q] --> C\nQD --> B[Bellman MSE]\nT[detached target] --> B\nC --> CL[CQL loss]\nB --> CL\nQD --> U[detached Q - V]\nV[value] --> U\nU --> I[expectile loss]\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nQA[全部动作 Q] --> C[logsumexp 惩罚]\nQD[数据动作 Q] --> C\nQD --> B[Bellman MSE]\nT[分离目标] --> B\nC --> CL[CQL 损失]\nB --> CL\nQD --> U[分离 Q - V]\nV[状态值] --> U\nU --> I[期望分位损失]\n```",
+      "tests": [
+        {
+          "name": "two scalar losses",
+          "code": "import torch\nq = torch.randn(4, 3)\nqd = torch.randn(4)\ncql, iql = {fn}(q, qd, torch.randn(4), torch.randn(4))\nassert cql.shape == torch.Size([]) and iql.shape == torch.Size([])\nassert torch.isfinite(cql) and torch.isfinite(iql)\n"
+        },
+        {
+          "name": "exact CQL and IQL reference",
+          "code": "import torch\nqa = torch.tensor([[1., 2.], [-1., .5]], dtype=torch.double)\nqd = torch.tensor([1.5, -.2], dtype=torch.double)\nt = torch.tensor([1., .3], dtype=torch.double)\nv = torch.tensor([1.2, .1], dtype=torch.double)\ncql, iql = {fn}(qa, qd, t, v, alpha=.4, tau=.8)\nref_c = ((qd-t)**2).mean()+.4*(torch.logsumexp(qa,-1)-qd).mean()\nu=qd-v; ref_i=(torch.where(u>=0,.8,.2)*u.square()).mean()\nassert torch.allclose(cql, ref_c, atol=1e-12, rtol=1e-12) and torch.allclose(iql, ref_i, atol=1e-12, rtol=1e-12)\n"
+        },
+        {
+          "name": "zero residual edge",
+          "code": "import torch\nqd = torch.tensor([1.0, -1.0])\ncql, iql = {fn}(torch.stack((qd, qd), dim=1), qd, qd, qd.clone(), alpha=0.0)\nassert torch.equal(cql, torch.tensor(0.0))\nassert torch.equal(iql, torch.tensor(0.0)) and cql.shape == torch.Size([])\n"
+        },
+        {
+          "name": "gradient detach semantics",
+          "code": "import torch\nqa = torch.randn(3, 2, dtype=torch.double, requires_grad=True)\nqd = torch.randn(3, dtype=torch.double, requires_grad=True)\nt = torch.randn(3, dtype=torch.double, requires_grad=True)\nv = torch.randn(3, dtype=torch.double, requires_grad=True)\ncql, iql = {fn}(qa, qd, t, v); (cql+iql).backward()\nassert qa.grad is not None and qd.grad is not None and v.grad is not None\nassert t.grad is None and qa.grad.shape == qa.shape and torch.isfinite(v.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "dapo_loss",
+      "title": "DAPO (Clip-Higher & Token-Level Policy Optimization) Loss",
+      "titleZh": "DAPO（非对称裁剪与 Token 级策略优化）损失",
+      "difficulty": "Hard",
+      "functionName": "dapo_loss",
+      "hint": "Detach old log-probabilities and advantages, expand per-sequence advantages with an extra last dimension, apply asymmetric ratio clipping, and normalize over all active tokens.",
+      "hintZh": "分离旧对数概率和优势；为序列级优势增加末维进行广播；执行非对称比率裁剪；最后在全批次有效 token 上归一化。",
+      "descriptionEn": "Implement DAPO's asymmetric clipped surrogate objective with token-level normalization. Advantages may be sequence-level or token-level, while only action-mask positions contribute.",
+      "descriptionZh": "实现 DAPO 的非对称裁剪代理目标和 token 级归一化。优势可以是序列级或 token 级，且仅动作掩码位置参与计算。",
+      "category": "强化学习",
+      "theoryEn": "Clip-higher permits larger beneficial ratio increases than decreases. Global active-token normalization prevents response lengths from receiving equal sequence weight regardless of token count.",
+      "theoryZh": "上界更宽的裁剪允许更大的有利比率增长。按全局有效 token 归一化，避免不同长度回复被强制赋予相同序列权重。",
+      "diagramEn": "```mermaid\nflowchart LR\nN[new logp] --> R[exp difference]\nO[detached old logp] --> R\nR --> C[asymmetric clamp]\nA[detached advantage] --> S[min surrogates]\nC --> S\nM[action mask] --> G[global token mean]\nS --> G\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nN[新 logp] --> R[差值取指数]\nO[分离的旧 logp] --> R\nR --> C[非对称裁剪]\nA[分离的优势] --> S[代理项取最小]\nC --> S\nM[动作掩码] --> G[全局 token 均值]\nS --> G\n```",
+      "tests": [
+        {
+          "name": "scalar with broadcast advantages",
+          "code": "import torch\nn = torch.zeros(2, 3, requires_grad=True)\no = torch.zeros(2, 3)\na = torch.tensor([1.0, -1.0])\nm = torch.ones(2, 3)\nloss = {fn}(n, o, a, m)\nassert loss.shape == torch.Size([]) and torch.equal(loss, torch.tensor(0.0))\n"
+        },
+        {
+          "name": "exact asymmetric clipping",
+          "code": "import torch\nn = torch.log(torch.tensor([[1.5, 0.5], [1.1, 0.9]], dtype=torch.double))\no = torch.zeros_like(n)\na = torch.tensor([[2.0, 2.0], [-3.0, -3.0]], dtype=torch.double)\nm = torch.tensor([[1.0, 1.0], [1.0, 0.0]], dtype=torch.double)\ngot = {fn}(n, o, a, m, eps_low=.2, eps_high=.3)\nr = torch.exp(n - o)\nref = -(torch.minimum(r * a, r.clamp(.8, 1.3) * a) * m).sum() / m.sum().clamp(min=1.0)\nassert torch.allclose(got, ref, atol=1e-12, rtol=1e-12)\n"
+        },
+        {
+          "name": "empty action mask",
+          "code": "import torch\nn = torch.randn(2, 2)\no = torch.randn(2, 2)\nloss = {fn}(n, o, torch.randn(2), torch.zeros(2, 2))\nassert loss.shape == torch.Size([])\nassert torch.equal(loss, torch.tensor(0.0)) and torch.isfinite(loss)\n"
+        },
+        {
+          "name": "detached inputs and policy gradient",
+          "code": "import torch\nn = torch.zeros(2, 2, dtype=torch.double, requires_grad=True)\no = torch.zeros(2, 2, dtype=torch.double, requires_grad=True)\na = torch.ones(2, dtype=torch.double, requires_grad=True)\n{fn}(n, o, a, torch.ones_like(n)).backward()\nassert n.grad is not None and n.grad.shape == n.shape\nassert o.grad is None and a.grad is None and torch.isfinite(n.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "deepseek_moe_router",
+      "title": "DeepSeek-V3 Aux-Loss-Free MoE Router",
+      "titleZh": "DeepSeek-V3 无辅助损失 MoE 路由",
+      "difficulty": "Hard",
+      "functionName": "aux_free_moe_route",
+      "hint": "Rank sigmoid affinities after adding the dynamic bias, but gather and normalize the original unbiased affinities. Use bincount for expert loads.",
+      "hintZh": "在 sigmoid 亲和度上加入动态偏置后排序，但应收集并归一化原始无偏亲和度；用 bincount 统计专家负载。",
+      "descriptionEn": "Implement DeepSeek-V3-style auxiliary-loss-free routing. Select experts with bias-adjusted sigmoid scores, compute gates from unbiased scores, and update the per-expert bias from load imbalance.",
+      "descriptionZh": "实现 DeepSeek-V3 风格的无辅助损失路由：用加偏置的 sigmoid 分数选择专家，用无偏分数计算门控，并根据负载不均衡更新专家偏置。",
+      "category": "混合专家模型",
+      "theoryEn": "A non-differentiable dynamic bias steers future assignments toward underloaded experts without changing the gate values used by the current token.",
+      "theoryZh": "不可微的动态偏置将后续分配引向低负载专家，同时不改变当前 token 实际使用的门控权重。",
+      "diagramEn": "```text\nx @ W^T -> sigmoid -> + bias -> top-k indices\n                    \\-> gather unbiased scores -> normalize -> gates\nindices -> expert counts -> signed bias update\n```",
+      "diagramZh": "```text\nx @ W^T -> sigmoid -> + 偏置 -> top-k 索引\n                    \\-> 收集无偏分数 -> 归一化 -> 门控\n索引 -> 专家计数 -> 符号偏置更新\n```",
+      "tests": [
+        {
+          "name": "shapes and normalized gates",
+          "code": "import torch\nx = torch.randn(5, 4)\nw = torch.randn(3, 4)\nb = torch.zeros(3)\nidx, gates, new_b = {fn}(x, w, b, top_k=2)\nassert idx.shape == gates.shape == (5, 2)\nassert new_b.shape == (3,)\nassert torch.allclose(gates.sum(-1), torch.ones(5), atol=2e-6)\n"
+        },
+        {
+          "name": "exact routing reference",
+          "code": "import torch\nx = torch.tensor([[1., 0.], [0., 1.], [1., 1.]])\nw = torch.tensor([[2., 0.], [0., 2.], [1., 1.]])\nb = torch.tensor([0.0, 0.2, -0.1])\nidx, gates, new_b = {fn}(x, w, b, 2, bias_lr=0.05)\ns = torch.sigmoid(x @ w.T)\nref_idx = torch.topk(s + b.unsqueeze(0), 2, dim=-1).indices\nsel = torch.gather(s, -1, ref_idx)\nref_g = sel / (sel.sum(-1, keepdim=True) + 1e-6)\ncounts = torch.bincount(ref_idx.reshape(-1), minlength=3).to(s.dtype)\nref_b = b - 0.05 * torch.sign(counts - 2.0)\nassert torch.equal(idx, ref_idx)\nassert torch.allclose(gates, ref_g, atol=1e-7)\nassert torch.equal(new_b, ref_b)\n"
+        },
+        {
+          "name": "all experts edge case",
+          "code": "import torch\ntorch.manual_seed(4)\nx = torch.randn(2, 3)\nw = torch.randn(4, 3)\nb = torch.randn(4)\nidx, gates, new_b = {fn}(x, w, b, top_k=4, bias_lr=0.3)\nassert torch.equal(torch.sort(idx, dim=-1).values, torch.arange(4).expand(2, 4))\nassert torch.equal(new_b, b)\nassert torch.all(gates > 0)\n"
+        },
+        {
+          "name": "gradient flow through gates",
+          "code": "import torch\nx = torch.randn(6, 5, requires_grad=True)\nw = torch.randn(4, 5, requires_grad=True)\nb = torch.zeros(4)\nidx, gates, new_b = {fn}(x, w, b, 2)\n(gates.square().sum()).backward()\nassert idx.dtype == torch.long and new_b.shape == b.shape\nassert x.grad is not None and w.grad is not None\nassert torch.isfinite(x.grad).all() and torch.isfinite(w.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "deltanet_recurrence",
+      "title": "DeltaNet Linear Attention Recurrence",
+      "titleZh": "DeltaNet 线性注意力递推",
+      "difficulty": "Hard",
+      "functionName": "deltanet_recurrence",
+      "hint": "Normalize q/k once, then at each step compute `v_old=S@k`, apply the gated outer-product delta update, and read with `S@q`.",
+      "hintZh": "先归一化 q/k；每一步计算 `v_old=S@k`，执行门控外积增量更新，再用 `S@q` 读取。",
+      "descriptionEn": "Implement the recurrent DeltaNet state update and return every readout together with the final matrix-valued state.",
+      "descriptionZh": "实现 DeltaNet 的循环状态更新，返回所有时间步输出以及最终矩阵状态。",
+      "category": "注意力机制",
+      "theoryEn": "The state is an associative memory mapping normalized keys to values. The delta rule first removes the old prediction at a key, then writes the residual toward the new value.",
+      "theoryZh": "状态是将归一化键映射到值的联想记忆。增量规则先取得该键的旧预测，再把预测残差写入新值方向。",
+      "diagramEn": "```text\nS,k -> v_old -> beta*(v-v_old) outer k -> S' -> S'@q\n```",
+      "diagramZh": "```text\nS,k -> 旧值 -> beta*(v-旧值) 外积 k -> S' -> S'@q\n```",
+      "tests": [
+        {
+          "name": "output and state shapes",
+          "code": "import torch\nq = torch.randn(2, 5, 4)\nk = torch.randn(2, 5, 4)\nv = torch.randn(2, 5, 4)\nout, state = {fn}(q, k, v, torch.full((2, 5), 0.5))\nassert out.shape == (2, 5, 4) and state.shape == (2, 4, 4)\n"
+        },
+        {
+          "name": "numerical recurrence",
+          "code": "import torch\ntorch.manual_seed(1)\nq, k, v = [torch.randn(1, 3, 2) for _ in range(3)]\nbeta = torch.tensor([[0.2, 0.7, 0.4]])\nout, state = {fn}(q, k, v, beta)\nqn = q / (q.norm(dim=-1, keepdim=True) + 1e-6)\nkn = k / (k.norm(dim=-1, keepdim=True) + 1e-6)\ns = torch.zeros(1, 2, 2)\nys = []\nfor t in range(3):\n    old = (s @ kn[:, t, :, None]).squeeze(-1)\n    s = s + beta[:, t, None, None] * (v[:, t] - old)[:, :, None] * kn[:, t, None, :]\n    ys.append((s @ qn[:, t, :, None]).squeeze(-1))\nref = torch.stack(ys, 1)\nassert torch.allclose(out, ref, atol=1e-6) and torch.allclose(state, s, atol=1e-6)\n"
+        },
+        {
+          "name": "zero gate edge case",
+          "code": "import torch\nq, k, v = [torch.randn(2, 4, 3) for _ in range(3)]\nout, state = {fn}(q, k, v, torch.zeros(2, 4))\nassert torch.count_nonzero(out) == 0 and torch.count_nonzero(state) == 0\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nq = torch.randn(1, 4, 3, requires_grad=True)\nk = torch.randn(1, 4, 3, requires_grad=True)\nv = torch.randn(1, 4, 3, requires_grad=True)\nbeta = torch.full((1, 4), 0.5, requires_grad=True)\nout, state = {fn}(q, k, v, beta)\n(out.square().sum() + state.square().sum()).backward()\nassert all(t.grad is not None for t in (q, k, v, beta))\n"
+        }
+      ]
+    },
+    {
+      "id": "diffusion_dpo_repa_loss",
+      "title": "Diffusion-DPO & REPA Representation Alignment Loss",
+      "titleZh": "Diffusion-DPO 与 REPA 表征对齐损失",
+      "difficulty": "Hard",
+      "functionName": "diffusion_dpo_and_repa",
+      "hint": "Compute four per-sample noise MSEs, compare policy-minus-reference errors for winner and loser through -logsigmoid, then add a separate negative cosine-similarity REPA calculation.",
+      "hintZh": "计算四个逐样本噪声 MSE，通过 -logsigmoid 比较胜者与败者的策略减参考误差，再单独计算负余弦相似度 REPA。",
+      "descriptionEn": "Compute Diffusion-DPO preference loss from winner/loser noise predictions of shape (B,D), and REPA alignment from projected and SSL features (B,N,C). Reference predictions and SSL targets are detached. Return (dpo_loss,repa_loss).",
+      "descriptionZh": "从形状 (B,D) 的胜者/败者噪声预测计算 Diffusion-DPO 偏好损失，并从投影特征与 SSL 特征 (B,N,C) 计算 REPA 对齐。参考预测与 SSL 目标需停止梯度。返回 (dpo_loss,repa_loss)。",
+      "category": "扩散与流模型",
+      "theoryEn": "Diffusion-DPO favors a policy whose denoising error improves over the reference more for preferred samples than rejected ones. REPA maximizes tokenwise cosine similarity to frozen self-supervised representations.",
+      "theoryZh": "Diffusion-DPO 鼓励策略相对参考模型在偏好样本上的去噪误差改善大于拒绝样本。REPA 最大化 token 级特征与冻结自监督表征的余弦相似度。",
+      "diagramEn": "```text\nwinner/loser policy and reference errors -> relative margin -> -log sigmoid -> DPO\nhidden projection + detached SSL target -> normalize -> negative cosine -> REPA\n```",
+      "diagramZh": "```text\n胜/负样本策略与参考误差 -> 相对间隔 -> -log sigmoid -> DPO\n隐藏投影 + 停止梯度的 SSL 目标 -> 归一化 -> 负余弦 -> REPA\n```",
+      "tests": [
+        {
+          "name": "scalar output shapes",
+          "code": "import torch\nnoise=[torch.randn(3,5) for _ in range(6)]\nh=torch.randn(3,4,7); z=torch.randn(3,4,7)\nd,r={fn}(*noise,h,z)\nassert d.shape==torch.Size([]) and r.shape==torch.Size([])\nassert torch.isfinite(d) and torch.isfinite(r)\n"
+        },
+        {
+          "name": "exact numerical reference",
+          "code": "import torch\nimport torch.nn.functional as F\ntorch.manual_seed(6)\ntw,rw,w,tl,rl,l=[torch.randn(2,4) for _ in range(6)]\nh=torch.randn(2,3,5); z=torch.randn(2,3,5)\nd,r={fn}(tw,rw,w,tl,rl,l,h,z,beta=2.,eps=1e-6)\netw=((tw-w)**2).mean(-1); erw=((rw.detach()-w)**2).mean(-1)\netl=((tl-l)**2).mean(-1); erl=((rl.detach()-l)**2).mean(-1)\nrd=-F.logsigmoid(-2.*((etw-erw)-(etl-erl))).mean()\nrr=-((h/(h.norm(dim=-1,keepdim=True)+1e-6))*(z.detach()/(z.detach().norm(dim=-1,keepdim=True)+1e-6))).sum(-1).mean()\nassert torch.equal(d,rd) and torch.equal(r,rr)\n"
+        },
+        {
+          "name": "zero and identical feature edge cases",
+          "code": "import torch\nq=torch.zeros(2,3); h=torch.ones(2,4,5); zero=torch.zeros_like(h)\nd,r={fn}(q,q,q,q,q,q,h,zero,beta=500.)\nassert torch.allclose(d,torch.tensor(0.69314718),atol=1e-7)\nassert r.item()==0.0 and torch.isfinite(r)\n"
+        },
+        {
+          "name": "gradient routing",
+          "code": "import torch\ntw=torch.randn(2,3,requires_grad=True); rw=torch.randn(2,3,requires_grad=True); w=torch.randn(2,3)\ntl=torch.randn(2,3,requires_grad=True); rl=torch.randn(2,3,requires_grad=True); l=torch.randn(2,3)\nh=torch.randn(2,4,5,requires_grad=True); z=torch.randn(2,4,5,requires_grad=True)\nd,r={fn}(tw,rw,w,tl,rl,l,h,z,beta=3.); (d+r).backward()\nassert tw.grad is not None and tl.grad is not None and h.grad is not None\nassert rw.grad is None and rl.grad is None and z.grad is None\n"
+        }
+      ]
+    },
+    {
+      "id": "dora_linear",
+      "title": "DoRA (Weight-Decomposed Low-Rank Adaptation)",
+      "titleZh": "DoRA（权重分解低秩适配）",
+      "difficulty": "Hard",
+      "functionName": "DoRALinear",
+      "hint": "Register the frozen base matrix as a buffer. Form the adapted direction, normalize each output row, rescale by the trainable magnitude, and apply it to x.",
+      "hintZh": "将冻结基矩阵注册为 buffer。构造适配后的方向，逐输出行归一化，再用可训练幅值缩放并作用于 x。",
+      "descriptionEn": "Implement a DoRA linear layer that separates each weight row into a trainable magnitude and a direction adapted by low-rank matrices. The base weight is frozen and there is no bias.",
+      "descriptionZh": "实现 DoRA 线性层：将每个权重行分解为可训练幅值与由低秩矩阵适配的方向。基础权重冻结且不使用偏置。",
+      "category": "参数高效微调",
+      "theoryEn": "DoRA writes a weight row as magnitude times a unit direction. LoRA modifies only the direction candidate `V`, after which row normalization and the learned magnitude reconstruct the effective weight.",
+      "theoryZh": "DoRA 将权重行表示为幅值乘单位方向。LoRA 只修改方向候选 `V`，随后通过逐行归一化和学习到的幅值重建有效权重。",
+      "diagramEn": "```mermaid\nflowchart LR\nW[frozen W0] --> V[V=W0+sBA]\nA[A] --> V\nB[B] --> V\nV --> N[row normalize]\nM[magnitude m] --> R[rescale]\nN --> R\nX[x] --> O[x Wdora^T]\nR --> O\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nW[冻结 W0] --> V[V=W0+sBA]\nA[A] --> V\nB[B] --> V\nV --> N[逐行归一化]\nM[幅值 m] --> R[重新缩放]\nN --> R\nX[x] --> O[x Wdora^T]\nR --> O\n```",
+      "tests": [
+        {
+          "name": "parameter shapes and freezing",
+          "code": "import torch\nimport torch.nn as nn\nW = torch.randn(5, 7, requires_grad=True)\nlayer = {fn}(W, rank=3, alpha=2.0)\nassert isinstance(layer, nn.Module)\nassert layer.W_0.shape == (5, 7) and not layer.W_0.requires_grad\nassert layer.m.shape == (5,) and layer.A.shape == (3, 7) and layer.B.shape == (5, 3)\n"
+        },
+        {
+          "name": "initial output equals base numerically",
+          "code": "import torch\ntorch.manual_seed(0)\nW = torch.randn(4, 6)\nx = torch.randn(3, 6)\nlayer = {fn}(W, rank=2, eps=1e-8)\nout = layer(x)\nexpected = x @ W.T\nassert out.shape == (3, 4)\nassert torch.allclose(out, expected, atol=1e-7, rtol=1e-6)\n"
+        },
+        {
+          "name": "exact forward formula",
+          "code": "import torch\ntorch.manual_seed(1)\nW = torch.randn(3, 4)\nlayer = {fn}(W, rank=2, alpha=4.0, eps=1e-6)\nwith torch.no_grad():\n    layer.B.normal_()\nx = torch.randn(2, 4)\nV = layer.W_0 + 2.0 * (layer.B @ layer.A)\nexpected = x @ (((layer.m[:, None] / (V.norm(dim=1, keepdim=True) + 1e-6)) * V).T)\nassert layer(x).shape == (2, 3)\nassert torch.allclose(layer(x), expected, atol=1e-7)\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nW = torch.randn(4, 5)\nlayer = {fn}(W, rank=2)\nx = torch.randn(3, 5, requires_grad=True)\nlayer(x).sum().backward()\nassert x.grad is not None and x.grad.shape == x.shape\nassert layer.m.grad is not None and layer.A.grad is not None and layer.B.grad is not None\nassert layer.W_0.grad is None\n"
+        }
+      ]
+    },
+    {
+      "id": "dreamer_world_model",
+      "title": "World Models: Symlog Transform & Dreamer Lambda-Return",
+      "titleZh": "世界模型：Symlog 变换与 Dreamer Lambda 回报",
+      "difficulty": "Hard",
+      "functionName": "dreamer_lambda_return",
+      "hint": "Initialize the final return from the final value, scan backward through the horizon, then apply the sign-preserving log and exponential elementwise.",
+      "hintZh": "用最后一个价值初始化最终回报，沿时间范围反向递推，再逐元素应用保号对数和指数变换。",
+      "descriptionEn": "Compute finite-horizon Dreamer lambda-returns together with their symlog encoding and exact symexp reconstruction.",
+      "descriptionZh": "计算有限时域 Dreamer lambda 回报，并返回其 symlog 编码和精确 symexp 重建。",
+      "category": "世界模型",
+      "theoryEn": "Lambda-returns interpolate between one-step value targets and long rollouts. Symlog compresses large signed magnitudes smoothly, while symexp is its inverse.",
+      "theoryZh": "Lambda 回报在一步价值目标与长时域展开之间插值。Symlog 平滑压缩大幅有符号数值，symexp 则是其逆变换。",
+      "diagramEn": "```text\nlast value -> backward lambda recursion -> G -> symlog(G) -> symexp -> G\n```",
+      "diagramZh": "```text\n末端价值 -> 反向 lambda 递推 -> G -> symlog(G) -> symexp -> G\n```",
+      "tests": [
+        {
+          "name": "tuple shapes",
+          "code": "import torch\nr = torch.randn(2, 5)\nv = torch.randn(2, 5)\nc = torch.ones(2, 5)\nG, y, x = {fn}(r, v, c)\nassert G.shape == y.shape == x.shape == (2, 5)\n"
+        },
+        {
+          "name": "exact recursion",
+          "code": "import torch\nr = torch.tensor([[1., 2., 3.]])\nv = torch.tensor([[.5, .6, .7]])\nc = torch.tensor([[1., .5, 1.]])\nG, y, x = {fn}(r, v, c, gamma=.9, lam=.8)\nref = torch.empty_like(r)\nref[:, 2] = v[:, 2]\nref[:, 1] = r[:, 1] + .9 * c[:, 1] * (.2 * v[:, 2] + .8 * ref[:, 2])\nref[:, 0] = r[:, 0] + .9 * c[:, 0] * (.2 * v[:, 1] + .8 * ref[:, 1])\nassert torch.allclose(G, ref) and torch.allclose(y, torch.sign(ref) * torch.log1p(ref.abs())) and torch.allclose(x, ref)\n"
+        },
+        {
+          "name": "horizon one edge case",
+          "code": "import torch\nr = torch.tensor([[99.], [-2.]])\nv = torch.tensor([[3.], [-4.]])\nG, y, x = {fn}(r, v, torch.ones_like(r))\nassert torch.equal(G, v) and torch.allclose(x, G, atol=1e-6)\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nr = torch.randn(2, 4, requires_grad=True)\nv = torch.randn(2, 4, requires_grad=True)\nc = torch.sigmoid(torch.randn(2, 4)).requires_grad_()\nG, y, x = {fn}(r, v, c)\n(G.sum() + y.sum() + x.sum()).backward()\nassert r.grad is not None and v.grad is not None and c.grad is not None\n"
+        }
+      ]
+    },
+    {
+      "id": "gaussian_splatting_cov3d",
+      "title": "3D Gaussian Splatting Covariance & Quaternion Rotation",
+      "titleZh": "3D Gaussian Splatting 协方差矩阵与四元数旋转",
+      "difficulty": "Hard",
+      "functionName": "gaussian_splat_covariance",
+      "hint": "Normalize each (w,x,y,z) quaternion, construct the three rotation rows with stack operations, then compute R @ diag_embed(scales**2) @ R.T.",
+      "hintZh": "归一化每个 (w,x,y,z) 四元数，用 stack 构造三行旋转矩阵，再计算 R @ diag_embed(scales**2) @ R.T。",
+      "descriptionEn": "Normalize (N,4) quaternions in (w,x,y,z) order, convert them to (N,3,3) rotations, and rotate diagonal squared scales into 3D covariance matrices. Return (R,Sigma).",
+      "descriptionZh": "归一化按 (w,x,y,z) 排列的 (N,4) 四元数，将其转换为 (N,3,3) 旋转矩阵，并把对角尺度平方旋转成三维协方差矩阵。返回 (R,Sigma)。",
+      "category": "三维与具身感知",
+      "theoryEn": "A quaternion compactly represents 3D rotation. Independent principal-axis standard deviations form diag(s^2); changing basis by R produces covariance R diag(s^2) R^T.",
+      "theoryZh": "四元数紧凑表示三维旋转。独立主轴标准差构成 diag(s^2)；通过 R 变换基底后得到协方差 R diag(s^2) R^T。",
+      "diagramEn": "```text\nquaternion -> normalize -> R --\\\nscales -> square -> diagonal ----> R diag(s^2) R^T -> Sigma\n```",
+      "diagramZh": "```text\n四元数 -> 归一化 -> R --\\\n尺度 -> 平方 -> 对角矩阵 ----> R diag(s^2) R^T -> Sigma\n```",
+      "tests": [
+        {
+          "name": "output shapes and symmetry",
+          "code": "import torch\nq=torch.randn(5,4); s=torch.rand(5,3)+.1\nR,S={fn}(q,s)\nassert R.shape==(5,3,3) and S.shape==(5,3,3)\nassert torch.allclose(S,S.transpose(-2,-1),atol=1e-6)\n"
+        },
+        {
+          "name": "exact quaternion reference",
+          "code": "import torch\nq=torch.tensor([[1.,2.,3.,4.]])\ns=torch.tensor([[2.,3.,4.]])\nR,S={fn}(q,s,eps=0.0)\nw,x,y,z=(q/q.norm(dim=-1,keepdim=True)).unbind(-1)\nref=torch.stack((torch.stack((1-2*(y*y+z*z),2*(x*y-w*z),2*(x*z+w*y)),-1),torch.stack((2*(x*y+w*z),1-2*(x*x+z*z),2*(y*z-w*x)),-1),torch.stack((2*(x*z-w*y),2*(y*z+w*x),1-2*(x*x+y*y)),-1)),-2)\nassert torch.equal(R,ref) and torch.equal(S,ref@torch.diag_embed(s.square())@ref.transpose(-2,-1))\n"
+        },
+        {
+          "name": "identity quaternion edge case",
+          "code": "import torch\nq=torch.tensor([[1.,0.,0.,0.]]); s=torch.tensor([[1.,2.,3.]])\nR,S={fn}(q,s,eps=0.0)\nassert torch.equal(R,torch.eye(3).unsqueeze(0))\nassert torch.equal(S,torch.diag(torch.tensor([1.,4.,9.])).unsqueeze(0))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nq=torch.randn(3,4,requires_grad=True); s=(torch.rand(3,3)+.2).requires_grad_()\nR,S={fn}(q,s); (R.sum()+S.square().sum()).backward()\nassert q.grad is not None and s.grad is not None\nassert torch.isfinite(q.grad).all() and torch.isfinite(s.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "h2o_kv_eviction",
+      "title": "H2O (Heavy-Hitter Oracle) & Sink KV Cache Eviction",
+      "titleZh": "H2O 重命中与汇聚 Token KV 驱逐",
+      "difficulty": "Hard",
+      "functionName": "h2o_evict_kv",
+      "hint": "Sum attention over queries, top-k only the middle slice, offset those local indices by `sink_size`, concatenate sink/heavy/recent indices, sort, and gather with an expanded index.",
+      "hintZh": "先沿查询维累加注意力，仅在中间区间取 top-k，并给局部索引加 `sink_size`；拼接 sink/heavy/recent 索引、排序后用扩展索引收集。",
+      "descriptionEn": "Evict a KV cache while preserving attention sinks, high-cumulative-attention heavy hitters, and the most recent positions.",
+      "descriptionZh": "驱逐 KV 缓存，同时保留注意力汇聚位置、累计注意力最高的重命中位置以及最近位置。",
+      "category": "推理优化",
+      "theoryEn": "H2O exploits the persistence of heavy hitters, while sink and recency reservations protect positional stability and near-term context.",
+      "theoryZh": "H2O 利用重命中 token 的持续重要性；保留汇聚和最近位置则保护位置稳定性与短期上下文。",
+      "diagramEn": "```text\n[sinks | middle candidates | recent]\n          attention sum -> top heavy\nconcat -> temporal sort -> gather K,V\n```",
+      "diagramZh": "```text\n[汇聚 | 中间候选 | 最近]\n       注意力累加 -> top 重命中\n拼接 -> 时间排序 -> 收集 K,V\n```",
+      "tests": [
+        {
+          "name": "budgeted output shapes",
+          "code": "import torch\nK = torch.randn(2, 10, 4)\nV = torch.randn(2, 10, 6)\na = torch.rand(2, 3, 10)\nKk, Vk, idx = {fn}(K, V, a, sink_size=2, heavy_size=3, recent_size=2)\nassert Kk.shape == (2, 7, 4) and Vk.shape == (2, 7, 6)\nassert idx.shape == (2, 7) and idx.dtype == torch.long\n"
+        },
+        {
+          "name": "exact per-batch heavy hitters",
+          "code": "import torch\nK = torch.arange(8.).view(1, 8, 1).expand(2, -1, -1).clone()\nV = K + 100\na = torch.zeros(2, 2, 8)\na[0, :, 2:6] = torch.tensor([[1., 8., 2., 4.], [1., 1., 2., 4.]])\na[1, :, 2:6] = torch.tensor([[9., 1., 7., 0.], [1., 1., 1., 0.]])\nKk, Vk, idx = {fn}(K, V, a, 2, 2, 2)\nref_idx = torch.tensor([[0, 1, 3, 5, 6, 7], [0, 1, 2, 4, 6, 7]])\nassert torch.equal(idx, ref_idx)\nassert torch.equal(Kk.squeeze(-1), ref_idx.float())\nassert torch.equal(Vk.squeeze(-1), ref_idx.float() + 100)\n"
+        },
+        {
+          "name": "short cache keeps everything",
+          "code": "import torch\nK = torch.randn(3, 5, 2)\nV = torch.randn(3, 5, 2)\na = torch.rand(3, 1, 5)\nKk, Vk, idx = {fn}(K, V, a, sink_size=2, heavy_size=2, recent_size=2)\nref = torch.arange(5).expand(3, 5)\nassert torch.equal(idx, ref)\nassert torch.equal(Kk, K) and torch.equal(Vk, V)\n"
+        },
+        {
+          "name": "gradient through gathered cache",
+          "code": "import torch\nK = torch.randn(2, 9, 3, requires_grad=True)\nV = torch.randn(2, 9, 3, requires_grad=True)\na = torch.rand(2, 4, 9)\nKk, Vk, idx = {fn}(K, V, a, 1, 3, 2)\n(Kk.square().sum() + Vk.square().sum()).backward()\nassert idx.shape == (2, 6)\nassert K.grad is not None and V.grad is not None\nassert torch.isfinite(K.grad).all() and torch.isfinite(V.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "kabsch_pointcloud_align",
+      "title": "3D Point Cloud Rigid Registration (Kabsch SVD)",
+      "titleZh": "三维点云刚体配准（Kabsch SVD 算法）",
+      "difficulty": "Hard",
+      "functionName": "kabsch_align",
+      "hint": "Center both clouds, take the SVD of X.T @ Y, and insert the determinant sign into the final diagonal factor before recovering translation.",
+      "hintZh": "将两组点云中心化，对 X.T @ Y 做 SVD，在恢复平移前把行列式符号放入最后一个对角修正因子。",
+      "descriptionEn": "Recover the proper rigid transform that least-squares aligns paired 3D source points to destination points using the Kabsch algorithm.",
+      "descriptionZh": "使用 Kabsch 算法恢复最小二乘意义下将配对三维源点对齐到目标点的正规刚体变换。",
+      "category": "三维与具身感知",
+      "theoryEn": "SVD factorizes cross-covariance into orthogonal bases. A determinant correction excludes reflections, and centroid alignment then gives the translation.",
+      "theoryZh": "SVD 将互协方差分解为正交基；行列式修正排除反射，随后由质心对齐得到平移。",
+      "diagramEn": "```text\nsrc,dst -> center -> H=X^T Y -> SVD -> reflection correction -> R,t -> aligned\n```",
+      "diagramZh": "```text\n源点、目标点 -> 中心化 -> H=X^T Y -> SVD -> 反射修正 -> R,t -> 对齐点\n```",
+      "tests": [
+        {
+          "name": "return shapes",
+          "code": "import torch\nsrc = torch.tensor([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])\ndst = src + torch.tensor([1., -2., 3.])\nR, t, aligned = {fn}(src, dst)\nassert R.shape == (3, 3) and t.shape == (3,) and aligned.shape == src.shape\n"
+        },
+        {
+          "name": "exact rigid transform",
+          "code": "import torch\nsrc = torch.tensor([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])\nR0 = torch.tensor([[0., -1., 0.], [1., 0., 0.], [0., 0., 1.]])\nt0 = torch.tensor([2., -1., .5])\ndst = src @ R0.T + t0\nR, t, aligned = {fn}(src, dst)\nassert torch.allclose(R, R0, atol=1e-5) and torch.allclose(t, t0, atol=1e-5) and torch.allclose(aligned, dst, atol=1e-5)\n"
+        },
+        {
+          "name": "translation-only edge case",
+          "code": "import torch\nsrc = torch.tensor([[0., 0., 0.], [1., 2., 0.], [-1., 0., 2.], [2., -1., 1.]])\nshift = torch.tensor([3., -2., 4.])\nR, t, aligned = {fn}(src, src + shift)\nassert torch.allclose(R, torch.eye(3), atol=1e-5) and torch.allclose(t, shift, atol=1e-5) and torch.allclose(aligned, src + shift, atol=1e-5)\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\ntorch.manual_seed(4)\nsrc = torch.randn(7, 3, requires_grad=True)\ndst = torch.randn(7, 3, requires_grad=True)\nR, t, aligned = {fn}(src, dst)\n(aligned - dst).square().sum().backward()\nassert src.grad is not None and dst.grad is not None and torch.isfinite(src.grad).all() and torch.isfinite(dst.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "kalman_lqr_control",
+      "title": "Linear Kalman Filter Predict & Update Step",
+      "titleZh": "线性卡尔曼滤波预测与更新步",
+      "difficulty": "Hard",
+      "functionName": "kalman_filter_step",
+      "hint": "First propagate state and covariance. Build innovation covariance from the prediction, compute the Kalman gain, then correct the state and covariance.",
+      "hintZh": "先传播状态和协方差；由预测构造新息协方差并计算卡尔曼增益，最后修正状态与协方差。",
+      "descriptionEn": "Implement one linear Kalman-filter prediction and measurement-update step, returning the posterior state, covariance, and Kalman gain.",
+      "descriptionZh": "实现一次线性卡尔曼滤波预测与测量更新，返回后验状态、协方差和卡尔曼增益。",
+      "category": "具身智能与控制",
+      "theoryEn": "The prediction propagates uncertainty through linear dynamics and adds process noise. The gain balances predicted uncertainty against measurement noise when applying the innovation.",
+      "theoryZh": "预测步骤通过线性动力学传播不确定性并加入过程噪声；更新时增益在预测不确定性与测量噪声之间权衡并应用新息。",
+      "diagramEn": "```text\nx,P,u -> predict x-,P- -> innovation S -> gain K -> update x+,P+\n```",
+      "diagramZh": "```text\nx、P、u -> 预测 x-、P- -> 新息 S -> 增益 K -> 更新 x+、P+\n```",
+      "tests": [
+        {
+          "name": "return shapes",
+          "code": "import torch\nn, m, k = 3, 2, 1\nx, P, K = {fn}(torch.zeros(n), torch.eye(n), torch.zeros(m), torch.zeros(k), torch.eye(n), torch.randn(n, m), torch.randn(k, n), torch.eye(n), torch.eye(k))\nassert x.shape == (n,) and P.shape == (n, n) and K.shape == (n, k)\n"
+        },
+        {
+          "name": "exact scalar reference",
+          "code": "import torch\nx0 = torch.tensor([2.])\nP0 = torch.tensor([[4.]])\nargs = (torch.tensor([1.]), torch.tensor([5.]), torch.tensor([[1.]]), torch.tensor([[2.]]), torch.tensor([[1.]]), torch.tensor([[1.]]), torch.tensor([[3.]]))\nx, P, K = {fn}(x0, P0, *args)\nxpred = torch.tensor([4.])\nPpred = torch.tensor([[5.]])\nKref = torch.tensor([[5/8]])\nassert torch.allclose(K, Kref) and torch.allclose(x, xpred + Kref @ torch.tensor([1.])) and torch.allclose(P, torch.tensor([[15/8]]))\n"
+        },
+        {
+          "name": "uninformative measurement edge case",
+          "code": "import torch\nx0 = torch.tensor([1., -2.])\nP0 = torch.eye(2)\nx, P, K = {fn}(x0, P0, torch.tensor([.5]), torch.tensor([99.]), torch.eye(2), torch.tensor([[1.], [2.]]), torch.zeros(1, 2), torch.zeros(2, 2), torch.eye(1))\nassert torch.equal(K, torch.zeros(2, 1)) and torch.allclose(x, torch.tensor([1.5, -1.])) and torch.equal(P, P0)\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nx0 = torch.randn(2, requires_grad=True)\nP0 = torch.eye(2, requires_grad=True)\nA = torch.tensor([[1., .1], [0., 1.]], requires_grad=True)\nx, P, K = {fn}(x0, P0, torch.ones(1), torch.randn(1), A, torch.ones(2, 1), torch.tensor([[1., 0.]]), torch.eye(2) * .1, torch.eye(1))\n(x.sum() + P.sum() + K.sum()).backward()\nassert x0.grad is not None and P0.grad is not None and A.grad is not None and torch.isfinite(A.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "muon_orthogonalize",
+      "title": "Muon Newton-Schulz Matrix Orthogonalization",
+      "titleZh": "Muon 优化器 Newton-Schulz 矩阵正交化",
+      "difficulty": "Hard",
+      "functionName": "muon_orthogonalize",
+      "hint": "Normalize first. Transpose a tall matrix so the Gram matrix uses the smaller axis, iterate the cubic polynomial, then restore the orientation.",
+      "hintZh": "先归一化。将高矩阵转置，使 Gram 矩阵使用较小维度；迭代三次多项式后恢复方向。",
+      "descriptionEn": "Implement Muon's Newton-Schulz-style matrix orthogonalization for a 2D tensor. Normalize by the Frobenius norm, orient the matrix to minimize the Gram matrix, and apply the given polynomial iteration.",
+      "descriptionZh": "为二维张量实现 Muon 的 Newton-Schulz 风格矩阵正交化。先按 Frobenius 范数归一化，调整矩阵方向以减小 Gram 矩阵，再执行给定多项式迭代。",
+      "category": "优化器与学习率",
+      "theoryEn": "The iteration applies a polynomial in `XX^T` to `X`. Its coefficients rapidly push singular values toward one while matrix multiplication preserves singular vectors.",
+      "theoryZh": "该迭代把 `XX^T` 的多项式作用于 `X`。系数会快速将奇异值推向 1，而矩阵乘法保持奇异向量。",
+      "diagramEn": "```mermaid\nflowchart LR\nG[G] --> N[Frobenius normalize]\nN --> T[orient smaller axis]\nT --> A[A=XX^T]\nA --> I[X=aX+(bA+cA^2)X]\nI --> A\nI --> R[restore orientation]\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nG[G] --> N[Frobenius 归一化]\nN --> T[调整较小轴]\nT --> A[A=XX^T]\nA --> I[X=aX+(bA+cA^2)X]\nI --> A\nI --> R[恢复方向]\n```",
+      "tests": [
+        {
+          "name": "exact polynomial reference",
+          "code": "import torch\ntorch.manual_seed(0)\nG = torch.randn(3, 5)\nout = {fn}(G, steps=2)\nX = G / (G.norm() + 1e-7)\nfor _ in range(2):\n    A = X @ X.T\n    B = -4.7750 * A + 2.0315 * (A @ A)\n    X = 3.4445 * X + B @ X\nassert out.shape == G.shape\nassert torch.allclose(out, X, atol=1e-7, rtol=1e-6)\n"
+        },
+        {
+          "name": "tall matrix transposes internally",
+          "code": "import torch\ntorch.manual_seed(1)\nG = torch.randn(7, 2)\nout = {fn}(G, steps=1)\nX = (G / (G.norm() + 1e-7)).T\nA = X @ X.T\nexpected = (3.4445 * X + (-4.7750 * A + 2.0315 * (A @ A)) @ X).T\nassert out.shape == (7, 2)\nassert torch.allclose(out, expected)\n"
+        },
+        {
+          "name": "zero steps only normalizes",
+          "code": "import torch\nG = torch.tensor([[3.0, 4.0]])\nout = {fn}(G, steps=0, eps=0.0)\nassert out.shape == G.shape\nassert torch.equal(out, torch.tensor([[0.6, 0.8]]))\n"
+        },
+        {
+          "name": "gradient flows",
+          "code": "import torch\nG = torch.randn(4, 3, dtype=torch.double, requires_grad=True)\nout = {fn}(G, steps=2)\nout.square().sum().backward()\nassert out.shape == G.shape\nassert G.grad is not None and G.grad.shape == G.shape\nassert torch.isfinite(G.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "nerf_volume_rendering",
+      "title": "NeRF Volume Rendering (Alpha Compositing)",
+      "titleZh": "NeRF 体渲染方程（Alpha 合成）",
+      "difficulty": "Hard",
+      "functionName": "nerf_volume_render",
+      "hint": "Build adjacent depth intervals and duplicate the final interval (use one for a single sample). Compute alpha, exclusive transmittance with a prepended one, weights, then weighted color and depth.",
+      "hintZh": "构造相邻深度间隔并复制最后一个间隔（单样本时使用 1）。计算 alpha、前置 1 的排他透射率、权重，再求加权颜色与深度。",
+      "descriptionEn": "Render RGB and depth from NeRF samples. rgb is (R,S,3), sigma and sorted z_vals are (R,S). For S>1, deltas concatenates adjacent differences with the final difference repeated; for S=1 it is ones_like(z_vals). Return (comp_rgb,depth,weights), optionally compositing residual opacity over white.",
+      "descriptionZh": "从 NeRF 样本渲染 RGB 与深度。rgb 为 (R,S,3)，sigma 与有序 z_vals 为 (R,S)。S>1 时，deltas 由相邻差分和重复的最后差分拼接；S=1 时使用 ones_like(z_vals)。返回 (comp_rgb,depth,weights)，并可将剩余透明度合成到白色背景。",
+      "category": "三维与具身感知",
+      "theoryEn": "Density over each interval gives alpha=1-exp(-sigma*delta). Exclusive transmittance is the probability a ray reaches a sample; multiplying it by alpha gives that sample's termination weight.",
+      "theoryZh": "每个区间的密度给出 alpha=1-exp(-sigma*delta)。排他透射率表示射线到达样本的概率，与 alpha 相乘得到该样本的终止权重。",
+      "diagramEn": "```text\n(sigma, depth intervals) -> alpha -> exclusive transmittance -> weights\nweights * RGB -> color        weights * z -> depth\n```",
+      "diagramZh": "```text\n(sigma, 深度间隔) -> alpha -> 排他透射率 -> 权重\n权重 * RGB -> 颜色             权重 * z -> 深度\n```",
+      "tests": [
+        {
+          "name": "output shapes and finite values",
+          "code": "import torch\nrgb=torch.rand(4,6,3); sigma=torch.rand(4,6); z=torch.arange(6.).expand(4,6)\nc,d,w={fn}(rgb,sigma,z)\nassert c.shape==(4,3) and d.shape==(4,) and w.shape==(4,6)\nassert torch.isfinite(c).all() and torch.isfinite(d).all() and torch.isfinite(w).all()\n"
+        },
+        {
+          "name": "exact alpha compositing reference",
+          "code": "import torch\nrgb=torch.tensor([[[1.,0.,0.],[0.,1.,0.],[0.,0.,1.]]])\nsigma=torch.tensor([[.2,.4,.6]]); z=torch.tensor([[1.,2.,4.]])\nc,d,w={fn}(rgb,sigma,z)\ndelta=torch.tensor([[1.,2.,2.]]); a=1-torch.exp(-sigma*delta)\nT=torch.cumprod(torch.cat((torch.ones(1,1),1-a[:,:-1]+1e-10),-1),-1); rw=T*a\nassert torch.equal(w,rw) and torch.equal(c,(rw.unsqueeze(-1)*rgb).sum(1)) and torch.equal(d,(rw*z).sum(1))\n"
+        },
+        {
+          "name": "single sample and white background edge",
+          "code": "import torch\nrgb=torch.tensor([[[.2,.4,.6]]]); sigma=torch.tensor([[0.]]); z=torch.tensor([[3.]])\nc,d,w={fn}(rgb,sigma,z,white_bkgd=True)\nassert torch.equal(w,torch.zeros(1,1)) and torch.equal(d,torch.zeros(1))\nassert torch.equal(c,torch.ones(1,3))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nrgb=torch.rand(2,4,3,requires_grad=True); sigma=torch.rand(2,4,requires_grad=True)\nz=torch.tensor([[0.,.5,1.,2.],[0.,.2,.8,1.5]],requires_grad=True)\nc,d,w={fn}(rgb,sigma,z,True); (c.sum()+d.sum()+w.sum()).backward()\nassert rgb.grad is not None and sigma.grad is not None and z.grad is not None\nassert torch.isfinite(rgb.grad).all() and torch.isfinite(sigma.grad).all() and torch.isfinite(z.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "unigram_viterbi",
+      "title": "Unigram LM Viterbi Subword Segmentation",
+      "titleZh": "Unigram 维特比最优子词切分",
+      "difficulty": "Hard",
+      "functionName": "unigram_viterbi",
+      "hint": "Let each character boundary be a DP state. Store the best predecessor for every reachable end position, then reverse the backtracked pieces.",
+      "hintZh": "将每个字符边界作为 DP 状态。为每个可达终点保存最佳前驱，最后回溯并反转子词。",
+      "descriptionEn": "Use Viterbi dynamic programming to find the maximum-log-probability unigram segmentation. Permit an unknown single-character fallback only when no vocabulary transition reaches that end position.",
+      "descriptionZh": "使用维特比动态规划寻找对数概率最大的 Unigram 切分。仅当没有词表转移到达当前终点时，才允许未知单字符回退。",
+      "category": "分词",
+      "theoryEn": "Log probabilities turn a product of independent piece probabilities into an additive path score. The DP keeps only the best path to each boundary, giving an exact optimum over all segmentations.",
+      "theoryZh": "对数概率将独立子词概率的乘积变成可加路径分数。DP 只保留到每个边界的最佳路径，从而精确得到所有切分中的最优解。",
+      "diagramEn": "```mermaid\nflowchart LR\nZ[boundary 0] -->|piece score| I[boundary i]\nI -->|piece score| N[boundary N]\nN --> B[backtrack best path]\n```",
+      "diagramZh": "```mermaid\nflowchart LR\nZ[边界 0] -->|子词分数| I[边界 i]\nI -->|子词分数| N[边界 N]\nN --> B[回溯最佳路径]\n```",
+      "tests": [
+        {
+          "name": "finds global optimum",
+          "code": "import torch\npieces, score = {fn}('abcd', {'a': -1.0, 'ab': -0.2, 'bc': -0.1, 'cd': -0.2, 'd': -1.0})\nassert pieces == ['ab', 'cd']\nassert abs(score - (-0.4)) < 1e-12\nassert torch.tensor([score]).shape == (1,)\n"
+        },
+        {
+          "name": "unknown fallback",
+          "code": "import torch\npieces, score = {fn}('axb', {'a': -0.1, 'b': -0.2}, unk_log_prob=-3.0)\nassert pieces == ['a', 'x', 'b']\nassert abs(score + 3.3) < 1e-12\nassert torch.isfinite(torch.tensor(score))\n"
+        },
+        {
+          "name": "empty text",
+          "code": "import torch\npieces, score = {fn}('', {'x': -1.0})\nassert pieces == []\nassert score == 0.0\nassert torch.tensor(pieces).shape == (0,)\n"
+        },
+        {
+          "name": "strict tie keeps first start",
+          "code": "import torch\npieces, score = {fn}('aa', {'a': -0.5, 'aa': -1.0})\nassert pieces == ['aa']\nassert score == -1.0\nassert torch.tensor(score).shape == ()\n"
+        }
+      ]
+    },
+    {
+      "id": "vqvae_ste",
+      "title": "VQ-VAE Vector Quantizer with Straight-Through Estimator",
+      "titleZh": "VQ-VAE 向量量化器与直通估计器（STE）",
+      "difficulty": "Hard",
+      "functionName": "vqvae_quantize",
+      "hint": "Expand squared norms and use a matrix product for all distances. Index the codebook, form the two stop-gradient losses, then use z_e + (z_q-z_e).detach().",
+      "hintZh": "展开平方范数并用矩阵乘法计算所有距离。索引码本，构造两个停止梯度的损失，再使用 z_e + (z_q-z_e).detach()。",
+      "descriptionEn": "Quantize encoder vectors z_e of shape (B,N,D) against a codebook (K,D), using nearest-neighbor lookup and the VQ-VAE straight-through estimator. Return (z_q_ste,indices,vq_loss).",
+      "descriptionZh": "将形状 (B,N,D) 的编码器向量通过最近邻查找量化到码本 (K,D)，并使用 VQ-VAE 直通估计器。返回 (z_q_ste,indices,vq_loss)。",
+      "category": "扩散与流模型",
+      "theoryEn": "Nearest-neighbor selection is discrete. The STE uses quantized values in the forward pass but identity gradients to the encoder. Separate codebook and commitment terms train embeddings and constrain encoder outputs.",
+      "theoryZh": "最近邻选择是离散操作。STE 前向使用量化值，反向向编码器传递恒等梯度。码本损失与承诺损失分别训练嵌入并约束编码器输出。",
+      "diagramEn": "```text\nz_e -> distances to codebook -> argmin -> z_q -> STE -> z_q_ste\n                    \\-> codebook loss + commitment loss\n```",
+      "diagramZh": "```text\nz_e -> 到码本的距离 -> argmin -> z_q -> STE -> z_q_ste\n                    \\-> 码本损失 + 承诺损失\n```",
+      "tests": [
+        {
+          "name": "shapes and nearest indices",
+          "code": "import torch\nz=torch.tensor([[[.1,.2],[2.9,3.1]]]); cb=torch.tensor([[0.,0.],[3.,3.],[-2.,1.]])\nq,idx,loss={fn}(z,cb)\nassert q.shape==z.shape and idx.shape==(1,2) and loss.shape==torch.Size([])\nassert torch.equal(idx,torch.tensor([[0,1]])) and torch.equal(q,cb[idx])\n"
+        },
+        {
+          "name": "exact distance and loss reference",
+          "code": "import torch\ntorch.manual_seed(4)\nz=torch.randn(2,3,4); cb=torch.randn(5,4)\nq,idx,loss={fn}(z,cb,.7)\nd=z.square().sum(-1,keepdim=True)+cb.square().sum(-1)-2*(z@cb.t())\nri=d.argmin(-1); raw=cb[ri]\nref=((raw-z.detach())**2).mean()+.7*((z-raw.detach())**2).mean()\nassert torch.equal(idx,ri) and torch.allclose(q,raw,atol=1e-7) and torch.equal(loss,ref)\n"
+        },
+        {
+          "name": "exact-code edge case",
+          "code": "import torch\ncb=torch.tensor([[1.,2.],[-1.,0.]])\nz=cb.reshape(1,2,2).clone()\nq,idx,loss={fn}(z,cb)\nassert torch.equal(q,z) and torch.equal(idx,torch.tensor([[0,1]]))\nassert loss.item()==0.0\n"
+        },
+        {
+          "name": "STE and loss gradient flow",
+          "code": "import torch\nz=torch.randn(2,3,4,requires_grad=True); cb=torch.randn(6,4,requires_grad=True)\nq,idx,loss={fn}(z,cb,.25)\n(q.sum()+loss).backward()\nassert z.grad is not None and cb.grad is not None and idx.dtype==torch.long\nassert torch.isfinite(z.grad).all() and torch.isfinite(cb.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "yarn_rope",
+      "title": "YaRN RoPE (Frequency Ramp & Temperature Scaling)",
+      "titleZh": "YaRN 旋转位置编码",
+      "difficulty": "Hard",
+      "functionName": "yarn_rope",
+      "hint": "Build pair frequencies, blend interpolated and original frequencies with the clamped wavelength ramp, then rotate even/odd features.",
+      "hintZh": "构造每对维度的频率，用截断的波长斜坡混合插值频率和原频率，再旋转偶数/奇数特征。",
+      "descriptionEn": "Implement YaRN RoPE with a frequency-dependent interpolation ramp and attention-temperature magnitude scaling.",
+      "descriptionZh": "实现带频率插值斜坡和注意力温度幅值缩放的 YaRN 旋转位置编码。",
+      "category": "位置编码与嵌入",
+      "theoryEn": "YaRN interpolates low-wavelength frequencies while retaining frequencies that already fit many wavelengths in the training context. A logarithmic magnitude factor adjusts attention temperature for extended contexts.",
+      "theoryZh": "YaRN 对低波长数频率进行插值，同时保留在训练上下文中已有足够波长数的频率；对数幅值因子用于调整长上下文注意力温度。",
+      "diagramEn": "```text\nbase frequencies -> wavelength ramp -> blended frequencies -> pairwise rotation -> mscale\n```",
+      "diagramZh": "```text\n基础频率 -> 波长斜坡 -> 混合频率 -> 成对旋转 -> mscale\n```",
+      "tests": [
+        {
+          "name": "output shapes",
+          "code": "import torch\nq = torch.randn(2, 9, 8)\nk = torch.randn(2, 9, 8)\nqr, kr = {fn}(q, k, 4.0)\nassert qr.shape == q.shape and kr.shape == k.shape\n"
+        },
+        {
+          "name": "exact formula",
+          "code": "import torch, math\ntorch.manual_seed(0)\nq, k = torch.randn(1, 5, 6), torch.randn(1, 5, 6)\nscale, orig, alpha, beta, base = 3.0, 32, 1.0, 8.0, 100.0\nqr, kr = {fn}(q, k, scale, orig, alpha, beta, base)\ni = torch.arange(3, dtype=q.dtype)\ntheta = 1.0 / (base ** (2.0 * i / 6))\ngamma = torch.clamp((orig * theta / (2.0 * math.pi) - alpha) / (beta - alpha), 0.0, 1.0)\nfreq = (1.0 - gamma) * theta / scale + gamma * theta\nang = torch.arange(5, dtype=q.dtype)[:, None] * freq[None, :]\nc, s = torch.cos(ang), torch.sin(ang)\nref = torch.stack((q[..., 0::2] * c - q[..., 1::2] * s, q[..., 0::2] * s + q[..., 1::2] * c), -1).flatten(-2)\nref = ref * (0.1 * math.log(scale) + 1.0)\nassert torch.allclose(qr, ref, atol=1e-6)\n"
+        },
+        {
+          "name": "scale one edge case",
+          "code": "import torch\nq = torch.randn(1, 4, 8)\nk = torch.randn(1, 4, 8)\nqr, _ = {fn}(q, k, 1.0)\ni = torch.arange(4, dtype=q.dtype)\na = torch.arange(4, dtype=q.dtype)[:, None] * (1.0 / (10000.0 ** (2.0 * i / 8)))[None]\nref = torch.stack((q[..., 0::2] * a.cos() - q[..., 1::2] * a.sin(), q[..., 0::2] * a.sin() + q[..., 1::2] * a.cos()), -1).flatten(-2)\nassert torch.allclose(qr, ref, atol=1e-6)\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nq = torch.randn(2, 5, 8, requires_grad=True)\nk = torch.randn(2, 5, 8, requires_grad=True)\nqr, kr = {fn}(q, k, 2.0)\n(qr.square().mean() + kr.square().mean()).backward()\nassert q.grad is not None and k.grad is not None\n"
+        }
+      ]
     }
   ]
 }

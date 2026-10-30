@@ -47,6 +47,11 @@ def _problem_entry(task_id: str, task: dict[str, Any]) -> dict[str, Any]:
         "hintZh": task["hint_zh"],
         "descriptionEn": task["description_en"],
         "descriptionZh": task["description_zh"],
+        "category": task.get("category", "其他"),
+        "theoryEn": task.get("theory_en", ""),
+        "theoryZh": task.get("theory_zh", ""),
+        "diagramEn": task.get("diagram_en", ""),
+        "diagramZh": task.get("diagram_zh", ""),
         "tests": task["tests"],
     }
 

@@ -12,6 +12,7 @@
     "postinstall": "npm --prefix apps/desktop ci",
     "build:problems": "node scripts/run-python.js scripts/export_problems.py",
     "build:solutions": "node scripts/run-python.js scripts/build_solutions.py",
+    "build:starters": "node scripts/run-python.js scripts/build_starters.py",
     "import:handbook": "node scripts/import-handbook.mjs",
     "dev": "npm --prefix apps/desktop run tauri -- dev",
     "build:desktop": "npm --prefix apps/desktop run tauri -- build",

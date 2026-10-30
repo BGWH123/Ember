@@ -706,6 +706,426 @@
       "titleZh": "Kaiming 初始化",
       "difficulty": "Easy",
       "category": "基础网络组件"
+    },
+    {
+      "id": "classifier_free_guidance",
+      "title": "Classifier-Free Guidance (CFG) & Std Rescaling",
+      "titleZh": "无分类器引导（CFG）与标准差重缩放",
+      "difficulty": "Easy",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "dynamic_tanh",
+      "title": "Dynamic Tanh (DyT)",
+      "titleZh": "动态 Tanh 归一化替代层（DyT）",
+      "difficulty": "Easy",
+      "category": "归一化"
+    },
+    {
+      "id": "geglu",
+      "title": "GeGLU Feed-Forward Network",
+      "titleZh": "GeGLU 前馈网络",
+      "difficulty": "Easy",
+      "category": "激活函数"
+    },
+    {
+      "id": "logsumexp_logsoftmax",
+      "title": "Numerically Stable LogSumExp & Log-Softmax",
+      "titleZh": "数值稳定 LogSumExp 与 Log-Softmax",
+      "difficulty": "Easy",
+      "category": "基础网络组件"
+    },
+    {
+      "id": "moe_router_z_loss",
+      "title": "MoE Router Z-Loss",
+      "titleZh": "MoE 路由器 Z-Loss",
+      "difficulty": "Easy",
+      "category": "混合专家模型"
+    },
+    {
+      "id": "perceiver_resampler",
+      "title": "VLM Pixel Unshuffle Visual Token Compression",
+      "titleZh": "VLM Pixel Unshuffle 视觉 Token 压缩",
+      "difficulty": "Easy",
+      "category": "多模态"
+    },
+    {
+      "id": "puct_selection",
+      "title": "AlphaZero / Reasoning MCTS PUCT Selection",
+      "titleZh": "PUCT 树搜索节点选择评分",
+      "difficulty": "Easy",
+      "category": "采样与解码"
+    },
+    {
+      "id": "simpo_loss",
+      "title": "SimPO (Simple Preference Optimization) Loss",
+      "titleZh": "SimPO（无参考模型偏好优化）损失",
+      "difficulty": "Easy",
+      "category": "损失函数"
+    },
+    {
+      "id": "wsd_lr_schedule",
+      "title": "Warmup-Stable-Decay (WSD) LR Scheduler",
+      "titleZh": "WSD（预热-稳定-衰减）学习率调度",
+      "difficulty": "Easy",
+      "category": "优化器与学习率"
+    },
+    {
+      "id": "zero_memory_accounting",
+      "title": "ZeRO Memory Accounting & 1F1B Pipeline Bubble",
+      "titleZh": "ZeRO 显存核算与 1F1B 流水线气泡率",
+      "difficulty": "Easy",
+      "category": "高效训练"
+    },
+    {
+      "id": "act_openvla_actions",
+      "title": "VLA Action Chunking Temporal Ensemble & OpenVLA Tokenizer",
+      "titleZh": "VLA 动作分块时序集成与 OpenVLA 离散化",
+      "difficulty": "Medium",
+      "category": "具身智能与控制"
+    },
+    {
+      "id": "adamw",
+      "title": "AdamW Optimizer (Decoupled Weight Decay)",
+      "titleZh": "AdamW 优化器（解耦权重衰减）",
+      "difficulty": "Medium",
+      "category": "优化器与学习率"
+    },
+    {
+      "id": "axial_attention",
+      "title": "2D Axial Self-Attention",
+      "titleZh": "二维轴向自注意力（Axial Attention）",
+      "difficulty": "Medium",
+      "category": "注意力机制"
+    },
+    {
+      "id": "bm25_rrf_retrieval",
+      "title": "BM25 Scoring & Reciprocal Rank Fusion (RRF)",
+      "titleZh": "BM25 检索评分与倒数排名融合（RRF）",
+      "difficulty": "Medium",
+      "category": "检索与智能体"
+    },
+    {
+      "id": "box_iou_nms",
+      "title": "2D Bounding Box IoU & Non-Maximum Suppression (NMS)",
+      "titleZh": "二维边界框 IoU 与非极大值抑制（NMS）",
+      "difficulty": "Medium",
+      "category": "三维与具身感知"
+    },
+    {
+      "id": "chinchilla_scaling",
+      "title": "Chinchilla Compute-Optimal Scaling Law",
+      "titleZh": "Chinchilla 算力最优缩放定律",
+      "difficulty": "Medium",
+      "category": "高效训练"
+    },
+    {
+      "id": "damped_least_squares_ik",
+      "title": "Robotics Damped Least Squares IK & Joint PD Control",
+      "titleZh": "阻尼最小二乘逆运动学（DLS IK）与关节 PD 控制",
+      "difficulty": "Medium",
+      "category": "具身智能与控制"
+    },
+    {
+      "id": "ddpm_posterior_and_vpred",
+      "title": "DDPM Posterior Distribution & v-Prediction Conversion",
+      "titleZh": "DDPM 后验分布与 v-Prediction 转换",
+      "difficulty": "Medium",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "deepnorm_residual",
+      "title": "DeepNorm Residual Scaling & Init Gain",
+      "titleZh": "DeepNorm 残差缩放与初始化增益",
+      "difficulty": "Medium",
+      "category": "归一化"
+    },
+    {
+      "id": "document_packing_mask",
+      "title": "Document Packing & Intra-Document Causal Mask",
+      "titleZh": "预训练文档拼接与文档内因果掩码",
+      "difficulty": "Medium",
+      "category": "高效训练"
+    },
+    {
+      "id": "double_dqn_td3_target",
+      "title": "Double DQN & TD3 Clipped Double-Q Targets",
+      "titleZh": "Double DQN 与 TD3 双 Q 目标计算",
+      "difficulty": "Medium",
+      "category": "强化学习"
+    },
+    {
+      "id": "expected_calibration_error",
+      "title": "Expected Calibration Error (ECE) & Brier Score",
+      "titleZh": "期望校准误差（ECE）与 Brier 分数",
+      "difficulty": "Medium",
+      "category": "评测与基准"
+    },
+    {
+      "id": "finite_scalar_quantization",
+      "title": "Finite Scalar Quantization (FSQ)",
+      "titleZh": "有限标量量化（FSQ）",
+      "difficulty": "Medium",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "flow_heun_sampler",
+      "title": "Flow Matching Heun (2nd-Order RK2) ODE Step",
+      "titleZh": "流匹配 Heun 二阶 ODE 采样步",
+      "difficulty": "Medium",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "generalized_advantage_estimation",
+      "title": "Generalized Advantage Estimation (GAE)",
+      "titleZh": "广义优势估计（GAE）",
+      "difficulty": "Medium",
+      "category": "强化学习"
+    },
+    {
+      "id": "gkd_generalized_jsd",
+      "title": "On-Policy Distillation: Generalized JSD (GKD) Loss",
+      "titleZh": "在线策略蒸馏：广义 JS 散度（GKD）损失",
+      "difficulty": "Medium",
+      "category": "损失函数"
+    },
+    {
+      "id": "groupnorm",
+      "title": "Group Normalization",
+      "titleZh": "组归一化（GroupNorm）",
+      "difficulty": "Medium",
+      "category": "归一化"
+    },
+    {
+      "id": "groupwise_int4_quant",
+      "title": "Group-Wise Asymmetric INT4 Quantization",
+      "titleZh": "分组非对称 INT4 量化",
+      "difficulty": "Medium",
+      "category": "量化"
+    },
+    {
+      "id": "kl_estimators_rlhf",
+      "title": "Schulman KL Estimators (k1, k2, k3) for RLHF",
+      "titleZh": "RLHF 中的 Schulman KL 估计器（k1, k2, k3）",
+      "difficulty": "Medium",
+      "category": "强化学习"
+    },
+    {
+      "id": "kto_orpo_loss",
+      "title": "ORPO (Odds Ratio Preference Optimization) Loss",
+      "titleZh": "ORPO（优势比偏好优化）损失",
+      "difficulty": "Medium",
+      "category": "损失函数"
+    },
+    {
+      "id": "lion_optimizer",
+      "title": "Lion Optimizer (EvoLved Sign Momentum)",
+      "titleZh": "Lion 优化器（符号动量）",
+      "difficulty": "Medium",
+      "category": "优化器与学习率"
+    },
+    {
+      "id": "matryoshka_colbert_loss",
+      "title": "ColBERT Late-Interaction MaxSim & Matryoshka Scoring",
+      "titleZh": "ColBERT 晚期交互 MaxSim 评分",
+      "difficulty": "Medium",
+      "category": "检索与智能体"
+    },
+    {
+      "id": "min_p_sampling",
+      "title": "Min-P & Repetition Penalty Sampling Filter",
+      "titleZh": "Min-P 采样与重复惩罚过滤",
+      "difficulty": "Medium",
+      "category": "采样与解码"
+    },
+    {
+      "id": "mmdit_joint_attention",
+      "title": "MMDiT Joint Image-Text Attention",
+      "titleZh": "MMDiT 图文联合注意力机制",
+      "difficulty": "Medium",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "pass_at_k",
+      "title": "Unbiased Pass@k Estimator (Chen et al.)",
+      "titleZh": "Pass@k 无偏估计器",
+      "difficulty": "Medium",
+      "category": "评测与基准"
+    },
+    {
+      "id": "pissa_init",
+      "title": "PiSSA (Principal Singular Value Adaptation) Initialization",
+      "titleZh": "PiSSA 主奇异值低秩初始化",
+      "difficulty": "Medium",
+      "category": "参数高效微调"
+    },
+    {
+      "id": "qk_norm_attention",
+      "title": "QK-Norm Scaled Dot-Product Attention",
+      "titleZh": "QK-Norm 注意力机制",
+      "difficulty": "Medium",
+      "category": "注意力机制"
+    },
+    {
+      "id": "sac_squashed_gaussian",
+      "title": "SAC Squashed Gaussian Policy & Tanh Jacobian Log-Prob",
+      "titleZh": "SAC 压缩高斯策略与雅可比修正对数概率",
+      "difficulty": "Medium",
+      "category": "强化学习"
+    },
+    {
+      "id": "siglip_loss",
+      "title": "SigLIP Pairwise Sigmoid Contrastive Loss",
+      "titleZh": "SigLIP 成对 Sigmoid 对比损失",
+      "difficulty": "Medium",
+      "category": "多模态"
+    },
+    {
+      "id": "smoothquant_migration",
+      "title": "SmoothQuant Activation-Weight Migration",
+      "titleZh": "SmoothQuant 激活-权重迁移",
+      "difficulty": "Medium",
+      "category": "量化"
+    },
+    {
+      "id": "tree_speculative_mask",
+      "title": "Tree Speculative Decoding Attention Mask",
+      "titleZh": "树状推测解码注意力掩码（Medusa / EAGLE）",
+      "difficulty": "Medium",
+      "category": "推理优化"
+    },
+    {
+      "id": "vae_elbo_reparam",
+      "title": "VAE Reparameterization Trick & Beta-ELBO Loss",
+      "titleZh": "VAE 重参数化技巧与 Beta-ELBO 损失",
+      "difficulty": "Medium",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "wordpiece_tokenizer",
+      "title": "WordPiece Subword Tokenizer",
+      "titleZh": "WordPiece 子词分词器",
+      "difficulty": "Medium",
+      "category": "分词"
+    },
+    {
+      "id": "block_topk_attention",
+      "title": "Block Top-K Sparse Attention",
+      "titleZh": "分块 Top-K 稀疏注意力",
+      "difficulty": "Hard",
+      "category": "注意力机制"
+    },
+    {
+      "id": "cql_iql_loss",
+      "title": "Offline RL: CQL & IQL Expectile Regression Loss",
+      "titleZh": "离线强化学习：CQL 与 IQL 期望分位数损失",
+      "difficulty": "Hard",
+      "category": "强化学习"
+    },
+    {
+      "id": "dapo_loss",
+      "title": "DAPO (Clip-Higher & Token-Level Policy Optimization) Loss",
+      "titleZh": "DAPO（非对称裁剪与 Token 级策略优化）损失",
+      "difficulty": "Hard",
+      "category": "强化学习"
+    },
+    {
+      "id": "deepseek_moe_router",
+      "title": "DeepSeek-V3 Aux-Loss-Free MoE Router",
+      "titleZh": "DeepSeek-V3 无辅助损失 MoE 路由",
+      "difficulty": "Hard",
+      "category": "混合专家模型"
+    },
+    {
+      "id": "deltanet_recurrence",
+      "title": "DeltaNet Linear Attention Recurrence",
+      "titleZh": "DeltaNet 线性注意力递推",
+      "difficulty": "Hard",
+      "category": "注意力机制"
+    },
+    {
+      "id": "diffusion_dpo_repa_loss",
+      "title": "Diffusion-DPO & REPA Representation Alignment Loss",
+      "titleZh": "Diffusion-DPO 与 REPA 表征对齐损失",
+      "difficulty": "Hard",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "dora_linear",
+      "title": "DoRA (Weight-Decomposed Low-Rank Adaptation)",
+      "titleZh": "DoRA（权重分解低秩适配）",
+      "difficulty": "Hard",
+      "category": "参数高效微调"
+    },
+    {
+      "id": "dreamer_world_model",
+      "title": "World Models: Symlog Transform & Dreamer Lambda-Return",
+      "titleZh": "世界模型：Symlog 变换与 Dreamer Lambda 回报",
+      "difficulty": "Hard",
+      "category": "世界模型"
+    },
+    {
+      "id": "gaussian_splatting_cov3d",
+      "title": "3D Gaussian Splatting Covariance & Quaternion Rotation",
+      "titleZh": "3D Gaussian Splatting 协方差矩阵与四元数旋转",
+      "difficulty": "Hard",
+      "category": "三维与具身感知"
+    },
+    {
+      "id": "h2o_kv_eviction",
+      "title": "H2O (Heavy-Hitter Oracle) & Sink KV Cache Eviction",
+      "titleZh": "H2O 重命中与汇聚 Token KV 驱逐",
+      "difficulty": "Hard",
+      "category": "推理优化"
+    },
+    {
+      "id": "kabsch_pointcloud_align",
+      "title": "3D Point Cloud Rigid Registration (Kabsch SVD)",
+      "titleZh": "三维点云刚体配准（Kabsch SVD 算法）",
+      "difficulty": "Hard",
+      "category": "三维与具身感知"
+    },
+    {
+      "id": "kalman_lqr_control",
+      "title": "Linear Kalman Filter Predict & Update Step",
+      "titleZh": "线性卡尔曼滤波预测与更新步",
+      "difficulty": "Hard",
+      "category": "具身智能与控制"
+    },
+    {
+      "id": "muon_orthogonalize",
+      "title": "Muon Newton-Schulz Matrix Orthogonalization",
+      "titleZh": "Muon 优化器 Newton-Schulz 矩阵正交化",
+      "difficulty": "Hard",
+      "category": "优化器与学习率"
+    },
+    {
+      "id": "nerf_volume_rendering",
+      "title": "NeRF Volume Rendering (Alpha Compositing)",
+      "titleZh": "NeRF 体渲染方程（Alpha 合成）",
+      "difficulty": "Hard",
+      "category": "三维与具身感知"
+    },
+    {
+      "id": "unigram_viterbi",
+      "title": "Unigram LM Viterbi Subword Segmentation",
+      "titleZh": "Unigram 维特比最优子词切分",
+      "difficulty": "Hard",
+      "category": "分词"
+    },
+    {
+      "id": "vqvae_ste",
+      "title": "VQ-VAE Vector Quantizer with Straight-Through Estimator",
+      "titleZh": "VQ-VAE 向量量化器与直通估计器（STE）",
+      "difficulty": "Hard",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "yarn_rope",
+      "title": "YaRN RoPE (Frequency Ramp & Temperature Scaling)",
+      "titleZh": "YaRN 旋转位置编码",
+      "difficulty": "Hard",
+      "category": "位置编码与嵌入"
     }
   ]
 }
