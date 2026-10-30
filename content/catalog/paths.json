@@ -17,7 +17,7 @@
       "descriptionEn": "Master every attention variant and position encoding technique — from scaled dot-product to Flash Attention, RoPE, and ALiBi.",
       "descriptionZh": "掌握所有注意力变体和位置编码技术——从缩放点积到 Flash Attention、RoPE 和 ALiBi。",
       "icon": "Eye",
-      "problems": ["sinusoidal_pe", "rope", "alibi", "ntk_rope", "yarn_rope", "softmax", "attention", "causal_attention", "mha", "cross_attention", "qk_norm_attention", "gqa", "sliding_window", "block_topk_attention", "axial_attention", "linear_attention", "deltanet_recurrence", "flash_attention"],
+      "problems": ["sinusoidal_pe", "rope", "alibi", "ntk_rope", "yarn_rope", "multimodal_3d_rope", "softmax", "attention", "causal_attention", "mha", "cross_attention", "qk_norm_attention", "gqa", "sliding_window", "attn_softcap_and_sink", "block_topk_attention", "axial_attention", "linear_attention", "chunkwise_linear_attention", "deltanet_recurrence", "flash_attention"],
       "prerequisites": []
     },
     {
@@ -37,7 +37,7 @@
       "descriptionEn": "Speed up inference with KV cache, quantization, and decoding strategies. Scale training with tensor parallelism, FSDP, and ring attention.",
       "descriptionZh": "通过 KV Cache、量化和解码策略加速推理。用张量并行、FSDP 和环形注意力扩展训练规模。",
       "icon": "Zap",
-      "problems": ["kv_cache", "h2o_kv_eviction", "int8_quantization", "groupwise_int4_quant", "smoothquant_migration", "topk_sampling", "min_p_sampling", "beam_search", "speculative_decoding", "tree_speculative_mask", "mixed_precision", "zero_memory_accounting", "tensor_parallel", "fsdp_step", "ring_attention"],
+      "problems": ["kv_cache", "h2o_kv_eviction", "kivi_kv_cache_quant", "int8_quantization", "groupwise_int4_quant", "smoothquant_migration", "topk_sampling", "min_p_sampling", "beam_search", "speculative_decoding", "tree_speculative_mask", "mixed_precision", "zero_memory_accounting", "tensor_parallel", "fsdp_step", "ring_attention"],
       "prerequisites": ["transformer-internals"]
     },
     {
@@ -47,7 +47,7 @@
       "descriptionEn": "Implement the loss functions and search algorithms behind modern AI alignment — from reward modeling to PPO and MCTS.",
       "descriptionZh": "实现现代 AI 对齐背后的损失函数和搜索算法——从奖励建模到 PPO 和 MCTS。",
       "icon": "Target",
-      "problems": ["cross_entropy", "reward_model", "dpo_loss", "kto_orpo_loss", "simpo_loss", "grpo_loss", "dapo_loss", "ppo_loss", "generalized_advantage_estimation", "kl_estimators_rlhf", "gkd_generalized_jsd", "diffusion_dpo_repa_loss", "puct_selection", "mcts_search"],
+      "problems": ["cross_entropy", "reward_model", "dpo_loss", "kto_orpo_loss", "ipo_and_kto_loss", "simpo_loss", "grpo_loss", "dapo_loss", "flow_grpo_sde_loss", "ppo_loss", "generalized_advantage_estimation", "rloo_and_prm_aggregation", "kl_estimators_rlhf", "gkd_generalized_jsd", "diffusion_dpo_repa_loss", "puct_selection", "mcts_search"],
       "prerequisites": []
     },
     {
@@ -67,7 +67,7 @@
       "descriptionEn": "From noise schedules to flow matching — implement the core algorithms behind Stable Diffusion 3, Flux, and DiT.",
       "descriptionZh": "从噪声调度到流匹配——实现 Stable Diffusion 3、Flux 和 DiT 背后的核心算法。",
       "icon": "Wand2",
-      "problems": ["noise_schedule", "ddim_step", "ddpm_posterior_and_vpred", "classifier_free_guidance", "flow_matching", "flow_heun_sampler", "vae_elbo_reparam", "vqvae_ste", "finite_scalar_quantization", "mmdit_joint_attention", "diffusion_dpo_repa_loss", "adaln_zero", "vit_block"],
+      "problems": ["noise_schedule", "min_snr_and_edm_precond", "ddim_step", "ddpm_posterior_and_vpred", "classifier_free_guidance", "flow_matching", "flow_heun_sampler", "consistency_distillation_loss", "vae_elbo_reparam", "vqvae_ste", "finite_scalar_quantization", "mmdit_joint_attention", "causal_conv3d", "mdlm_and_block_diffusion", "diffusion_dpo_repa_loss", "adaln_zero", "vit_block"],
       "prerequisites": []
     },
     {
@@ -77,7 +77,7 @@
       "descriptionEn": "Implement the cutting-edge attention and routing mechanisms powering DeepSeek, Meta, and Microsoft's latest models.",
       "descriptionZh": "实现驱动 DeepSeek、Meta 和微软最新模型的前沿注意力与路由机制。",
       "icon": "Sparkles",
-      "problems": ["mha", "gqa", "qk_norm_attention", "diff_attention", "mla", "block_topk_attention", "deltanet_recurrence", "moe", "deepseek_moe_router", "moe_load_balance", "moe_router_z_loss", "multi_token_prediction"],
+      "problems": ["mha", "gqa", "qk_norm_attention", "diff_attention", "mla", "mla_rope_absorption", "block_topk_attention", "deltanet_recurrence", "mot_asymmetric_attention", "moe", "deepseek_moe_router", "moe_load_balance", "moe_router_z_loss", "mod_and_expert_choice", "multi_token_prediction", "deepseek_mtp_module"],
       "prerequisites": []
     },
     {
@@ -97,7 +97,7 @@
       "descriptionEn": "Adapt, quantize, and scale language models efficiently, from low-rank fine-tuning to memory accounting and reliable evaluation.",
       "descriptionZh": "高效适配、量化并扩展语言模型，涵盖低秩微调、显存核算与可靠评估。",
       "icon": "Cpu",
-      "problems": ["lora", "dora_linear", "pissa_init", "qlora", "int8_quantization", "groupwise_int4_quant", "smoothquant_migration", "chinchilla_scaling", "zero_memory_accounting", "pass_at_k", "expected_calibration_error"],
+      "problems": ["lora", "dora_linear", "pissa_init", "qlora", "int8_quantization", "groupwise_int4_quant", "awq_and_gptq_quant", "nf4_double_quantization", "smoothquant_migration", "chinchilla_scaling", "zero_memory_accounting", "pass_at_k", "expected_calibration_error"],
       "prerequisites": ["train-gpt-from-scratch"]
     },
     {
@@ -107,7 +107,7 @@
       "descriptionEn": "Build retrieval, multimodal representation, planning, tree search, and learned world-model components for modern AI agents.",
       "descriptionZh": "构建现代智能体所需的检索、多模态表征、规划、树搜索与学习型世界模型组件。",
       "icon": "Brain",
-      "problems": ["cosine_similarity", "bm25_rrf_retrieval", "matryoshka_colbert_loss", "siglip_loss", "perceiver_resampler", "puct_selection", "mcts_search", "dreamer_world_model"],
+      "problems": ["cosine_similarity", "bm25_rrf_retrieval", "matryoshka_colbert_loss", "siglip_loss", "perceiver_resampler", "puct_selection", "mcts_search", "dreamer_world_model", "jepa_and_vicreg_loss"],
       "prerequisites": []
     },
     {
@@ -117,7 +117,7 @@
       "descriptionEn": "Implement perception, 3D reconstruction, robot kinematics, control, and offline reinforcement learning for embodied systems.",
       "descriptionZh": "实现具身系统中的感知、三维重建、机器人运动学、控制与离线强化学习。",
       "icon": "Target",
-      "problems": ["box_iou_nms", "kabsch_pointcloud_align", "nerf_volume_rendering", "gaussian_splatting_cov3d", "damped_least_squares_ik", "kalman_lqr_control", "act_openvla_actions", "sac_squashed_gaussian", "cql_iql_loss", "double_dqn_td3_target"],
+      "problems": ["box_iou_nms", "kabsch_pointcloud_align", "pointcloud_fps_and_unproject", "nerf_volume_rendering", "gaussian_splatting_cov3d", "damped_least_squares_ik", "kalman_lqr_control", "kmeans_pca_and_cem", "act_openvla_actions", "sac_squashed_gaussian", "cql_iql_loss", "double_dqn_td3_target"],
       "prerequisites": []
     }
   ]

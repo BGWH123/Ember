@@ -735,6 +735,25 @@
       }
     ]
   },
+  "attn_softcap_and_sink": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport math\n\ndef softcap_sink_attention(Q, K, V, softcap=50.0, sink_size=2, window_size=4):\n    S = Q.shape[1]\n    D = Q.shape[-1]\n    scores = (Q @ K.transpose(-1, -2)) / math.sqrt(D)\n    scores = softcap * torch.tanh(scores / softcap)\n    query_pos = torch.arange(S, device=Q.device).unsqueeze(1)\n    key_pos = torch.arange(S, device=Q.device).unsqueeze(0)\n    mask = (key_pos <= query_pos) & ((key_pos < sink_size) | (key_pos > query_pos - window_size))\n    attn = torch.softmax(scores.masked_fill(~mask, float('-inf')), dim=-1)\n    out = attn @ V\n    return out, mask",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "The mask always includes a valid current-token key, so softmax has no all-masked row. Earlier non-sink keys fall out once they leave the rolling window.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "Q,K,V = [torch.randn(2,16,32) for _ in range(3)]\nout, mask = softcap_sink_attention(Q,K,V,softcap=30.0,sink_size=2,window_size=8)\nprint(out.shape, mask[-1].sum().item())",
+        "role": "demo"
+      }
+    ]
+  },
   "axial_attention": {
     "cells": [
       {
@@ -834,6 +853,25 @@
       }
     ]
   },
+  "causal_conv3d": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport torch.nn.functional as F\n\ndef causal_conv3d(x, weight, bias=None, pad_mode='replicate'):\n    k_t, k_h, k_w = weight.shape[-3:]\n    temporal_pad = k_t - 1\n    if pad_mode == 'replicate':\n        prefix = x[:, :, :1].expand(-1, -1, temporal_pad, -1, -1)\n        x_padded = torch.cat((prefix, x), dim=2)\n        x_padded = F.pad(\n            x_padded, (k_w // 2, k_w // 2, k_h // 2, k_h // 2, 0, 0)\n        )\n    elif pad_mode == 'zero':\n        x_padded = F.pad(\n            x,\n            (k_w // 2, k_w // 2, k_h // 2, k_h // 2, temporal_pad, 0),\n        )\n    else:\n        raise ValueError(\"pad_mode must be 'replicate' or 'zero'\")\n    return F.conv3d(x_padded, weight, bias, stride=1, padding=0)",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "Temporal and spatial padding are performed separately so replicate mode affects only time; height and width always receive zeros. No future frame enters any output window.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "video = torch.randn(2, 3, 8, 32, 32)\nkernel = torch.randn(16, 3, 3, 3, 3)\noutput = causal_conv3d(video, kernel)\nprint(output.shape)",
+        "role": "demo"
+      }
+    ]
+  },
   "chinchilla_scaling": {
     "cells": [
       {
@@ -849,6 +887,25 @@
       {
         "type": "code",
         "source": "N_opt, D_opt, L_opt = chinchilla_optimal_allocation(torch.tensor(1e23))\nprint(\"parameters:\", N_opt.item(), \"tokens:\", D_opt.item(), \"loss:\", L_opt.item())",
+        "role": "demo"
+      }
+    ]
+  },
+  "consistency_distillation_loss": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef consistency_distillation_loss(f_student, f_teacher, weights=None, c=0.001):\n    diff_sq = ((f_student - f_teacher.detach()) ** 2).sum(dim=-1)\n    phuber = torch.sqrt(diff_sq + c ** 2) - c\n    if weights is not None:\n        weighted = weights * phuber\n    else:\n        weighted = phuber\n    return weighted.mean(), phuber",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "Weights affect only the reduced training objective; the second return value always exposes the original per-sample pseudo-Huber loss. Detaching the teacher prevents accidental teacher updates.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "student = torch.randn(8, 64, requires_grad=True)\nteacher = torch.randn(8, 64)\nloss, per_sample = consistency_distillation_loss(student, teacher)\nprint(loss, per_sample.shape)",
         "role": "demo"
       }
     ]
@@ -1239,6 +1296,44 @@
       }
     ]
   },
+  "ipo_and_kto_loss": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef ipo_and_kto_losses(pi_chosen, pi_rejected, ref_chosen, ref_rejected, tau=0.1, beta_kto=0.1):\n    log_rw = pi_chosen - ref_chosen.detach()\n    log_rl = pi_rejected - ref_rejected.detach()\n    ipo_loss = ((log_rw - log_rl - 1.0 / (2.0 * tau)) ** 2).mean()\n    z0 = 0.5 * (log_rw.detach().mean() + log_rl.detach().mean())\n    v_desirable = torch.sigmoid(beta_kto * (log_rw - z0))\n    v_undesirable = torch.sigmoid(beta_kto * (z0 - log_rl))\n    kto_loss = (1.0 - 0.5 * (v_desirable + v_undesirable)).mean()\n    return ipo_loss, kto_loss",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "Reference log-probabilities and z0 are stop-gradient quantities. Gradients therefore train only the policy ratios while IPO and KTO retain their prescribed batch means.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "pc,pr = torch.tensor([-.3,-.4]),torch.tensor([-1.,-.8])\nrc,rr = torch.tensor([-.5,-.6]),torch.tensor([-.7,-.7])\nprint(ipo_and_kto_losses(pc,pr,rc,rr))",
+        "role": "demo"
+      }
+    ]
+  },
+  "kivi_kv_cache_quant": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef kivi_asymmetric_kv_quant(K, V, n_bits=2, eps=1e-8):\n    q_max = (2 ** n_bits) - 1\n    k_min = K.amin(dim=1, keepdim=True)\n    k_max = K.amax(dim=1, keepdim=True)\n    k_scale = (k_max - k_min).clamp(min=eps) / q_max\n    K_q = torch.clamp(torch.round((K - k_min) / k_scale), 0.0, float(q_max))\n    K_deq = K_q * k_scale + k_min\n    v_min = V.amin(dim=2, keepdim=True)\n    v_max = V.amax(dim=2, keepdim=True)\n    v_scale = (v_max - v_min).clamp(min=eps) / q_max\n    V_q = torch.clamp(torch.round((V - v_min) / v_scale), 0.0, float(q_max))\n    V_deq = V_q * v_scale + v_min\n    return K_deq, V_deq, k_scale.squeeze(1), v_scale.squeeze(2)",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "The affine ranges follow KIVI's distinct axes. Returned scales omit only the singleton reduction dimension, making their per-channel and per-token layouts explicit.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "K,V = torch.randn(2,1024,64),torch.randn(2,1024,64)\nK_deq,V_deq,k_scale,v_scale = kivi_asymmetric_kv_quant(K,V,n_bits=2)\nprint(K_deq.shape,V_deq.shape,k_scale.shape,v_scale.shape)",
+        "role": "demo"
+      }
+    ]
+  },
   "kl_divergence": {
     "cells": [
       {
@@ -1268,6 +1363,25 @@
       {
         "type": "code",
         "source": "p = torch.tensor([-0.2, -0.7])\nr = torch.tensor([-0.3, -0.5])\nprint(schulman_kl_estimators(p, r))",
+        "role": "demo"
+      }
+    ]
+  },
+  "kmeans_pca_and_cem": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef pca_and_cem_plan(X, k_pca, candidate_actions, costs, num_elites):\n    X_c = X - X.mean(dim=0, keepdim=True)\n    U, S, Vh = torch.linalg.svd(X_c, full_matrices=False)\n    components = Vh[:k_pca]\n    projected = X_c @ components.T\n    elite_idx = torch.topk(-costs, k=num_elites).indices\n    elites = candidate_actions[elite_idx]\n    elite_mean = elites.mean(dim=0)\n    elite_std = elites.std(dim=0, unbiased=False)\n    return projected, components, elite_mean, elite_std",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "Compact SVD supplies PCA axes directly as rows of Vh. Negating costs converts lowest-cost selection into top-k without sorting all candidates; population standard deviation keeps the one-elite case finite.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "data = torch.randn(100, 16)\nactions = torch.randn(256, 20, 6)\ncosts = torch.randn(256)\nout = pca_and_cem_plan(data, 4, actions, costs, 32)\nprint([x.shape for x in out])",
         "role": "demo"
       }
     ]
@@ -1413,6 +1527,25 @@
       }
     ]
   },
+  "mdlm_and_block_diffusion": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport torch.nn.functional as F\n\ndef block_diffusion_mask_and_loss(logits, targets, is_masked, alpha_t, dalpha_dt, block_size=4):\n    sequence_length = logits.size(1)\n    block_ids = torch.arange(sequence_length, device=logits.device) // block_size\n    block_mask = block_ids.unsqueeze(0) <= block_ids.unsqueeze(1)\n    nll = -F.log_softmax(logits, dim=-1).gather(\n        -1, targets.unsqueeze(-1)\n    ).squeeze(-1)\n    w_t = -dalpha_dt / (1.0 - alpha_t + 1e-8)\n    masked = is_masked.float()\n    loss = (w_t * nll * masked).sum() / masked.sum().clamp(min=1.0)\n    return block_mask, loss",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "Integer block IDs make the visibility rule a single broadcast comparison. The denominator counts positions rather than schedule weights, exactly matching the requested masked-token average.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "logits = torch.randn(2, 12, 100)\ntargets = torch.randint(0, 100, (2, 12))\nis_masked = torch.rand(2, 12) < 0.3\nmask, loss = block_diffusion_mask_and_loss(\n    logits, targets, is_masked, torch.full((2, 1), 0.5), torch.full((2, 1), -0.5)\n)\nprint(mask.shape, loss)",
+        "role": "demo"
+      }
+    ]
+  },
   "min_p_sampling": {
     "cells": [
       {
@@ -1428,6 +1561,25 @@
       {
         "type": "code",
         "source": "logits = torch.randn(2, 32000)\nseen = torch.tensor([[10, 20, 30], [5, 6, 7]])\nprobs = min_p_sampling_probs(logits, min_p=0.1, seen_tokens=seen, repetition_penalty=1.1)\nprint(probs.shape, (probs > 0).sum(-1), probs.sum(-1))",
+        "role": "demo"
+      }
+    ]
+  },
+  "min_snr_and_edm_precond": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef min_snr_and_edm_precond(alpha_bar_t, sigma, gamma=5.0, sigma_data=0.5, eps=1e-8):\n    snr = alpha_bar_t / (1.0 - alpha_bar_t).clamp(min=eps)\n    min_snr_weight = torch.minimum(\n        snr, torch.full_like(snr, float(gamma))\n    ) / snr\n    denom_sq = sigma ** 2 + sigma_data ** 2\n    denom = torch.sqrt(denom_sq)\n    c_skip = (sigma_data ** 2) / denom_sq\n    c_out = (sigma * sigma_data) / denom\n    c_in = 1.0 / denom\n    c_noise = 0.25 * torch.log(sigma.clamp(min=eps))\n    return min_snr_weight, c_skip, c_out, c_in, c_noise",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "The SNR cap only changes high-SNR examples. All EDM coefficients are elementwise, with clamping used only for numerically safe logarithms and schedule division.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "alpha_bar_t = torch.tensor([0.1, 0.5, 0.9])\nsigma = torch.tensor([0.1, 1.0, 10.0])\nprint(min_snr_and_edm_precond(alpha_bar_t, sigma))",
         "role": "demo"
       }
     ]
@@ -1554,6 +1706,25 @@
       }
     ]
   },
+  "pointcloud_fps_and_unproject": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef depth_unproject_and_fps(depth, fx, fy, cx, cy, num_samples):\n    height, width = depth.shape\n    v = torch.arange(height, device=depth.device, dtype=depth.dtype)\n    u = torch.arange(width, device=depth.device, dtype=depth.dtype)\n    grid_v, grid_u = torch.meshgrid(v, u, indexing='ij')\n    x = (grid_u - cx) * depth / fx\n    y = (grid_v - cy) * depth / fy\n    points = torch.stack((x, y, depth), dim=-1).reshape(-1, 3)\n    point_count = points.size(0)\n    sampled_indices = torch.empty(\n        num_samples, dtype=torch.long, device=depth.device\n    )\n    min_dists = torch.full(\n        (point_count,), float('inf'), dtype=depth.dtype, device=depth.device\n    )\n    idx = torch.tensor(0, dtype=torch.long, device=depth.device)\n    for sample_index in range(num_samples):\n        sampled_indices[sample_index] = idx\n        dist_sq = ((points - points[idx]) ** 2).sum(dim=-1)\n        min_dists = torch.minimum(min_dists, dist_sq)\n        idx = torch.argmax(min_dists)\n    return points, sampled_indices",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "The meshgrid and reshape preserve row-major pixel order. Squared distances avoid unnecessary square roots because argmax ordering is unchanged.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "depth = torch.ones(24, 32)\npoints, indices = depth_unproject_and_fps(depth, 30.0, 30.0, 15.5, 11.5, 64)\nprint(points.shape, indices.shape)",
+        "role": "demo"
+      }
+    ]
+  },
   "ppo_loss": {
     "cells": [
       {
@@ -1597,6 +1768,25 @@
       {
         "type": "code",
         "source": "torch.manual_seed(0)\n\nB, D = 8, 64\nreward_head = torch.randn(D, 1)\n\nh = torch.randn(B, D)\nloss_equal = reward_model_loss(h, h, reward_head)\nprint(f\"Equal hidden states => loss = {loss_equal.item():.4f}  (expected ≈ {math.log(2):.4f})\")\n\nchosen  = torch.ones(B, D)\nrejected = -torch.ones(B, D)\nloss_good = reward_model_loss(chosen, rejected, reward_head)\nprint(f\"Chosen >> rejected  => loss = {loss_good.item():.4f}  (expected small)\")",
+        "role": "demo"
+      }
+    ]
+  },
+  "rloo_and_prm_aggregation": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef rloo_and_prm_vote(group_rewards, step_probs, answer_ids, eps=1e-8):\n    K = group_rewards.shape[-1]\n    sum_r = group_rewards.sum(dim=-1, keepdim=True)\n    baseline = (sum_r - group_rewards) / (K - 1)\n    rloo_adv = group_rewards - baseline\n    prm_min = step_probs.amin(dim=-1)\n    prm_prod = torch.exp(torch.log(step_probs.clamp(min=eps)).sum(dim=-1))\n    unique_answers, inverse = torch.unique(answer_ids, sorted=True, return_inverse=True)\n    vote_weights = torch.zeros(unique_answers.shape[0], device=prm_min.device, dtype=prm_min.dtype)\n    vote_weights = vote_weights.scatter_add(0, inverse, prm_min)\n    best_answer = int(unique_answers[torch.argmax(vote_weights)].item())\n    return rloo_adv, prm_min, prm_prod, best_answer",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "RLOO uses K-1 peers for every sample. The vote sums weakest-link confidence across traces with the same final answer; sorted unique IDs make equal-weight ties deterministic in favor of the smaller ID.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "rewards=torch.randn(2,4); probs=torch.rand(6,8); answers=torch.tensor([10,11,10,12,11,10])\nadv,mn,prod,best=rloo_and_prm_vote(rewards,probs,answers)\nprint(adv.shape,mn,prod,best)",
         "role": "demo"
       }
     ]
@@ -1813,6 +2003,25 @@
       }
     ]
   },
+  "awq_and_gptq_quant": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef awq_and_gptq_step(W, X, alpha=0.5, q_col=0, H_inv=None, scale_int=0.1, eps=1e-6):\n    s = X.abs().mean(dim=0).clamp(min=eps) ** alpha\n    W_awq = W * s.unsqueeze(0)\n    X_awq = X / s.unsqueeze(0)\n    if H_inv is None:\n        identity = torch.eye(X.shape[1], device=X.device, dtype=X.dtype)\n        H_inv = torch.linalg.inv(X.T @ X + eps * identity)\n    w_q = W[:, q_col]\n    w_q_hat = torch.clamp(torch.round(w_q / scale_int), -8.0, 7.0) * scale_int\n    err = (w_q - w_q_hat) / H_inv[q_col, q_col]\n    W_gptq = W.clone()\n    W_gptq[:, q_col] = w_q_hat\n    W_gptq[:, q_col + 1:] = W[:, q_col + 1:] - err.unsqueeze(1) * H_inv[q_col, q_col + 1:].unsqueeze(0)\n    return s, W_awq, W_gptq",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "X_awq is the inverse activation rescaling that makes W_awq function-preserving, though only the requested salience and weight results are returned. If H_inv is omitted, a ridge-stabilized calibration Hessian inverse is formed.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "W, X = torch.randn(64,128), torch.randn(256,128)\nH_inv = torch.linalg.inv(X.T@X + 1e-4*torch.eye(128))\ns, W_awq, W_gptq = awq_and_gptq_step(W,X,q_col=0,H_inv=H_inv)\nprint(s.shape, W_awq.shape, W_gptq.shape)",
+        "role": "demo"
+      }
+    ]
+  },
   "block_topk_attention": {
     "cells": [
       {
@@ -1842,6 +2051,25 @@
       {
         "type": "code",
         "source": "bpe = SimpleBPE()\nbpe.train(['low', 'low', 'low', 'lower', 'newest', 'widest'], num_merges=10)\nprint('Merges:', bpe.merges)\nprint('Encode:', bpe.encode('low lower newest'))",
+        "role": "demo"
+      }
+    ]
+  },
+  "chunkwise_linear_attention": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef chunkwise_linear_attention(Q, K, V, chunk_size=4, gamma=0.95):\n    B, S, D = Q.shape\n    C = chunk_size\n    num_chunks = S // C\n    state = torch.zeros(B, D, D, device=Q.device, dtype=Q.dtype)\n    outputs = []\n    decay = torch.full((), gamma, device=Q.device, dtype=Q.dtype)\n    local = torch.arange(C, device=Q.device)\n    causal = local.unsqueeze(1) >= local.unsqueeze(0)\n    intra_decay = decay ** (local.unsqueeze(1) - local.unsqueeze(0))\n    intra_decay = intra_decay * causal.to(Q.dtype)\n    read_decay = decay ** (local + 1)\n    write_decay = decay ** (C - 1 - local)\n    for c in range(num_chunks):\n        start = c * C\n        q_c = Q[:, start:start + C]\n        k_c = K[:, start:start + C]\n        v_c = V[:, start:start + C]\n        inter = torch.einsum('bcd,bde->bce', q_c, state) * read_decay.view(1, C, 1)\n        qk = torch.einsum('bid,bjd->bij', q_c, k_c)\n        intra = torch.einsum('bij,bje->bie', qk * intra_decay, v_c)\n        outputs.append(inter + intra)\n        chunk_update = torch.einsum('c,bcd,bce->bde', write_decay, k_c, v_c)\n        state = (decay ** C) * state + chunk_update\n    return torch.cat(outputs, dim=1), state",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "Inter-chunk reads age the incoming state by i+1 steps. The lower-triangular intra-chunk kernel assigns age i-j to each local write, and the terminal update ages writes to the chunk boundary.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "Q,K,V = [torch.randn(2,128,32) for _ in range(3)]\nout, state = chunkwise_linear_attention(Q,K,V,chunk_size=16,gamma=0.99)\nprint(out.shape, state.shape)",
         "role": "demo"
       }
     ]
@@ -1913,6 +2141,25 @@
       {
         "type": "code",
         "source": "x = torch.randn(8, 16)\nrouter_weight = torch.randn(4, 16)\nexpert_bias = torch.zeros(4)\nindices, gates, updated_bias = aux_free_moe_route(x, router_weight, expert_bias, 2)\nprint(indices.shape, gates.sum(-1), updated_bias)",
+        "role": "demo"
+      }
+    ]
+  },
+  "deepseek_mtp_module": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport torch.nn.functional as F\n\ndef deepseek_mtp_step(h_prev, next_token_embeds, rms_w_h, rms_w_emb, W_proj, W_head, targets, eps=1e-6):\n    h_norm = h_prev * torch.rsqrt(h_prev.pow(2).mean(dim=-1, keepdim=True) + eps) * rms_w_h\n    emb_norm = next_token_embeds * torch.rsqrt(next_token_embeds.pow(2).mean(dim=-1, keepdim=True) + eps) * rms_w_emb\n    h_curr = torch.cat((h_norm, emb_norm), dim=-1) @ W_proj\n    logits = h_curr @ W_head\n    loss = F.cross_entropy(logits.reshape(-1, logits.shape[-1]), targets.reshape(-1))\n    return h_curr, logits, loss",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "Each stream receives its own learned RMS scale. Their fused representation is both passed to the next MTP depth and decoded by the shared vocabulary head; flattened cross-entropy averages all B*S targets.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "B, S, D, V = 2, 8, 16, 100\nh, e = torch.randn(B,S,D), torch.randn(B,S,D)\nout = deepseek_mtp_step(h,e,torch.ones(D),torch.ones(D),torch.randn(2*D,D),torch.randn(D,V),torch.randint(V,(B,S)))\nprint(out[0].shape, out[1].shape, out[2].item())",
         "role": "demo"
       }
     ]
@@ -2017,6 +2264,25 @@
       {
         "type": "code",
         "source": "Q, K, V = torch.randn(1, 16, 8), torch.randn(1, 16, 8), torch.randn(1, 16, 8)\nout = flash_attention(Q, K, V, block_size=4)\nscores = torch.bmm(Q, K.transpose(1,2)) / math.sqrt(8)\nref = torch.bmm(torch.softmax(scores, dim=-1), V)\nprint('Shape:', out.shape)\nprint('Max diff:', (out - ref).abs().max().item())",
+        "role": "demo"
+      }
+    ]
+  },
+  "flow_grpo_sde_loss": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport math\n\ndef flow_grpo_sde_step(x_t, v_theta, v_ref, t, dt, noise, sigma_a=0.7, eps=1e-6):\n    g2 = (sigma_a ** 2) * (t / (1.0 - t + eps))\n    drift = v_theta + (g2 / (2.0 * t)) * (\n        x_t + (1.0 - t) * v_theta\n    )\n    mean = x_t - dt * drift\n    std = math.sqrt(g2 * dt)\n    x_next = mean + std * noise\n    log_prob = -0.5 * (\n        ((x_next.detach() - mean) ** 2) / (g2 * dt + eps)\n        + math.log(2.0 * math.pi * g2 * dt)\n    ).sum(dim=-1)\n    v_ref_detached = v_ref.detach()\n    drift_ref = v_ref_detached + (g2 / (2.0 * t)) * (\n        x_t + (1.0 - t) * v_ref_detached\n    )\n    mean_ref = x_t - dt * drift_ref\n    kl = (\n        0.5 * ((mean - mean_ref) ** 2) / (g2 * dt + eps)\n    ).sum(dim=-1)\n    return x_next, log_prob, kl",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "The policy and reference differ only through their velocity-induced means. The returned sample remains reparameterized, while its occurrence as the target in log_prob is detached.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "x = torch.randn(4, 16)\nvelocity = torch.randn_like(x, requires_grad=True)\nreference = torch.randn_like(x)\nnoise = torch.randn_like(x)\nprint([y.shape for y in flow_grpo_sde_step(x, velocity, reference, 0.8, 0.05, noise)])",
         "role": "demo"
       }
     ]
@@ -2143,6 +2409,25 @@
       {
         "type": "code",
         "source": "w = torch.randn(8, 4)\nq = Int8Linear(w)\nprint('Output:', q(torch.randn(2, 4)).shape)\nprint('Weight dtype:', q.weight_int8.dtype)\nprint('Compression: float32 -> int8 = 4x')",
+        "role": "demo"
+      }
+    ]
+  },
+  "jepa_and_vicreg_loss": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport torch.nn.functional as F\n\ndef jepa_vicreg_loss(pred_z, target_z, sim_coef=25.0, std_coef=25.0, cov_coef=1.0, gamma=1.0, eps=1e-4):\n    inv_loss = ((pred_z - target_z.detach()) ** 2).mean()\n    std_z = torch.sqrt(pred_z.var(dim=0, unbiased=False) + eps)\n    var_loss = F.relu(gamma - std_z).mean()\n    batch_size, feature_dim = pred_z.shape\n    z_c = pred_z - pred_z.mean(dim=0, keepdim=True)\n    cov = (z_c.T @ z_c) / (batch_size - 1)\n    off_diag = cov - torch.diag(torch.diag(cov))\n    cov_loss = (off_diag ** 2).sum() / feature_dim\n    total_loss = (\n        sim_coef * inv_loss + std_coef * var_loss + cov_coef * cov_loss\n    )\n    return total_loss, inv_loss, var_loss, cov_loss",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "Only pred_z is regularized and optimized; target_z is a fixed JEPA target. The covariance normalization and diagonal removal isolate cross-feature redundancy.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "predicted = torch.randn(32, 128, requires_grad=True)\ntarget = torch.randn(32, 128)\nlosses = jepa_vicreg_loss(predicted, target)\nprint([x.item() for x in losses])",
         "role": "demo"
       }
     ]
@@ -2278,6 +2563,44 @@
       }
     ]
   },
+  "mla_rope_absorption": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport math\n\ndef mla_absorbed_attention(q_nope, q_rope, c_kv, k_rope, W_uk, W_uv):\n    d_h = q_nope.shape[-1]\n    d_r = q_rope.shape[-1]\n    q_absorbed = torch.einsum('bhqd,hcd->bhqc', q_nope, W_uk)\n    score_nope = torch.einsum('bhqc,bkc->bhqk', q_absorbed, c_kv)\n    score_rope = torch.einsum('bhqr,bkr->bhqk', q_rope, k_rope)\n    scores = (score_nope + score_rope) / math.sqrt(d_h + d_r)\n    attn = torch.softmax(scores, dim=-1)\n    latent_ctx = torch.einsum('bhqk,bkc->bhqc', attn, c_kv)\n    out = torch.einsum('bhqc,hcv->bhqv', latent_ctx, W_uv)\n    return out, q_absorbed",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "Only the compressed cache and shared RoPE key grow with sequence length. Per-head expansion is moved to the short query side and to the post-aggregation output side.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "B,H,Lq,Lk,dc,dh,dr,dv = 2,8,4,128,32,16,8,16\nout, absorbed = mla_absorbed_attention(torch.randn(B,H,Lq,dh),torch.randn(B,H,Lq,dr),torch.randn(B,Lk,dc),torch.randn(B,Lk,dr),torch.randn(H,dc,dh),torch.randn(H,dc,dv))\nprint(out.shape, absorbed.shape)",
+        "role": "demo"
+      }
+    ]
+  },
+  "mod_and_expert_choice": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef mod_and_expert_choice(x, mod_logits, ffn_out, router_logits, capacity_k):\n    mod_weights = torch.sigmoid(mod_logits)\n    selected = torch.topk(mod_weights, k=capacity_k, dim=-1).indices\n    mask = torch.zeros_like(mod_weights, dtype=torch.bool)\n    mask = mask.scatter(dim=-1, index=selected, value=True)\n    mod_out = x + mask.unsqueeze(-1) * mod_weights.unsqueeze(-1) * ffn_out\n    probabilities = torch.softmax(router_logits, dim=-1)\n    top_vals, top_tokens = torch.topk(probabilities.T, k=capacity_k, dim=-1)\n    return mod_out, top_tokens, top_vals",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "The MoD mask changes only selected positions, while every token retains its residual x. Expert-choice probabilities are normalized token-wise before each expert independently fills its capacity.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "B,S,D,E = 2,16,32,4\nout, tokens, scores = mod_and_expert_choice(torch.randn(B,S,D),torch.randn(B,S),torch.randn(B,S,D),torch.randn(S,E),4)\nprint(out.shape, tokens.shape, scores.shape)",
+        "role": "demo"
+      }
+    ]
+  },
   "moe": {
     "cells": [
       {
@@ -2288,6 +2611,44 @@
       {
         "type": "code",
         "source": "moe = MixtureOfExperts(32, 64, num_experts=4, top_k=2)\nx = torch.randn(2, 8, 32)\nprint('Output:', moe(x).shape)\nprint('Params:', sum(p.numel() for p in moe.parameters()))",
+        "role": "demo"
+      }
+    ]
+  },
+  "mot_asymmetric_attention": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\nimport math\n\ndef mot_asymmetric_attention(q_ar, k_ar, v_ar, q_dm, k_dm, v_dm):\n    length_ar = q_ar.size(1)\n    Q = torch.cat((q_ar, q_dm), dim=1)\n    K = torch.cat((k_ar, k_dm), dim=1)\n    V = torch.cat((v_ar, v_dm), dim=1)\n    total_length = Q.size(1)\n    mask = torch.ones(\n        total_length, total_length, dtype=torch.bool, device=Q.device\n    )\n    mask[:length_ar] = False\n    mask[:length_ar, :length_ar] = torch.tril(torch.ones(\n        length_ar, length_ar, dtype=torch.bool, device=Q.device\n    ))\n    scores = (Q @ K.transpose(-2, -1)) / math.sqrt(Q.size(-1))\n    scores = scores.masked_fill(~mask, float('-inf'))\n    output = torch.softmax(scores, dim=-1) @ V\n    return output[:, :length_ar], output[:, length_ar:], mask",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "Rows encode queries and columns encode keys. AR rows contain only a lower triangle in the AR columns, whereas every entry of every diffusion row is visible.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "ar = [torch.randn(2, 8, 64) for _ in range(3)]\ndm = [torch.randn(2, 32, 64) for _ in range(3)]\nout_ar, out_dm, mask = mot_asymmetric_attention(*(ar + dm))\nprint(out_ar.shape, out_dm.shape, mask.shape)",
+        "role": "demo"
+      }
+    ]
+  },
+  "multimodal_3d_rope": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef apply_mrope_3d(q, k, pos_3d, section_dims=(4, 6, 6), base=10000.0):\n    q_sections = torch.split(q, section_dims, dim=-1)\n    k_sections = torch.split(k, section_dims, dim=-1)\n    q_rotated = []\n    k_rotated = []\n    for axis in range(3):\n        dim = section_dims[axis]\n        freqs = 1.0 / (\n            base ** (torch.arange(0, dim, 2, device=q.device).float() / dim)\n        )\n        angles = pos_3d[..., axis].float().unsqueeze(-1) * freqs\n        cos = torch.cos(angles)\n        sin = torch.sin(angles)\n        q_even, q_odd = q_sections[axis][..., 0::2], q_sections[axis][..., 1::2]\n        k_even, k_odd = k_sections[axis][..., 0::2], k_sections[axis][..., 1::2]\n        q_rotated.append(torch.stack(\n            (q_even * cos - q_odd * sin, q_even * sin + q_odd * cos), dim=-1\n        ).flatten(-2))\n        k_rotated.append(torch.stack(\n            (k_even * cos - k_odd * sin, k_even * sin + k_odd * cos), dim=-1\n        ).flatten(-2))\n    return torch.cat(q_rotated, dim=-1), torch.cat(k_rotated, dim=-1)",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "Each axis uses its own coordinates and frequency ladder. Stacking the transformed even and odd values before flattening restores the original adjacent-pair channel order.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "q = torch.randn(2, 32, 16)\nk = torch.randn_like(q)\npositions = torch.randint(0, 16, (2, 32, 3))\nq_rot, k_rot = apply_mrope_3d(q, k, positions)\nprint(q_rot.shape, k_rot.shape)",
         "role": "demo"
       }
     ]
@@ -2326,6 +2687,25 @@
       {
         "type": "code",
         "source": "rgb = torch.rand(16, 64, 3)\nsigma = torch.rand(16, 64)\nz_vals = torch.linspace(0, 1, 64).expand(16, 64)\nprint([x.shape for x in nerf_volume_render(rgb, sigma, z_vals)])",
+        "role": "demo"
+      }
+    ]
+  },
+  "nf4_double_quantization": {
+    "cells": [
+      {
+        "type": "code",
+        "source": "import torch\n\ndef nf4_double_quantize(W, codebook, block_size=64, eps=1e-8):\n    W_blocks = W.reshape(-1, block_size)\n    absmax = W_blocks.abs().amax(dim=-1).clamp(min=eps)\n    W_norm = W_blocks / absmax.unsqueeze(-1)\n    indices = torch.argmin((W_norm.unsqueeze(-1) - codebook).abs(), dim=-1)\n    c2 = absmax.abs().max().clamp(min=eps) / 127.0\n    q_absmax = torch.clamp(torch.round(absmax / c2), -127.0, 127.0)\n    absmax_deq = q_absmax * c2\n    W_deq = (codebook[indices] * absmax_deq.unsqueeze(-1)).reshape(W.shape)\n    return indices.reshape(W.shape), q_absmax, c2, W_deq",
+        "role": "solution"
+      },
+      {
+        "type": "markdown",
+        "source": "Indices encode one of 16 normalized values per weight. Instead of retaining every block absmax in full precision, the function stores 8-bit-like levels plus the scalar second-level scale c2.",
+        "role": "explanation"
+      },
+      {
+        "type": "code",
+        "source": "codebook = torch.linspace(-1,1,16)\nW = torch.randn(128,128)\nindices, q_scales, c2, W_deq = nf4_double_quantize(W,codebook,block_size=64)\nprint(indices.shape, q_scales.shape, c2.item(), (W-W_deq).abs().mean().item())",
         "role": "demo"
       }
     ]

@@ -180,7 +180,7 @@
           "title": "高效与前沿注意力",
           "status": "hands-on",
           "blurb": "Flash、滑动窗口、线性、GQA、差分注意力、MLA、环形注意力。",
-          "problems": ["flash_attention", "sliding_window", "block_topk_attention", "linear_attention", "deltanet_recurrence", "gqa", "diff_attention", "mla", "ring_attention"],
+          "problems": ["flash_attention", "sliding_window", "attn_softcap_and_sink", "block_topk_attention", "linear_attention", "chunkwise_linear_attention", "deltanet_recurrence", "gqa", "diff_attention", "mla", "mla_rope_absorption", "ring_attention"],
           "hotCategories": ["transformer"],
           "baguChapters": ["linear-sparse-attention"]
         },
@@ -217,7 +217,7 @@
           "title": "LLM 基础与训练目标",
           "status": "hands-on",
           "blurb": "自回归语言建模、架构选型、Scaling Law/Chinchilla、涌现能力、幻觉。",
-          "problems": ["multi_token_prediction", "document_packing_mask", "chinchilla_scaling"],
+          "problems": ["multi_token_prediction", "deepseek_mtp_module", "document_packing_mask", "chinchilla_scaling"],
           "hotCategories": ["llm"],
           "baguChapters": ["llm-pretraining", "reasoning-models"]
         },
@@ -226,7 +226,7 @@
           "title": "混合专家(MoE)",
           "status": "hands-on",
           "blurb": "MoE 路由、负载均衡、带噪声 Top-k 门控——解耦参数量与计算量。",
-          "problems": ["moe", "moe_load_balance", "moe_router_z_loss", "noisy_topk_gating", "deepseek_moe_router"],
+          "problems": ["moe", "moe_load_balance", "moe_router_z_loss", "noisy_topk_gating", "deepseek_moe_router", "mod_and_expert_choice"],
           "hotCategories": ["llm"],
           "baguChapters": ["moe"]
         },
@@ -244,7 +244,7 @@
           "title": "多模态",
           "status": "hands-on",
           "blurb": "CLIP 对比学习、图文对齐、多模态 LLM 的连接范式。",
-          "problems": ["clip_model", "siglip_loss", "perceiver_resampler"],
+          "problems": ["clip_model", "siglip_loss", "perceiver_resampler", "multimodal_3d_rope", "mot_asymmetric_attention"],
           "hotCategories": ["llm"],
           "baguChapters": []
         },
@@ -253,7 +253,7 @@
           "title": "扩散与流模型",
           "status": "hands-on",
           "blurb": "噪声调度、DDIM 采样、流匹配、adaLN-Zero——生成模型核心。",
-          "problems": ["noise_schedule", "ddim_step", "ddpm_posterior_and_vpred", "classifier_free_guidance", "flow_matching", "flow_heun_sampler", "vae_elbo_reparam", "vqvae_ste", "finite_scalar_quantization", "mmdit_joint_attention"],
+          "problems": ["noise_schedule", "min_snr_and_edm_precond", "ddim_step", "ddpm_posterior_and_vpred", "classifier_free_guidance", "flow_matching", "flow_heun_sampler", "consistency_distillation_loss", "vae_elbo_reparam", "vqvae_ste", "finite_scalar_quantization", "mmdit_joint_attention", "causal_conv3d", "mdlm_and_block_diffusion"],
           "hotCategories": ["llm"],
           "baguChapters": []
         }
@@ -299,7 +299,7 @@
           "title": "推理与解码优化",
           "status": "hands-on",
           "blurb": "KV Cache、PagedAttention、投机解码、采样策略、Beam Search。",
-          "problems": ["kv_cache", "h2o_kv_eviction", "paged_attention", "speculative_decoding", "tree_speculative_mask", "topk_sampling", "min_p_sampling", "beam_search"],
+          "problems": ["kv_cache", "h2o_kv_eviction", "kivi_kv_cache_quant", "paged_attention", "speculative_decoding", "tree_speculative_mask", "topk_sampling", "min_p_sampling", "beam_search"],
           "hotCategories": ["infer"],
           "baguChapters": ["llm-inference-serving"]
         },
@@ -308,7 +308,7 @@
           "title": "CUDA 与系统设计",
           "status": "hands-on",
           "blurb": "GPU 架构、算子融合、内存层级、推理服务化与吞吐/延迟权衡。",
-          "problems": ["groupwise_int4_quant", "smoothquant_migration"],
+          "problems": ["groupwise_int4_quant", "awq_and_gptq_quant", "nf4_double_quantization", "smoothquant_migration"],
           "hotCategories": ["infer"],
           "baguChapters": []
         }
@@ -327,7 +327,7 @@
           "title": "对齐与 RLHF",
           "status": "hands-on",
           "blurb": "奖励模型、PPO、DPO、GRPO、GAE、MCTS——从偏好到策略优化。",
-          "problems": ["reward_model", "ppo_loss", "dpo_loss", "kto_orpo_loss", "simpo_loss", "grpo_loss", "dapo_loss", "gae", "generalized_advantage_estimation", "kl_estimators_rlhf", "diffusion_dpo_repa_loss"],
+          "problems": ["reward_model", "ppo_loss", "dpo_loss", "kto_orpo_loss", "ipo_and_kto_loss", "simpo_loss", "grpo_loss", "dapo_loss", "flow_grpo_sde_loss", "gae", "generalized_advantage_estimation", "rloo_and_prm_aggregation", "kl_estimators_rlhf", "diffusion_dpo_repa_loss"],
           "hotCategories": ["align"],
           "baguChapters": ["rlhf-dpo-grpo-ppo"]
         },
@@ -373,7 +373,7 @@
           "title": "三维视觉、NeRF 与 3DGS",
           "status": "hands-on",
           "blurb": "目标检测后处理、点云配准、体渲染与高斯溅射——构建可用于具身感知的三维表示。",
-          "problems": ["box_iou_nms", "kabsch_pointcloud_align", "nerf_volume_rendering", "gaussian_splatting_cov3d"],
+          "problems": ["box_iou_nms", "kabsch_pointcloud_align", "pointcloud_fps_and_unproject", "nerf_volume_rendering", "gaussian_splatting_cov3d"],
           "hotCategories": [],
           "baguChapters": []
         },
@@ -382,7 +382,7 @@
           "title": "世界模型",
           "status": "hands-on",
           "blurb": "学习环境动态与潜在状态，在想象轨迹中预测、规划并改进策略。",
-          "problems": ["dreamer_world_model"],
+          "problems": ["dreamer_world_model", "jepa_and_vicreg_loss"],
           "hotCategories": [],
           "baguChapters": []
         },
@@ -400,7 +400,7 @@
           "title": "机器人控制与状态估计",
           "status": "hands-on",
           "blurb": "逆运动学、卡尔曼滤波、LQR、连续控制和离线强化学习的核心计算。",
-          "problems": ["damped_least_squares_ik", "kalman_lqr_control", "sac_squashed_gaussian", "cql_iql_loss", "double_dqn_td3_target"],
+          "problems": ["damped_least_squares_ik", "kalman_lqr_control", "kmeans_pca_and_cem", "sac_squashed_gaussian", "cql_iql_loss", "double_dqn_td3_target"],
           "hotCategories": [],
           "baguChapters": []
         }

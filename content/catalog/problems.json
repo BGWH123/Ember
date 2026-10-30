@@ -5633,6 +5633,686 @@
           "code": "import torch\nq = torch.randn(2, 5, 8, requires_grad=True)\nk = torch.randn(2, 5, 8, requires_grad=True)\nqr, kr = {fn}(q, k, 2.0)\n(qr.square().mean() + kr.square().mean()).backward()\nassert q.grad is not None and k.grad is not None\n"
         }
       ]
+    },
+    {
+      "id": "attn_softcap_and_sink",
+      "title": "Attention Logit Soft-Capping & Streaming Sink Mask",
+      "titleZh": "注意力 Logit 软截断与 StreamingLLM 汇聚掩码",
+      "difficulty": "Medium",
+      "functionName": "softcap_sink_attention",
+      "hint": "Construct query and key position grids. Combine causality with the union of the sink prefix and the strict lower bound `j > i-window_size`.",
+      "hintZh": "构造查询与键的位置网格，将因果条件与汇聚前缀、严格下界 `j > i-window_size` 的并集组合。",
+      "descriptionEn": "Apply smooth attention-logit capping and a causal streaming mask that preserves initial sink tokens plus a rolling local window.",
+      "descriptionZh": "实现平滑注意力 logit 截断，以及保留起始汇聚 token 和滚动局部窗口的因果流式掩码。",
+      "category": "注意力机制",
+      "theoryEn": "The tanh cap bounds extreme logits without a hard discontinuity. Attention sinks stabilize streaming models, while the local window bounds the amount of recent context retained.",
+      "theoryZh": "tanh 软截断可连续地限制极端 logit。注意力汇聚 token 稳定流式模型，局部窗口则限制保留的近期上下文。",
+      "diagramEn": "```text\nQK^T/sqrt(D) -> softcap*tanh(.) -> causal AND (sink OR recent) mask -> softmax -> V\n```",
+      "diagramZh": "```text\nQK^T/sqrt(D) -> softcap*tanh(.) -> 因果 AND（汇聚 OR 近期）掩码 -> softmax -> V\n```",
+      "tests": [
+        {
+          "name": "output and mask shapes",
+          "code": "import torch\nQ,K,V = [torch.randn(2,6,4) for _ in range(3)]\nout, mask = {fn}(Q,K,V)\nassert out.shape == (2,6,4) and mask.shape == (6,6)\nassert mask.dtype == torch.bool\n"
+        },
+        {
+          "name": "exact softcap and mask reference",
+          "code": "import torch\nimport math\ntorch.manual_seed(9)\nQ,K,V = [torch.randn(1,5,3,dtype=torch.double) for _ in range(3)]\nout, mask = {fn}(Q,K,V,softcap=2.5,sink_size=1,window_size=2)\ni = torch.arange(5)[:,None]; j = torch.arange(5)[None,:]\nrm = (j<=i)&((j<1)|(j>i-2))\ns = (Q@K.transpose(-1,-2))/math.sqrt(3)\ns = 2.5*torch.tanh(s/2.5)\nref = torch.softmax(s.masked_fill(~rm,float('-inf')),-1)@V\nassert torch.equal(mask,rm)\nassert torch.allclose(out,ref,atol=1e-12,rtol=1e-12)\n"
+        },
+        {
+          "name": "sink-only history edge",
+          "code": "import torch\nQ = torch.zeros(1,4,2); K = torch.randn(1,4,2)\nV = torch.tensor([[[2.,0.],[0.,2.],[4.,4.],[8.,8.]]])\nout, mask = {fn}(Q,K,V,sink_size=1,window_size=1)\nassert torch.equal(mask[-1],torch.tensor([True,False,False,True]))\nassert torch.allclose(out[0,-1],torch.tensor([5.,4.]))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nQ,K,V = [torch.randn(2,5,3,requires_grad=True) for _ in range(3)]\nout, mask = {fn}(Q,K,V,softcap=4.0,sink_size=2,window_size=3)\nout.square().sum().backward()\nassert mask[0,0] and not mask[0,1]\nassert all(x.grad is not None and torch.isfinite(x.grad).all() for x in (Q,K,V))\n"
+        }
+      ]
+    },
+    {
+      "id": "causal_conv3d",
+      "title": "Video VAE Temporal Causal 3D Convolution",
+      "titleZh": "视频 VAE 时间因果三维卷积（Causal Conv3D）",
+      "difficulty": "Medium",
+      "functionName": "causal_conv3d",
+      "hint": "Prepend k_t-1 frames (copies of the first frame or zeros), then apply symmetric zero padding only in height and width before conv3d with no internal padding.",
+      "hintZh": "在时间轴前置 k_t-1 帧（首帧副本或零），再仅对高宽做对称零填充，最后调用无内部填充的 conv3d。",
+      "descriptionEn": "Apply a stride-one 3D convolution to video x while padding only the past side of time. Replicate or zero temporal padding is selectable; spatial padding is symmetric and zero-valued.",
+      "descriptionZh": "对视频 x 应用步长为 1 的三维卷积，并仅填充时间轴过去一侧。时间填充可选择复制或零值，空间填充为对称零填充。",
+      "category": "扩散与流模型",
+      "theoryEn": "Left-only temporal padding aligns each kernel window with the current and earlier frames, preventing future leakage. Replicating the first frame provides a steady boundary condition often used by video VAEs.",
+      "theoryZh": "仅在时间轴左侧填充，使每个卷积窗口只对齐当前及更早帧，从而防止未来信息泄漏。复制首帧提供视频 VAE 常用的稳定边界条件。",
+      "diagramEn": "```text\n[first ... first | frame0 frame1 ...] -> causal temporal window\n                 spatial zero pad -> conv3d -> T preserved\n```",
+      "diagramZh": "```text\n[首帧 ... 首帧 | 帧0 帧1 ...] -> 因果时间窗口\n                 空间零填充 -> conv3d -> 保持 T\n```",
+      "tests": [
+        {
+          "name": "output shape",
+          "code": "import torch\nx=torch.randn(2,3,4,7,9); w=torch.randn(5,3,3,3,3); b=torch.randn(5)\ny={fn}(x,w,b)\nassert y.shape==(2,5,4,7,9) and torch.isfinite(y).all()\n"
+        },
+        {
+          "name": "exact padding reference",
+          "code": "import torch\nimport torch.nn.functional as F\nx=torch.arange(1.,1+1*1*3*2*2).reshape(1,1,3,2,2); w=torch.randn(1,1,2,3,3); b=torch.tensor([.2])\ny={fn}(x,w,b,'replicate')\nxp=torch.cat((x[:,:,:1],x),2); xp=F.pad(xp,(1,1,1,1,0,0))\nref=F.conv3d(xp,w,b,stride=1,padding=0)\nassert torch.equal(y,ref)\n"
+        },
+        {
+          "name": "zero padding and temporal causality",
+          "code": "import torch\nx=torch.randn(1,1,5,3,3); changed=x.clone(); changed[:,:,3:]+=100\nw=torch.ones(1,1,3,1,1)\ny={fn}(x,w,pad_mode='zero'); yc={fn}(changed,w,pad_mode='zero')\nassert torch.equal(y[:,:,:3],yc[:,:,:3])\nassert torch.allclose(y[:,:,0],x[:,:,0])\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nx=torch.randn(2,2,4,5,5,requires_grad=True); w=torch.randn(3,2,3,3,3,requires_grad=True)\nb=torch.randn(3,requires_grad=True); y={fn}(x,w,b,'replicate'); y.square().mean().backward()\nassert x.grad is not None and w.grad is not None and b.grad is not None\nassert torch.isfinite(x.grad).all() and torch.isfinite(w.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "consistency_distillation_loss",
+      "title": "Consistency Distillation & Pseudo-Huber Loss",
+      "titleZh": "一致性蒸馏（Consistency Distillation）与伪 Huber 损失",
+      "difficulty": "Medium",
+      "functionName": "consistency_distillation_loss",
+      "hint": "Detach the teacher before forming the squared Euclidean distance, apply the pseudo-Huber transform per sample, then optionally weight before averaging.",
+      "hintZh": "计算平方欧氏距离前先分离教师输出，逐样本应用伪 Huber 变换，再选择性加权并取平均。",
+      "descriptionEn": "Compute consistency distillation between student and detached teacher outputs of shape (B,D). Return the mean optionally weighted objective and the unweighted per-sample pseudo-Huber values.",
+      "descriptionZh": "计算形状为 (B,D) 的学生输出与已分离教师输出之间的一致性蒸馏损失。返回可选加权目标的均值和未加权的逐样本伪 Huber 值。",
+      "category": "扩散与流模型",
+      "theoryEn": "The pseudo-Huber form sqrt(||delta||^2+c^2)-c is smooth near zero and grows approximately linearly for large residuals. Stop-gradient makes the teacher a fixed regression target.",
+      "theoryZh": "伪 Huber 形式 sqrt(||delta||^2+c^2)-c 在零点附近光滑，对大残差近似线性增长。停止梯度使教师成为固定回归目标。",
+      "diagramEn": "```text\nstudent - stopgrad(teacher) -> squared L2 -> pseudo-Huber -> weight -> mean\n```",
+      "diagramZh": "```text\n学生 - stopgrad(教师) -> 平方 L2 -> 伪 Huber -> 加权 -> 均值\n```",
+      "tests": [
+        {
+          "name": "shapes and no weights",
+          "code": "import torch\ns=torch.randn(4,6); t=torch.randn(4,6)\nloss,per={fn}(s,t)\nassert loss.shape==torch.Size([]) and per.shape==(4,)\nassert torch.equal(loss,per.mean()) and (per>=0).all()\n"
+        },
+        {
+          "name": "exact weighted reference",
+          "code": "import torch\ns=torch.tensor([[1.,2.],[-1.,3.]]); t=torch.tensor([[0.,2.],[2.,-1.]])\nw=torch.tensor([.5,2.]); c=.2\nloss,per={fn}(s,t,w,c)\nref=torch.sqrt(((s-t)**2).sum(-1)+c**2)-c\nassert torch.equal(per,ref) and torch.equal(loss,(w*ref).mean())\n"
+        },
+        {
+          "name": "identical outputs edge case",
+          "code": "import torch\nx=torch.randn(3,5)\nloss,per={fn}(x,x,c=.01)\nassert torch.equal(per,torch.zeros(3)) and loss.item()==0.0\n"
+        },
+        {
+          "name": "student-only gradient flow",
+          "code": "import torch\ns=torch.randn(3,4,requires_grad=True); t=torch.randn(3,4,requires_grad=True)\nw=torch.tensor([1.,2.,3.]); loss,per={fn}(s,t,w); (loss+per.sum()).backward()\nassert s.grad is not None and torch.isfinite(s.grad).all()\nassert t.grad is None\n"
+        }
+      ]
+    },
+    {
+      "id": "ipo_and_kto_loss",
+      "title": "IPO (Identity Preference) & KTO (Prospect Theory) Alignment Losses",
+      "titleZh": "IPO 与 KTO 偏好对齐损失",
+      "difficulty": "Medium",
+      "functionName": "ipo_and_kto_losses",
+      "hint": "Detach both reference-model log-probabilities. Build IPO from the chosen-minus-rejected log-ratio margin, and detach the batch-average KTO reference point before applying sigmoids.",
+      "hintZh": "分离两个参考模型对数概率；用选中减拒绝的对数比边际构造 IPO，并在 sigmoid 前分离 KTO 的批次平均参考点。",
+      "descriptionEn": "Compute IPO's squared preference-margin objective and KTO's prospect-theoretic desirable/undesirable objective from policy and reference sequence log-probabilities.",
+      "descriptionZh": "根据策略与参考模型的序列对数概率，计算 IPO 平方偏好边际目标和 KTO 前景理论中的期望/非期望目标。",
+      "category": "损失函数",
+      "theoryEn": "IPO regresses the implicit reward gap toward a finite target instead of driving it unbounded. KTO evaluates desirable and undesirable samples relative to a detached reference point, reflecting asymmetric prospect-style value.",
+      "theoryZh": "IPO 将隐式奖励差回归到有限目标，而非无限推高。KTO 相对分离的参考点评估期望与非期望样本，体现非对称的前景价值。",
+      "diagramEn": "```text\npolicy logp - stopgrad(reference logp) -> log ratios\nratios -> squared IPO margin\nratios -> stopgrad z0 -> desirable/undesirable sigmoids -> KTO\n```",
+      "diagramZh": "```text\n策略 logp - stopgrad(参考 logp) -> 对数比\n对数比 -> IPO 平方边际\n对数比 -> stopgrad z0 -> 期望/非期望 sigmoid -> KTO\n```",
+      "tests": [
+        {
+          "name": "scalar loss shapes",
+          "code": "import torch\nx = [torch.randn(4) for _ in range(4)]\nipo,kto = {fn}(*x)\nassert ipo.shape == torch.Size([]) and kto.shape == torch.Size([])\nassert torch.isfinite(ipo) and torch.isfinite(kto)\n"
+        },
+        {
+          "name": "exact IPO and KTO formulas",
+          "code": "import torch\npc=torch.tensor([-.2,-.6],dtype=torch.double); pr=torch.tensor([-1.,-.8],dtype=torch.double)\nrc=torch.tensor([-.4,-.5],dtype=torch.double); rr=torch.tensor([-.7,-1.1],dtype=torch.double)\nipo,kto={fn}(pc,pr,rc,rr,tau=.25,beta_kto=.3)\nrw=pc-rc.detach(); rl=pr-rr.detach()\nri=((rw-rl-1/(2*.25))**2).mean()\nz=.5*(rw.detach().mean()+rl.detach().mean())\nvd=torch.sigmoid(.3*(rw-z)); vu=torch.sigmoid(.3*(z-rl))\nrk=(1-.5*(vd+vu)).mean()\nassert torch.allclose(ipo,ri,atol=1e-12,rtol=1e-12)\nassert torch.allclose(kto,rk,atol=1e-12,rtol=1e-12)\n"
+        },
+        {
+          "name": "symmetric-ratio edge case",
+          "code": "import torch\npi = torch.tensor([-.5,-1.]); ref = torch.tensor([-.7,-1.2])\nipo,kto = {fn}(pi,pi,ref,ref,tau=.5,beta_kto=2.)\nassert torch.allclose(ipo,torch.tensor(1.0))\nassert torch.allclose(kto,torch.tensor(.5))\n"
+        },
+        {
+          "name": "policy gradients and detached references",
+          "code": "import torch\npc=torch.randn(5,requires_grad=True); pr=torch.randn(5,requires_grad=True)\nrc=torch.randn(5,requires_grad=True); rr=torch.randn(5,requires_grad=True)\nipo,kto={fn}(pc,pr,rc,rr)\n(ipo+kto).backward()\nassert pc.grad is not None and pr.grad is not None\nassert torch.isfinite(pc.grad).all() and torch.isfinite(pr.grad).all()\nassert rc.grad is None and rr.grad is None\n"
+        }
+      ]
+    },
+    {
+      "id": "kivi_kv_cache_quant",
+      "title": "KIVI Asymmetric KV Cache Quantization (Per-Channel K, Per-Token V)",
+      "titleZh": "KIVI 非对称 KV Cache 量化（按通道 K / 按 Token V）",
+      "difficulty": "Medium",
+      "functionName": "kivi_asymmetric_kv_quant",
+      "hint": "Reduce K over sequence dimension 1 and V over channel dimension 2. Use each min as the affine offset and quantize into levels 0 through 2^n_bits-1.",
+      "hintZh": "K 沿序列维 1 归约，V 沿通道维 2 归约；以各自最小值为仿射偏移，量化到 0 至 2^n_bits-1。",
+      "descriptionEn": "Implement KIVI's asymmetric low-bit KV-cache quantization with per-channel key parameters and per-token value parameters.",
+      "descriptionZh": "实现 KIVI 非对称低比特 KV 缓存量化：键按通道设置参数，值按 token 设置参数。",
+      "category": "推理优化",
+      "theoryEn": "Key outliers are structured by feature channel across positions, whereas value outliers are better localized per token. Using different quantization axes reduces error at very low bit width.",
+      "theoryZh": "键异常值通常沿位置共享通道结构，而值异常值更适合按 token 局部处理。采用不同量化轴可降低极低比特下的误差。",
+      "diagramEn": "```text\nK(B,L,D) --min/max over L--> scale(B,1,D) -> quantize/dequantize\nV(B,L,D) --min/max over D--> scale(B,L,1) -> quantize/dequantize\n```",
+      "diagramZh": "```text\nK(B,L,D) --沿 L 求 min/max--> scale(B,1,D) -> 量化/反量化\nV(B,L,D) --沿 D 求 min/max--> scale(B,L,1) -> 量化/反量化\n```",
+      "tests": [
+        {
+          "name": "cache and scale shapes",
+          "code": "import torch\nK = torch.randn(2,5,4); V = torch.randn(2,5,4)\nkd, vd, ks, vs = {fn}(K,V,n_bits=2)\nassert kd.shape == vd.shape == (2,5,4)\nassert ks.shape == (2,4) and vs.shape == (2,5)\n"
+        },
+        {
+          "name": "exact asymmetric reference",
+          "code": "import torch\nK = torch.tensor([[[-2.,1.],[0.,4.],[3.,2.]]],dtype=torch.double)\nV = torch.tensor([[[-1.,2.],[3.,7.],[-4.,5.]]],dtype=torch.double)\nkd,vd,ks,vs = {fn}(K,V,n_bits=3,eps=1e-12)\nkmn,kmx = K.amin(1,True),K.amax(1,True); rks=(kmx-kmn).clamp(min=1e-12)/7\nvk,vx = V.amin(2,True),V.amax(2,True); rvs=(vx-vk).clamp(min=1e-12)/7\nrkd=torch.clamp(torch.round((K-kmn)/rks),0.,7.)*rks+kmn\nrvd=torch.clamp(torch.round((V-vk)/rvs),0.,7.)*rvs+vk\nassert torch.equal(kd,rkd) and torch.equal(vd,rvd)\nassert torch.equal(ks,rks.squeeze(1)) and torch.equal(vs,rvs.squeeze(2))\n"
+        },
+        {
+          "name": "constant cache edge case",
+          "code": "import torch\nK = torch.full((2,3,4),2.5); V = torch.full((2,3,4),-1.5)\nkd,vd,ks,vs = {fn}(K,V,n_bits=2,eps=1e-6)\nassert torch.equal(kd,K) and torch.equal(vd,V)\nassert torch.allclose(ks,torch.full((2,4),1e-6/3))\nassert torch.allclose(vs,torch.full((2,3),1e-6/3))\n"
+        },
+        {
+          "name": "gradient through dequantization",
+          "code": "import torch\nK = torch.randn(2,5,3,requires_grad=True); V = torch.randn(2,5,3,requires_grad=True)\nkd,vd,ks,vs = {fn}(K,V,n_bits=4)\n(kd.square().sum()+vd.square().sum()+ks.sum()+vs.sum()).backward()\nassert kd.requires_grad and vd.requires_grad\nassert K.grad is not None and V.grad is not None\nassert torch.isfinite(K.grad).all() and torch.isfinite(V.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "kmeans_pca_and_cem",
+      "title": "PCA via SVD & Cross-Entropy Method (CEM) Trajectory Planner",
+      "titleZh": "SVD 主成分分析（PCA）与 CEM 交叉熵规划器",
+      "difficulty": "Medium",
+      "functionName": "pca_and_cem_plan",
+      "hint": "Center X and take the leading rows of Vh as principal axes. Negate costs before top-k so that the selected trajectories have the smallest original costs, then fit population mean and standard deviation.",
+      "hintZh": "中心化 X，并取 Vh 的前几行作为主轴。top-k 前对代价取负以选择原始代价最小的轨迹，再拟合总体均值和标准差。",
+      "descriptionEn": "Project data X onto k_pca principal components obtained by compact SVD, and perform one CEM refitting step on the num_elites lowest-cost candidate action sequences.",
+      "descriptionZh": "使用紧凑 SVD 得到的 k_pca 个主成分投影数据 X，并在代价最低的 num_elites 条候选动作序列上执行一次 CEM 重拟合。",
+      "category": "具身智能与控制",
+      "theoryEn": "PCA finds orthogonal directions of maximal centered-data variation. CEM turns optimization into distribution fitting: retain low-cost elites and update each trajectory coordinate's Gaussian mean and scale.",
+      "theoryZh": "PCA 寻找中心化数据方差最大的正交方向。CEM 将优化转化为分布拟合：保留低代价精英，并更新轨迹各坐标的高斯均值与尺度。",
+      "diagramEn": "```text\nX -> center -> SVD -> leading Vh -> projected scores\ncandidate trajectories + costs -> lowest-cost elites -> mean,std\n```",
+      "diagramZh": "```text\nX -> 中心化 -> SVD -> Vh 前部 -> 投影分数\n候选轨迹 + 代价 -> 最低代价精英 -> 均值、标准差\n```",
+      "tests": [
+        {
+          "name": "return shapes",
+          "code": "import torch\nX=torch.randn(8,5); actions=torch.randn(10,4,3); costs=torch.randn(10)\np,c,m,s={fn}(X,2,actions,costs,3)\nassert p.shape==(8,2) and c.shape==(2,5) and m.shape==(4,3) and s.shape==(4,3)\nassert torch.isfinite(p).all() and torch.isfinite(s).all()\n"
+        },
+        {
+          "name": "exact SVD PCA reference",
+          "code": "import torch\nX=torch.tensor([[1.,2.,0.],[2.,0.,1.],[4.,1.,3.],[0.,3.,2.]])\na=torch.arange(24.).reshape(4,3,2); costs=torch.tensor([3.,1.,4.,2.])\np,c,m,s={fn}(X,2,a,costs,2)\nxc=X-X.mean(0,keepdim=True); U,S,Vh=torch.linalg.svd(xc,full_matrices=False); rc=Vh[:2]; rp=xc@rc.T\nassert torch.equal(c,rc) and torch.equal(p,rp)\n"
+        },
+        {
+          "name": "lowest-cost elites and one-elite edge",
+          "code": "import torch\nX=torch.tensor([[0.,0.],[1.,1.],[2.,2.]])\na=torch.tensor([[[0.,0.]],[[10.,20.]],[[2.,4.]],[[6.,8.]]]); costs=torch.tensor([5.,-1.,2.,0.])\np,c,m,s={fn}(X,1,a,costs,2); elites=a[torch.tensor([1,3])]\nassert torch.equal(m,elites.mean(0)) and torch.equal(s,elites.std(0,unbiased=False))\np,c,m1,s1={fn}(X,1,a,costs,1)\nassert torch.equal(m1,a[1]) and torch.equal(s1,torch.zeros_like(a[1]))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nX=torch.randn(7,4,requires_grad=True); a=torch.randn(6,3,2,requires_grad=True); costs=torch.tensor([3.,1.,5.,0.,2.,4.])\np,c,m,s={fn}(X,2,a,costs,3); (p.square().sum()+c.square().sum()+m.sum()+s.sum()).backward()\nassert X.grad is not None and a.grad is not None\nassert torch.isfinite(X.grad).all() and torch.isfinite(a.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "mdlm_and_block_diffusion",
+      "title": "Masked Diffusion LM (MDLM) Loss & Block-Causal Attention Mask",
+      "titleZh": "掩码扩散语言模型（MDLM）损失与块因果掩码",
+      "difficulty": "Medium",
+      "functionName": "block_diffusion_mask_and_loss",
+      "hint": "Compare integer block IDs to build the mask. Gather target log-probabilities, multiply by the continuous-time schedule weight and masked-position indicator, then normalize by the masked count.",
+      "hintZh": "比较整数块编号构造掩码。收集目标对数概率，乘以连续时间调度权重和掩码位置指示，再按掩码数量归一化。",
+      "descriptionEn": "Construct an (S,S) block-causal attention mask and compute the continuous-time MDLM weighted cross-entropy over only masked tokens. Tokens attend bidirectionally within their block and to every earlier block.",
+      "descriptionZh": "构造 (S,S) 块因果注意力掩码，并仅在被掩码 token 上计算连续时间 MDLM 加权交叉熵。token 在块内双向注意，并可注意所有更早块。",
+      "category": "扩散与流模型",
+      "theoryEn": "Block diffusion decodes chunks in causal order while denoising each chunk bidirectionally. The schedule factor -alpha'(t)/(1-alpha(t)) is the continuous-time likelihood weighting for masked diffusion.",
+      "theoryZh": "块扩散按因果顺序解码分块，同时在每个块内双向去噪。调度因子 -alpha'(t)/(1-alpha(t)) 是掩码扩散的连续时间似然权重。",
+      "diagramEn": "```text\nblock 0: [<->]          visible\nblock 1: [past][<->]    visible\nblock 2: [past][past][<->]\nmasked NLL * (-alpha'/(1-alpha)) -> normalized loss\n```",
+      "diagramZh": "```text\n块 0：[双向]             可见\n块 1：[过去][双向]       可见\n块 2：[过去][过去][双向]\n掩码 NLL * (-alpha'/(1-alpha)) -> 归一化损失\n```",
+      "tests": [
+        {
+          "name": "mask and scalar loss shapes",
+          "code": "import torch\nlogits=torch.randn(2,7,5); targets=torch.randint(0,5,(2,7)); masked=torch.rand(2,7)>.5\nm,l={fn}(logits,targets,masked,torch.tensor([[.3],[.8]]),torch.tensor([[-.5],[-.2]]),3)\nassert m.shape==(7,7) and m.dtype==torch.bool and l.shape==torch.Size([])\nassert torch.isfinite(l)\n"
+        },
+        {
+          "name": "exact mask and loss reference",
+          "code": "import torch\nimport torch.nn.functional as F\nlogits=torch.tensor([[[2.,0.],[0.,2.],[1.,1.],[3.,-1.]]]); targets=torch.tensor([[0,1,1,0]])\nmasked=torch.tensor([[1,0,1,1]],dtype=torch.bool); a=torch.tensor([[.25]]); da=torch.tensor([[-.75]])\nm,l={fn}(logits,targets,masked,a,da,2)\nids=torch.arange(4)//2; rm=ids[None,:]<=ids[:,None]\nnll=-F.log_softmax(logits,-1).gather(-1,targets.unsqueeze(-1)).squeeze(-1)\nrl=((-.75*-1)/(1-.25+1e-8)*nll*masked.float()).sum()/masked.float().sum().clamp(min=1.)\nassert torch.equal(m,rm) and torch.equal(l,rl)\n"
+        },
+        {
+          "name": "no masked tokens edge",
+          "code": "import torch\nlogits=torch.randn(2,5,3); targets=torch.zeros(2,5,dtype=torch.long); masked=torch.zeros(2,5,dtype=torch.bool)\nm,l={fn}(logits,targets,masked,torch.full((2,1),.5),torch.full((2,1),-.5),10)\nassert torch.equal(m,torch.ones(5,5,dtype=torch.bool))\nassert l.item()==0.0\n"
+        },
+        {
+          "name": "gradient flow only through logits and schedule",
+          "code": "import torch\nlogits=torch.randn(2,4,6,requires_grad=True); targets=torch.randint(0,6,(2,4)); masked=torch.tensor([[1,0,1,0],[0,1,0,1]])\na=torch.full((2,1),.4,requires_grad=True); da=torch.full((2,1),-.3,requires_grad=True)\nm,l={fn}(logits,targets,masked,a,da,2); l.backward()\nassert logits.grad is not None and a.grad is not None and da.grad is not None\nassert torch.isfinite(logits.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "min_snr_and_edm_precond",
+      "title": "Diffusion Min-SNR-Gamma Weighting & EDM Preconditioning",
+      "titleZh": "扩散模型 Min-SNR-γ 损失加权与 EDM 预处理",
+      "difficulty": "Medium",
+      "functionName": "min_snr_and_edm_precond",
+      "hint": "Compute the schedule SNR first, cap it at gamma for the loss weight, and reuse sigma squared plus sigma_data squared for the EDM coefficients.",
+      "hintZh": "先计算调度信噪比并将损失权重中的信噪比截断到 gamma，再复用 sigma 平方与 sigma_data 平方之和计算 EDM 系数。",
+      "descriptionEn": "Given cumulative signal retention alpha_bar_t and EDM noise levels sigma, return the Min-SNR-gamma loss weight followed by c_skip, c_out, c_in, and c_noise. Both inputs have shape (B,).",
+      "descriptionZh": "给定累计信号保留率 alpha_bar_t 和 EDM 噪声水平 sigma，返回 Min-SNR-γ 损失权重以及 c_skip、c_out、c_in、c_noise。两个输入形状均为 (B,)。",
+      "category": "扩散与流模型",
+      "theoryEn": "Min-SNR weighting prevents high-SNR timesteps from dominating diffusion training. EDM rescales the noisy input, residual output, skip path, and noise embedding according to sigma and the data standard deviation.",
+      "theoryZh": "Min-SNR 加权避免高信噪比时间步主导扩散训练。EDM 根据 sigma 与数据标准差缩放含噪输入、残差输出、跳连路径和噪声嵌入。",
+      "diagramEn": "```text\nalpha_bar -> SNR -> min(SNR,gamma)/SNR\nsigma,sigma_data -> shared denominator -> c_skip,c_out,c_in,c_noise\n```",
+      "diagramZh": "```text\nalpha_bar -> SNR -> min(SNR,gamma)/SNR\nsigma、sigma_data -> 公共分母 -> c_skip,c_out,c_in,c_noise\n```",
+      "tests": [
+        {
+          "name": "output shapes",
+          "code": "import torch\na=torch.tensor([.1,.5,.9]); s=torch.tensor([.2,.7,1.5])\nout={fn}(a,s)\nassert len(out)==5 and all(x.shape==(3,) for x in out)\nassert all(torch.isfinite(x).all() for x in out)\n"
+        },
+        {
+          "name": "exact reference math",
+          "code": "import torch\na=torch.tensor([.2,.8]); s=torch.tensor([.25,2.])\ngot={fn}(a,s,gamma=2.0,sigma_data=.5)\nsnr=a/(1-a).clamp(min=1e-8)\nd=torch.sqrt(s**2+.5**2)\nref=(torch.minimum(snr,torch.full_like(snr,2.))/snr,.5**2/(s**2+.5**2),s*.5/d,1/d,.25*torch.log(s.clamp(min=1e-8)))\nassert all(torch.equal(x,y) for x,y in zip(got,ref))\n"
+        },
+        {
+          "name": "gamma cap edge cases",
+          "code": "import torch\na=torch.tensor([.5,.99]); s=torch.tensor([1e-12,1.])\nw,cs,co,ci,cn={fn}(a,s,gamma=1.0,eps=1e-6)\nassert torch.allclose(w,torch.tensor([1.,1/99.]),atol=1e-6)\nassert torch.isfinite(cs).all() and torch.isfinite(co).all() and torch.isfinite(ci).all() and torch.isfinite(cn).all()\nassert torch.equal(cn[:1],torch.tensor([.25*torch.log(torch.tensor(1e-6))]))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\na=torch.tensor([.2,.8],requires_grad=True); s=torch.tensor([.3,1.2],requires_grad=True)\nout={fn}(a,s,gamma=3.0); sum(x.sum() for x in out).backward()\nassert a.grad is not None and s.grad is not None\nassert torch.isfinite(a.grad).all() and torch.isfinite(s.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "pointcloud_fps_and_unproject",
+      "title": "Depth Map 3D Unprojection & Farthest Point Sampling (FPS)",
+      "titleZh": "相机深度图三维反投影与最远点采样（FPS）",
+      "difficulty": "Medium",
+      "functionName": "depth_unproject_and_fps",
+      "hint": "Use an ij-indexed row/column meshgrid, flatten the stacked XYZ coordinates in row-major order, then repeatedly update each point's minimum squared distance to the selected set.",
+      "hintZh": "使用 ij 索引的行列网格，将堆叠的 XYZ 坐标按行优先展平，再反复更新每个点到已选集合的最小平方距离。",
+      "descriptionEn": "Unproject an (H,W) pinhole-camera depth map into an (H*W,3) point cloud, then select num_samples point indices by deterministic iterative farthest point sampling starting at index zero.",
+      "descriptionZh": "将 (H,W) 针孔相机深度图反投影为 (H*W,3) 点云，再从索引零开始用确定性的迭代最远点采样选择 num_samples 个点索引。",
+      "category": "三维与具身感知",
+      "theoryEn": "Pinhole unprojection scales normalized image-plane rays by depth. FPS greedily maximizes coverage by choosing the point whose distance to its nearest selected point is largest.",
+      "theoryZh": "针孔反投影用深度缩放归一化像平面射线。FPS 每次选择到最近已选点距离最大的点，从而贪心地扩大覆盖范围。",
+      "diagramEn": "```text\ndepth + intrinsics -> pixel rays -> XYZ points\nindex 0 -> update nearest distances -> argmax -> repeat\n```",
+      "diagramZh": "```text\n深度 + 内参 -> 像素射线 -> XYZ 点\n索引 0 -> 更新最近距离 -> argmax -> 重复\n```",
+      "tests": [
+        {
+          "name": "output shapes and start index",
+          "code": "import torch\nd=torch.tensor([[1.,2.,3.,4.],[5.,6.,7.,8.],[9.,10.,11.,12.]])\np,idx={fn}(d,2.,2.,1.5,1.,5)\nassert p.shape==(12,3) and idx.shape==(5,)\nassert idx[0].item()==0\n"
+        },
+        {
+          "name": "exact pinhole unprojection",
+          "code": "import torch\nd=torch.tensor([[1.,2.],[3.,4.]])\np,idx={fn}(d,2.,4.,.5,1.,2)\nu=torch.tensor([[0.,1.],[0.,1.]]); v=torch.tensor([[0.,0.],[1.,1.]])\nref=torch.stack(((u-.5)*d/2.,(v-1.)*d/4.,d),-1).reshape(-1,3)\nassert torch.equal(p,ref)\nassert idx[0].item()==0\n"
+        },
+        {
+          "name": "deterministic FPS edge",
+          "code": "import torch\nd=torch.ones(1,4)\np,idx={fn}(d,1.,1.,0.,0.,3)\nassert torch.equal(p,torch.tensor([[0.,0.,1.],[1.,0.,1.],[2.,0.,1.],[3.,0.,1.]]))\nassert torch.equal(idx,torch.tensor([0,3,1]))\np1,i1={fn}(d,1.,1.,0.,0.,1)\nassert torch.equal(i1,torch.tensor([0]))\n"
+        },
+        {
+          "name": "gradient flow through unprojection",
+          "code": "import torch\nd=torch.rand(3,3,requires_grad=True)+.5; d.retain_grad()\np,idx={fn}(d,2.,3.,1.,1.,4); p.square().sum().backward()\nassert d.grad is not None and torch.isfinite(d.grad).all()\nassert idx.requires_grad is False\n"
+        }
+      ]
+    },
+    {
+      "id": "rloo_and_prm_aggregation",
+      "title": "RLOO Leave-One-Out Advantage & PRM Step-Score Aggregation",
+      "titleZh": "RLOO 留一法优势估计与 PRM 步骤评分聚合",
+      "difficulty": "Medium",
+      "functionName": "rloo_and_prm_vote",
+      "hint": "Compute all leave-one-out baselines from one row sum. For voting, use `torch.unique(..., return_inverse=True)` and scatter-add minimum trace scores into unique-answer bins.",
+      "hintZh": "由一次行求和计算全部留一基线；投票时使用 `torch.unique(..., return_inverse=True)`，并将轨迹最小分数 scatter-add 到唯一答案桶中。",
+      "descriptionEn": "Compute grouped RLOO advantages, two process-reward trace aggregations, and a minimum-score-weighted Best-of-N answer vote.",
+      "descriptionZh": "计算分组 RLOO 优势、两种过程奖励轨迹聚合，以及按最小步骤分数加权的 Best-of-N 答案投票。",
+      "category": "强化学习",
+      "theoryEn": "RLOO removes each sample from its own baseline to avoid self-influence. PRM minimum aggregation captures the weakest reasoning step, while the product captures cumulative confidence. Weighted voting combines evidence across traces sharing an answer.",
+      "theoryZh": "RLOO 从每个样本自身的基线中排除该样本，避免自影响。PRM 最小聚合捕捉最弱推理步骤，乘积聚合反映累积置信度；加权投票汇总相同答案的多条轨迹证据。",
+      "diagramEn": "```text\ngroup rewards -> row sum minus self -> LOO baseline -> advantage\nstep probabilities -> min & exp(sum(log))\ntrace min + answer id -> weighted bins -> argmax answer\n```",
+      "diagramZh": "```text\n组奖励 -> 行和减自身 -> 留一基线 -> 优势\n步骤概率 -> min 与 exp(sum(log))\n轨迹最小值 + 答案 ID -> 加权桶 -> 最大权重答案\n```",
+      "tests": [
+        {
+          "name": "all output shapes and Python answer",
+          "code": "import torch\nr = torch.randn(3,4); p = torch.rand(5,6); a = torch.tensor([1,2,1,3,2])\nadv,mn,prod,best = {fn}(r,p,a)\nassert adv.shape == (3,4) and mn.shape == prod.shape == (5,)\nassert isinstance(best,int)\n"
+        },
+        {
+          "name": "exact RLOO and PRM reference",
+          "code": "import torch\nr=torch.tensor([[1.,2.,4.],[0.,-1.,3.]],dtype=torch.double)\np=torch.tensor([[.9,.8],[.4,.5],[.7,.6]],dtype=torch.double)\na=torch.tensor([5,7,5])\nadv,mn,prod,best={fn}(r,p,a,eps=1e-12)\nbase=(r.sum(-1,keepdim=True)-r)/2; ra=r-base\nrm=p.amin(-1); rp=torch.exp(torch.log(p.clamp(min=1e-12)).sum(-1))\nassert torch.equal(adv,ra) and torch.equal(mn,rm) and torch.equal(prod,rp)\nassert best == 5\n"
+        },
+        {
+          "name": "zero probability and tie edge",
+          "code": "import torch\nr=torch.tensor([[2.,4.]])\np=torch.tensor([[0.,.5],[.5,.5],[.5,.5],[.5,.5]])\na=torch.tensor([9,3,9,3])\nadv,mn,prod,best={fn}(r,p,a,eps=1e-4)\nassert torch.equal(adv,torch.tensor([[-2.,2.]]))\nassert mn[0] == 0 and torch.all(prod > 0)\nassert best == 3\n"
+        },
+        {
+          "name": "gradient through rewards and trace scores",
+          "code": "import torch\nr=torch.randn(2,3,requires_grad=True)\np=(torch.rand(4,5)+.1).requires_grad_()\nadv,mn,prod,best={fn}(r,p,torch.tensor([1,2,1,3]))\n(adv.square().sum()+mn.sum()+prod.sum()).backward()\nassert isinstance(best,int) and adv.requires_grad and prod.requires_grad\nassert r.grad is not None and p.grad is not None\nassert torch.isfinite(r.grad).all() and torch.isfinite(p.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "awq_and_gptq_quant",
+      "title": "AWQ Salience Scaling & GPTQ Hessian Error Compensation",
+      "titleZh": "AWQ 激活显著度缩放与 GPTQ 黑塞误差补偿",
+      "difficulty": "Hard",
+      "functionName": "awq_and_gptq_step",
+      "hint": "AWQ uses mean absolute activation salience. For GPTQ, quantize one original W column and distribute its Hessian-normalized error only into columns to its right.",
+      "hintZh": "AWQ 使用激活绝对值均值作为显著度；GPTQ 量化 W 的一个原始列，并仅将黑塞归一化误差分配到其右侧列。",
+      "descriptionEn": "Perform AWQ channel scaling and one GPTQ/OBS column quantization step with inverse-Hessian error compensation.",
+      "descriptionZh": "执行 AWQ 通道缩放，以及带逆黑塞误差补偿的一步 GPTQ/OBS 列量化。",
+      "category": "量化",
+      "theoryEn": "AWQ protects input channels with salient activations through a function-preserving weight/activation rescaling. GPTQ uses second-order curvature to compensate future columns for the error introduced by quantizing the current column.",
+      "theoryZh": "AWQ 通过保持函数不变的权重/激活反向缩放保护高显著度输入通道。GPTQ 使用二阶曲率，让后续列补偿当前列的量化误差。",
+      "diagramEn": "```text\nX -> mean |.| -> s -> W*s and X/s\nW[:,q] -> round/clamp -> error/H_inv[q,q] -> compensate W[:,q+1:]\n```",
+      "diagramZh": "```text\nX -> |.| 均值 -> s -> W*s 与 X/s\nW[:,q] -> 舍入/截断 -> 误差/H_inv[q,q] -> 补偿 W[:,q+1:]\n```",
+      "tests": [
+        {
+          "name": "AWQ and GPTQ shapes",
+          "code": "import torch\nW = torch.randn(5,4); X = torch.randn(8,4)\ns, wa, wg = {fn}(W,X,H_inv=torch.eye(4),q_col=1)\nassert s.shape == (4,) and wa.shape == wg.shape == W.shape\n"
+        },
+        {
+          "name": "exact salience and compensation",
+          "code": "import torch\nW = torch.tensor([[.16,-.24,.7],[.35,.81,-.2]],dtype=torch.double)\nX = torch.tensor([[1.,-2.,3.],[-3.,4.,1.]],dtype=torch.double)\nH = torch.tensor([[2.,.1,.2],[.1,4.,.6],[.2,.6,3.]],dtype=torch.double)\ns, wa, wg = {fn}(W,X,alpha=.5,q_col=1,H_inv=H,scale_int=.1,eps=1e-9)\nrs = X.abs().mean(0).clamp(min=1e-9)**.5; rw = W*rs\nhat = torch.clamp(torch.round(W[:,1]/.1),-8.,7.)*.1\nerr = (W[:,1]-hat)/H[1,1]\nrg = W.clone(); rg[:,1]=hat; rg[:,2:]=W[:,2:]-err[:,None]*H[1,2:][None,:]\nassert torch.allclose(s,rs,atol=1e-12,rtol=1e-12) and torch.allclose(wa,rw,atol=1e-12,rtol=1e-12)\nassert torch.allclose(wg,rg,atol=1e-12,rtol=1e-12)\n"
+        },
+        {
+          "name": "last-column and inferred Hessian edge",
+          "code": "import torch\nW = torch.tensor([[.04,.76],[-.14,-.86]])\nX = torch.tensor([[1.,0.],[0.,2.],[1.,1.]])\ns, wa, wg = {fn}(W,X,q_col=1,H_inv=None,scale_int=.1)\nassert torch.equal(wg[:,:1],W[:,:1])\nassert torch.allclose(wg[:,1],torch.tensor([.7,-.8]))\nassert torch.isfinite(s).all() and torch.isfinite(wa).all()\n"
+        },
+        {
+          "name": "gradient through AWQ and compensation",
+          "code": "import torch\nW = torch.randn(3,4,requires_grad=True); X = (torch.randn(6,4)+.2).requires_grad_()\nH = torch.eye(4)\ns, wa, wg = {fn}(W,X,q_col=1,H_inv=H)\n(s.sum()+wa.square().sum()+wg[:,2:].square().sum()).backward()\nassert s.requires_grad and wa.requires_grad and wg.requires_grad\nassert W.grad is not None and X.grad is not None\nassert torch.isfinite(W.grad).all() and torch.isfinite(X.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "chunkwise_linear_attention",
+      "title": "Chunkwise Parallel Causal Linear Attention",
+      "titleZh": "分块并行因果线性注意力（Chunkwise Linear Attention）",
+      "difficulty": "Hard",
+      "functionName": "chunkwise_linear_attention",
+      "hint": "Within each chunk, form all q-k dot products and multiply by a lower-triangular decay matrix. Add the decayed incoming-state read, then update the state with decayed outer products.",
+      "hintZh": "在每个块内计算全部 q-k 点积并乘以下三角衰减矩阵，加上衰减后的输入状态读取，再用衰减外积更新状态。",
+      "descriptionEn": "Implement chunk-parallel causal linear attention whose outputs and final matrix state match the token-by-token decayed recurrence.",
+      "descriptionZh": "实现分块并行因果线性注意力，使输出和最终矩阵状态与逐 token 衰减递推一致。",
+      "category": "注意力机制",
+      "theoryEn": "The recurrent state summarizes all previous key-value outer products. Inside a chunk, associativity exposes a causal matrix multiplication, while powers of gamma preserve each token's exact recurrence age.",
+      "theoryZh": "递归状态汇总此前所有键值外积。在块内，结合律将计算转化为因果矩阵乘法，而 gamma 的幂精确保留每个 token 的递推时距。",
+      "diagramEn": "```text\nincoming S --gamma^(i+1) reads--\\\nchunk Q,K -> causal decayed QK -> V -> outputs\nchunk K,V -> terminal decay weights -> next S\n```",
+      "diagramZh": "```text\n输入 S --gamma^(i+1) 读取--\\\n块 Q,K -> 因果衰减 QK -> V -> 输出\n块 K,V -> 末端衰减权重 -> 下一状态 S\n```",
+      "tests": [
+        {
+          "name": "sequence and state shapes",
+          "code": "import torch\nQ,K,V = [torch.randn(2,8,3) for _ in range(3)]\nout, state = {fn}(Q,K,V,chunk_size=4)\nassert out.shape == (2,8,3) and state.shape == (2,3,3)\n"
+        },
+        {
+          "name": "exact step recurrence",
+          "code": "import torch\ntorch.manual_seed(11)\nQ,K,V = [torch.randn(2,6,3,dtype=torch.double) for _ in range(3)]\nout, state = {fn}(Q,K,V,chunk_size=2,gamma=0.8)\ns = torch.zeros(2,3,3,dtype=torch.double); ys = []\nfor t in range(6):\n    s = 0.8*s + K[:,t,:,None]*V[:,t,None,:]\n    ys.append(torch.einsum('bd,bde->be',Q[:,t],s))\nref = torch.stack(ys,1)\nassert torch.allclose(out,ref,atol=1e-12,rtol=1e-12)\nassert torch.allclose(state,s,atol=1e-12,rtol=1e-12)\n"
+        },
+        {
+          "name": "unit decay and single-token chunks",
+          "code": "import torch\nQ = torch.ones(1,4,2); K = torch.ones(1,4,2); V = torch.arange(8.).reshape(1,4,2)\nout, state = {fn}(Q,K,V,chunk_size=1,gamma=1.0)\nref = 2*V.cumsum(dim=1)\nassert torch.equal(out,ref)\nassert torch.equal(state,torch.einsum('bsd,bse->bde',K,V))\n"
+        },
+        {
+          "name": "gradient flow through chunks",
+          "code": "import torch\nQ,K,V = [torch.randn(1,8,4,requires_grad=True) for _ in range(3)]\nout, state = {fn}(Q,K,V,chunk_size=4,gamma=0.9)\n(out.square().sum()+state.square().sum()).backward()\nassert out.requires_grad and state.requires_grad\nassert all(x.grad is not None and torch.isfinite(x.grad).all() for x in (Q,K,V))\n"
+        }
+      ]
+    },
+    {
+      "id": "deepseek_mtp_module",
+      "title": "DeepSeek-V3 Sequential Multi-Token Prediction (MTP) Module",
+      "titleZh": "DeepSeek-V3 链式多 Token 预测（MTP）模块",
+      "difficulty": "Hard",
+      "functionName": "deepseek_mtp_step",
+      "hint": "RMS-normalize the two inputs independently, concatenate them, project back to the model dimension, and apply a stable mean cross-entropy over flattened positions.",
+      "hintZh": "分别对两个输入进行 RMS 归一化，拼接后投影回模型维度，再对展平的位置计算数值稳定的平均交叉熵。",
+      "descriptionEn": "Implement one chained DeepSeek-V3 MTP depth: fuse the previous-depth representation with the shifted next-token embedding and predict the target at this depth.",
+      "descriptionZh": "实现一层链式 DeepSeek-V3 MTP：融合前一深度表示与移位后的下一 token 嵌入，并预测该深度的目标。",
+      "category": "训练技巧",
+      "theoryEn": "Sequential MTP reuses the representation from depth k-1. Separate RMSNorms balance the two streams before a learned fusion projection, while the shared unembedding head aligns every depth with the base vocabulary space.",
+      "theoryZh": "链式 MTP 复用深度 k-1 的表示。独立 RMSNorm 在融合前平衡两路信号，共享反嵌入头使各深度都对齐到基础词表空间。",
+      "diagramEn": "```text\nh_(k-1) -> RMSNorm --\\\n                         concat -> W_proj -> h_k -> shared W_head -> logits -> CE\nshifted embedding -> RMSNorm --/\n```",
+      "diagramZh": "```text\nh_(k-1) -> RMSNorm --\\\n                         拼接 -> W_proj -> h_k -> 共享 W_head -> logits -> CE\n移位 token 嵌入 -> RMSNorm --/\n```",
+      "tests": [
+        {
+          "name": "output shapes",
+          "code": "import torch\nB,S,D,V = 2,3,4,7\nh = torch.randn(B,S,D); e = torch.randn(B,S,D)\nhp, logits, loss = {fn}(h,e,torch.ones(D),torch.ones(D),torch.randn(2*D,D),torch.randn(D,V),torch.randint(V,(B,S)))\nassert hp.shape == (B,S,D) and logits.shape == (B,S,V)\nassert loss.shape == torch.Size([])\n"
+        },
+        {
+          "name": "exact RMS fusion and stable loss",
+          "code": "import torch\nimport torch.nn.functional as F\ntorch.manual_seed(3)\nB,S,D,V = 1,2,3,5\nh = torch.randn(B,S,D,dtype=torch.double); e = torch.randn(B,S,D,dtype=torch.double)\nwh = torch.randn(D,dtype=torch.double); we = torch.randn(D,dtype=torch.double)\nwp = torch.randn(2*D,D,dtype=torch.double); wo = torch.randn(D,V,dtype=torch.double)\nt = torch.tensor([[1,4]])\nhc, logits, loss = {fn}(h,e,wh,we,wp,wo,t,eps=1e-7)\nhn = h*torch.rsqrt(h.pow(2).mean(-1,keepdim=True)+1e-7)*wh\nen = e*torch.rsqrt(e.pow(2).mean(-1,keepdim=True)+1e-7)*we\nrh = torch.cat((hn,en),-1)@wp; rl = rh@wo\nrr = F.cross_entropy(rl.reshape(-1,V),t.reshape(-1))\nassert torch.allclose(hc,rh,atol=1e-12,rtol=1e-12)\nassert torch.allclose(logits,rl,atol=1e-12,rtol=1e-12) and torch.allclose(loss,rr,atol=1e-12,rtol=1e-12)\n"
+        },
+        {
+          "name": "zero-input normalization edge",
+          "code": "import torch\nB,S,D,V = 1,1,2,3\nhc, logits, loss = {fn}(torch.zeros(B,S,D),torch.zeros(B,S,D),torch.ones(D),torch.ones(D),torch.randn(2*D,D),torch.randn(D,V),torch.tensor([[2]]))\nassert torch.equal(hc,torch.zeros_like(hc)) and torch.equal(logits,torch.zeros_like(logits))\nassert torch.allclose(loss,torch.log(torch.tensor(float(V))))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nB,S,D,V = 2,2,3,4\nh = torch.randn(B,S,D,requires_grad=True); e = torch.randn(B,S,D,requires_grad=True)\nwh = torch.randn(D,requires_grad=True); we = torch.randn(D,requires_grad=True)\nwp = torch.randn(2*D,D,requires_grad=True); wo = torch.randn(D,V,requires_grad=True)\nhc, logits, loss = {fn}(h,e,wh,we,wp,wo,torch.randint(V,(B,S)))\nloss.backward()\nassert hc.requires_grad and logits.requires_grad\nassert all(x.grad is not None and torch.isfinite(x.grad).all() for x in (h,e,wh,we,wp,wo))\n"
+        }
+      ]
+    },
+    {
+      "id": "flow_grpo_sde_loss",
+      "title": "Flow-GRPO Reverse SDE Step & Velocity-Space KL",
+      "titleZh": "Flow-GRPO 逆向 SDE 采样步与速度场 KL",
+      "difficulty": "Hard",
+      "functionName": "flow_grpo_sde_step",
+      "hint": "Build policy and detached-reference reverse drifts with the same scalar variance. Sample from the policy mean, detach that sample only inside its transition log probability, and use the equal-covariance Gaussian KL.",
+      "hintZh": "用相同标量方差构造策略与分离参考速度的逆向漂移。从策略均值采样，仅在转移对数概率中分离样本，并使用同协方差高斯 KL。",
+      "descriptionEn": "Take one reverse SDE step from t to t-dt using policy velocity v_theta, evaluate its isotropic Gaussian transition log probability, and compute the closed-form KL to a transition induced by detached v_ref.",
+      "descriptionZh": "使用策略速度 v_theta 从 t 到 t-dt 执行一步逆向 SDE，计算其各向同性高斯转移对数概率，并计算与分离 v_ref 所诱导转移之间的闭式 KL。",
+      "category": "扩散与流模型",
+      "theoryEn": "The stochastic transition has covariance g(t)^2 dt I. Equal policy and reference covariance reduces KL to half the squared mean displacement divided by the scalar variance. Detaching the sampled target gives a score-function-style log-probability gradient.",
+      "theoryZh": "随机转移协方差为 g(t)^2 dt I。策略与参考协方差相同时，KL 化为均值差平方除以标量方差的一半。分离采样目标可得到类似得分函数的对数概率梯度。",
+      "diagramEn": "```text\n(x_t,v_theta) -> reverse drift -> mean + std*noise -> x_next -> log_prob\n(x_t,stopgrad(v_ref)) -> reference mean ---------> equal-variance KL\n```",
+      "diagramZh": "```text\n(x_t,v_theta) -> 逆漂移 -> 均值 + std*噪声 -> x_next -> log_prob\n(x_t,stopgrad(v_ref)) -> 参考均值 -------------> 同方差 KL\n```",
+      "tests": [
+        {
+          "name": "return shapes",
+          "code": "import torch\nx=torch.randn(3,5); vt=torch.randn(3,5); vr=torch.randn(3,5); n=torch.randn(3,5)\nxn,lp,kl={fn}(x,vt,vr,.8,.1,n)\nassert xn.shape==(3,5) and lp.shape==(3,) and kl.shape==(3,)\nassert torch.isfinite(xn).all() and torch.isfinite(lp).all() and torch.isfinite(kl).all()\n"
+        },
+        {
+          "name": "exact transition reference",
+          "code": "import torch, math\nx=torch.tensor([[1.,-2.]]); vt=torch.tensor([[.3,.4]]); vr=torch.tensor([[-.2,.1]]); n=torch.tensor([[.5,-1.]])\nt=.6; dt=.05; sa=.7; eps=1e-6\nxn,lp,kl={fn}(x,vt,vr,t,dt,n,sa,eps)\ng2=sa**2*t/(1-t+eps); drift=vt+g2/(2*t)*(x+(1-t)*vt); mean=x-dt*drift\nref=x-dt*(vr+g2/(2*t)*(x+(1-t)*vr))\nrx=mean+math.sqrt(g2*dt)*n\nrlp=-.5*(((rx.detach()-mean)**2)/(g2*dt+eps)+math.log(2*math.pi*g2*dt)).sum(-1)\nrkl=(.5*(mean-ref)**2/(g2*dt+eps)).sum(-1)\nassert torch.equal(xn,rx) and torch.equal(lp,rlp) and torch.equal(kl,rkl)\n"
+        },
+        {
+          "name": "matching velocities zero KL edge",
+          "code": "import torch\nx=torch.randn(2,4); v=torch.randn(2,4); noise=torch.zeros_like(x)\nxn,lp,kl={fn}(x,v,v,.5,.01,noise)\nassert torch.equal(kl,torch.zeros(2))\nassert torch.isfinite(lp).all() and not torch.equal(xn,x)\n"
+        },
+        {
+          "name": "policy gradient and detached reference",
+          "code": "import torch\nx=torch.randn(2,3,requires_grad=True); vt=torch.randn(2,3,requires_grad=True)\nvr=torch.randn(2,3,requires_grad=True); n=torch.randn(2,3)\nxn,lp,kl={fn}(x,vt,vr,.7,.1,n); (xn.sum()+lp.sum()+kl.sum()).backward()\nassert x.grad is not None and vt.grad is not None and torch.isfinite(vt.grad).all()\nassert vr.grad is None\n"
+        }
+      ]
+    },
+    {
+      "id": "jepa_and_vicreg_loss",
+      "title": "JEPA Latent Prediction & VICReg Anti-Collapse Regularization",
+      "titleZh": "JEPA 潜空间预测与 VICReg 防坍缩正则损失",
+      "difficulty": "Hard",
+      "functionName": "jepa_vicreg_loss",
+      "hint": "Detach the target for invariance. Compute population standard deviation for the variance hinge, but divide the centered Gram matrix by B-1 for covariance and remove its diagonal.",
+      "hintZh": "在不变性项中分离目标。方差铰链使用总体标准差，但协方差用中心化 Gram 矩阵除以 B-1，并移除对角线。",
+      "descriptionEn": "Combine detached-target JEPA prediction MSE with VICReg variance and covariance anti-collapse penalties for latent batches pred_z and target_z of shape (B,D), with B at least two.",
+      "descriptionZh": "对形状为 (B,D)、B 至少为 2 的潜变量批次 pred_z 和 target_z，将分离目标的 JEPA 预测 MSE 与 VICReg 方差、协方差防坍缩惩罚结合。",
+      "category": "世界模型",
+      "theoryEn": "Invariance aligns predictions to target representations. A standard-deviation hinge prevents constant features, while squared off-diagonal covariance discourages redundant dimensions without forcing individual samples apart.",
+      "theoryZh": "不变性项将预测对齐目标表示；标准差铰链防止恒定特征，非对角协方差平方则抑制冗余维度，而无需强制分离单个样本。",
+      "diagramEn": "```text\npred,target(stopgrad) -> invariance MSE\npred -> per-dim std hinge + off-diagonal covariance -> total weighted loss\n```",
+      "diagramZh": "```text\n预测、目标(stopgrad) -> 不变性 MSE\n预测 -> 逐维标准差铰链 + 非对角协方差 -> 加权总损失\n```",
+      "tests": [
+        {
+          "name": "scalar output shapes",
+          "code": "import torch\np=torch.randn(5,7); t=torch.randn(5,7)\nout={fn}(p,t)\nassert len(out)==4 and all(x.shape==torch.Size([]) for x in out)\nassert all(torch.isfinite(x) for x in out)\n"
+        },
+        {
+          "name": "exact VICReg reference",
+          "code": "import torch\nimport torch.nn.functional as F\np=torch.tensor([[1.,2.],[3.,0.],[2.,4.]]); t=torch.tensor([[0.,1.],[2.,1.],[2.,3.]])\ngot={fn}(p,t,2.,3.,4.,.8,1e-4)\ninv=((p-t)**2).mean(); std=torch.sqrt(p.var(0,unbiased=False)+1e-4); var=F.relu(.8-std).mean()\nzc=p-p.mean(0,keepdim=True); cov=zc.T@zc/(p.size(0)-1); off=cov-torch.diag(torch.diag(cov)); cv=(off**2).sum()/p.size(1)\nref=(2*inv+3*var+4*cv,inv,var,cv)\nassert all(torch.equal(x,y) for x,y in zip(got,ref))\n"
+        },
+        {
+          "name": "collapsed representation edge",
+          "code": "import torch\np=torch.zeros(4,3); t=torch.zeros_like(p)\ntotal,inv,var,cov={fn}(p,t,sim_coef=1.,std_coef=1.,cov_coef=1.,gamma=1.,eps=1e-4)\nassert inv.item()==0.0 and cov.item()==0.0\nassert torch.allclose(var,torch.tensor(.99)) and torch.equal(total,var)\n"
+        },
+        {
+          "name": "prediction-only gradient flow",
+          "code": "import torch\np=torch.randn(6,4,requires_grad=True); t=torch.randn(6,4,requires_grad=True)\ntotal,inv,var,cov={fn}(p,t); total.backward()\nassert p.grad is not None and torch.isfinite(p.grad).all()\nassert t.grad is None\n"
+        }
+      ]
+    },
+    {
+      "id": "mla_rope_absorption",
+      "title": "MLA Decoupled RoPE & Weight Matrix Absorption",
+      "titleZh": "MLA 解耦 RoPE 与矩阵吸收推理",
+      "difficulty": "Hard",
+      "functionName": "mla_absorbed_attention",
+      "hint": "Move the per-head key up-projection onto the content query, score the compressed cache directly, aggregate in latent space, and apply the value up-projection only after attention.",
+      "hintZh": "把逐头键上投影吸收到内容查询中，直接对压缩缓存打分，在潜空间聚合后再应用值上投影。",
+      "descriptionEn": "Implement MLA inference with decoupled positional keys and matrix absorption, avoiding materialization of full per-head K and V caches.",
+      "descriptionZh": "实现带解耦位置键和矩阵吸收的 MLA 推理，避免物化完整的逐头 K、V 缓存。",
+      "category": "注意力机制",
+      "theoryEn": "Associativity lets q(W_uk)^T be evaluated before interaction with the compressed latent. Likewise, attention can aggregate compressed values first and apply W_uv afterward. The separate RoPE branch preserves positional information.",
+      "theoryZh": "利用结合律，可在压缩潜变量交互前先计算 q(W_uk)^T；同理可先聚合压缩值，再应用 W_uv。独立 RoPE 分支保留位置信息。",
+      "diagramEn": "```text\nq_nope -> absorb W_uk -> score c_kv --\\\nq_rope -----------------> score k_rope -> softmax -> aggregate c_kv -> W_uv -> out\n```",
+      "diagramZh": "```text\nq_nope -> 吸收 W_uk -> 对 c_kv 打分 --\\\nq_rope -----------------> 对 k_rope 打分 -> softmax -> 聚合 c_kv -> W_uv -> 输出\n```",
+      "tests": [
+        {
+          "name": "absorbed tensor and output shapes",
+          "code": "import torch\nB,H,Q,K,C,D,R,V = 2,3,4,5,6,7,2,8\nout, qa = {fn}(torch.randn(B,H,Q,D),torch.randn(B,H,Q,R),torch.randn(B,K,C),torch.randn(B,K,R),torch.randn(H,C,D),torch.randn(H,C,V))\nassert qa.shape == (B,H,Q,C) and out.shape == (B,H,Q,V)\n"
+        },
+        {
+          "name": "exact absorbed reference",
+          "code": "import torch\nimport math\ntorch.manual_seed(4)\nB,H,Q,K,C,D,R,V = 1,2,3,4,3,2,2,3\nqn = torch.randn(B,H,Q,D,dtype=torch.double); qr = torch.randn(B,H,Q,R,dtype=torch.double)\nc = torch.randn(B,K,C,dtype=torch.double); kr = torch.randn(B,K,R,dtype=torch.double)\nwk = torch.randn(H,C,D,dtype=torch.double); wv = torch.randn(H,C,V,dtype=torch.double)\nout, qa = {fn}(qn,qr,c,kr,wk,wv)\nrqa = torch.einsum('bhqd,hcd->bhqc',qn,wk)\nscores = (torch.einsum('bhqc,bkc->bhqk',rqa,c)+torch.einsum('bhqr,bkr->bhqk',qr,kr))/math.sqrt(D+R)\na = torch.softmax(scores,-1); ro = torch.einsum('bhqc,hcv->bhqv',torch.einsum('bhqk,bkc->bhqc',a,c),wv)\nassert torch.allclose(qa,rqa,atol=1e-12,rtol=1e-12)\nassert torch.allclose(out,ro,atol=1e-12,rtol=1e-12)\n"
+        },
+        {
+          "name": "single-key edge case",
+          "code": "import torch\nB,H,Q,K,C,D,R,V = 2,2,3,1,4,3,2,5\nc = torch.randn(B,K,C); wv = torch.randn(H,C,V)\nout, qa = {fn}(torch.randn(B,H,Q,D),torch.randn(B,H,Q,R),c,torch.randn(B,K,R),torch.randn(H,C,D),wv)\nctx = c[:,None,:,:].expand(B,H,Q,C)\nref = torch.einsum('bhqc,hcv->bhqv',ctx,wv)\nassert qa.shape == (B,H,Q,C) and torch.allclose(out,ref,atol=1e-6)\n"
+        },
+        {
+          "name": "gradient flow through absorbed path",
+          "code": "import torch\nB,H,Q,K,C,D,R,V = 1,2,2,3,3,4,2,3\nxs = [torch.randn(B,H,Q,D,requires_grad=True),torch.randn(B,H,Q,R,requires_grad=True),torch.randn(B,K,C,requires_grad=True),torch.randn(B,K,R,requires_grad=True),torch.randn(H,C,D,requires_grad=True),torch.randn(H,C,V,requires_grad=True)]\nout, qa = {fn}(*xs)\n(out.square().sum()+qa.square().sum()).backward()\nassert out.requires_grad and qa.requires_grad\nassert all(x.grad is not None and torch.isfinite(x.grad).all() for x in xs)\n"
+        }
+      ]
+    },
+    {
+      "id": "mod_and_expert_choice",
+      "title": "Mixture-of-Depths (MoD) & Expert-Choice Routing",
+      "titleZh": "混合深度路由（MoD）与专家选择路由（Expert-Choice）",
+      "difficulty": "Hard",
+      "functionName": "mod_and_expert_choice",
+      "hint": "Scatter each batch row's MoD top-k indices into a boolean mask. Separately softmax router logits over experts, transpose, and let every expert run its own top-k.",
+      "hintZh": "将每个批次行的 MoD top-k 索引散射成布尔掩码；另对路由 logit 按专家做 softmax、转置，并让每位专家独立执行 top-k。",
+      "descriptionEn": "Combine token-level depth skipping with expert-choice routing, returning gated residual outputs and each expert's selected tokens and scores.",
+      "descriptionZh": "结合 token 级深度跳过与专家选择路由，返回门控残差输出以及每位专家选择的 token 和分数。",
+      "category": "混合专家模型",
+      "theoryEn": "MoD limits expensive block computation by selecting tokens, while preserving an identity residual for bypassed positions. Expert-choice reverses token-choice routing: experts claim their highest-probability tokens under fixed capacity.",
+      "theoryZh": "MoD 通过选择 token 限制昂贵模块的计算，并让跳过位置保持恒等残差。专家选择路由反转 token 选择：每位专家在固定容量下挑选概率最高的 token。",
+      "diagramEn": "```text\nmod logits -> sigmoid -> per-batch top-k -> gated FFN residual\nrouter logits -> softmax over experts -> transpose -> per-expert top-k tokens\n```",
+      "diagramZh": "```text\n深度 logit -> sigmoid -> 逐批 top-k -> 门控 FFN 残差\n专家 logit -> 按专家 softmax -> 转置 -> 每位专家 top-k token\n```",
+      "tests": [
+        {
+          "name": "routing output shapes",
+          "code": "import torch\nB,S,D,E,K = 2,6,4,3,2\nout, tok, val = {fn}(torch.randn(B,S,D),torch.randn(B,S),torch.randn(B,S,D),torch.randn(S,E),K)\nassert out.shape == (B,S,D)\nassert tok.shape == val.shape == (E,K) and tok.dtype == torch.long\n"
+        },
+        {
+          "name": "exact MoD and expert reference",
+          "code": "import torch\nx = torch.arange(24.,dtype=torch.double).reshape(2,4,3)\nf = torch.ones_like(x)*2\nm = torch.tensor([[0.,3.,-2.,1.],[4.,-1.,2.,0.]],dtype=torch.double)\nr = torch.tensor([[3.,0.],[0.,2.],[1.,1.],[2.,-1.]],dtype=torch.double)\nout, tok, val = {fn}(x,m,f,r,2)\nw = torch.sigmoid(m); idx = torch.topk(w,2,-1).indices\nmask = torch.zeros_like(w,dtype=torch.bool).scatter(1,idx,True)\nref = x + mask.unsqueeze(-1)*w.unsqueeze(-1)*f\np = torch.softmax(r,-1); rv,rt = torch.topk(p.T,2,-1)\nassert torch.equal(out,ref) and torch.equal(tok,rt) and torch.equal(val,rv)\n"
+        },
+        {
+          "name": "full-capacity edge case",
+          "code": "import torch\nB,S,D,E = 1,3,2,2\nx = torch.randn(B,S,D); f = torch.randn(B,S,D); m = torch.randn(B,S); r = torch.randn(S,E)\nout, tok, val = {fn}(x,m,f,r,S)\nassert torch.allclose(out,x+torch.sigmoid(m).unsqueeze(-1)*f)\nassert torch.equal(torch.sort(tok,-1).values,torch.arange(S).expand(E,S))\n"
+        },
+        {
+          "name": "gradient through selected routes",
+          "code": "import torch\nB,S,D,E = 2,5,3,4\nx = torch.randn(B,S,D,requires_grad=True); f = torch.randn(B,S,D,requires_grad=True)\nm = torch.randn(B,S,requires_grad=True); r = torch.randn(S,E,requires_grad=True)\nout, tok, val = {fn}(x,m,f,r,3)\n(out.square().sum()+val.square().sum()).backward()\nassert tok.shape == (E,3) and out.requires_grad\nassert all(t.grad is not None and torch.isfinite(t.grad).all() for t in (x,f,m,r))\n"
+        }
+      ]
+    },
+    {
+      "id": "mot_asymmetric_attention",
+      "title": "Mixture-of-Transformers (MoT) Asymmetric Cross-Modal Attention",
+      "titleZh": "Mixture-of-Transformers (MoT) 非对称跨模态注意力",
+      "difficulty": "Hard",
+      "functionName": "mot_asymmetric_attention",
+      "hint": "Concatenate both streams, then combine a causal lower-triangular AR query block with an all-true diffusion query block. Use the boolean mask before softmax.",
+      "hintZh": "先拼接两条流，再将 AR 查询的因果下三角块与全真的扩散查询块组合，在 softmax 前应用布尔掩码。",
+      "descriptionEn": "Compute single-head scaled dot-product attention over concatenated autoregressive and diffusion streams. AR queries are causal and cannot read diffusion tokens; diffusion queries can read every token. Return both split outputs and the boolean mask.",
+      "descriptionZh": "在拼接的自回归流和扩散流上计算单头缩放点积注意力。AR 查询具有因果性且不能读取扩散 token；扩散查询可读取所有 token。返回拆分输出和布尔掩码。",
+      "category": "多模态",
+      "theoryEn": "The asymmetric mask protects autoregressive generation from future and diffusion information while exposing the complete reasoner context to the bidirectional diffusion generator.",
+      "theoryZh": "非对称掩码保护自回归生成不接触未来及扩散信息，同时向双向扩散生成器开放完整推理器上下文。",
+      "diagramEn": "```text\nkeys:     AR          DM\nAR q:   causal      blocked\nDM q:   all visible all visible\n```",
+      "diagramZh": "```text\n键：       AR          DM\nAR 查询： 因果可见      禁止\nDM 查询： 全部可见      全部可见\n```",
+      "tests": [
+        {
+          "name": "shapes and mask structure",
+          "code": "import torch\na=[torch.randn(2,3,4) for _ in range(3)]; d=[torch.randn(2,5,4) for _ in range(3)]\noa,od,m={fn}(*(a+d))\nref=torch.zeros(8,8,dtype=torch.bool); ref[:3,:3]=torch.tril(torch.ones(3,3,dtype=torch.bool)); ref[3:]=True\nassert oa.shape==(2,3,4) and od.shape==(2,5,4) and m.dtype==torch.bool\nassert torch.equal(m.cpu(),ref)\n"
+        },
+        {
+          "name": "exact masked attention",
+          "code": "import torch\ntorch.manual_seed(3)\nqa,ka,va=[torch.randn(1,2,3) for _ in range(3)]; qd,kd,vd=[torch.randn(1,2,3) for _ in range(3)]\noa,od,m={fn}(qa,ka,va,qd,kd,vd)\nQ=torch.cat((qa,qd),1); K=torch.cat((ka,kd),1); V=torch.cat((va,vd),1)\ns=(Q@K.transpose(-2,-1))/(3**.5); ref=torch.softmax(s.masked_fill(~m,float('-inf')),-1)@V\nassert torch.equal(oa,ref[:,:2]) and torch.equal(od,ref[:,2:])\n"
+        },
+        {
+          "name": "AR output ignores diffusion edge",
+          "code": "import torch\nqa=torch.zeros(1,2,2); ka=torch.zeros_like(qa); va=torch.tensor([[[1.,2.],[3.,4.]]])\nqd=torch.zeros(1,1,2); kd=torch.zeros_like(qd); vd=torch.tensor([[[100.,200.]]])\noa,od,m={fn}(qa,ka,va,qd,kd,vd)\nassert torch.equal(oa[:,0],va[:,0]) and torch.equal(oa[:,1],va.mean(1))\nassert torch.allclose(od,torch.tensor([[[104/3,206/3]]]))\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\na=[torch.randn(1,3,4,requires_grad=True) for _ in range(3)]\nd=[torch.randn(1,2,4,requires_grad=True) for _ in range(3)]\noa,od,m={fn}(*(a+d)); (oa.square().sum()+od.square().sum()).backward()\nassert all(x.grad is not None and torch.isfinite(x.grad).all() for x in a+d)\n"
+        }
+      ]
+    },
+    {
+      "id": "multimodal_3d_rope",
+      "title": "Multimodal 3D Rotary Position Embedding (M-RoPE)",
+      "titleZh": "多模态三维旋转位置编码（M-RoPE）",
+      "difficulty": "Hard",
+      "functionName": "apply_mrope_3d",
+      "hint": "Split each embedding into temporal, height, and width sections. For each section, build half as many frequencies and rotate adjacent even/odd coordinate pairs before concatenating.",
+      "hintZh": "将嵌入拆分为时间、高度和宽度三段。每段构造一半数量的频率，旋转相邻偶数/奇数坐标对后再拼接。",
+      "descriptionEn": "Apply axis-specific rotary embeddings to q and k of shape (B,S,D), using per-token temporal, height, and width coordinates in pos_3d and even section dimensions summing to D.",
+      "descriptionZh": "对形状为 (B,S,D) 的 q 和 k 应用分轴旋转位置编码，使用 pos_3d 中逐 token 的时间、高度、宽度坐标；三个偶数段维度之和为 D。",
+      "category": "多模态",
+      "theoryEn": "RoPE represents position by orthogonal rotations of adjacent feature pairs. M-RoPE allocates disjoint channel sections to independent temporal and spatial coordinates, retaining norm while encoding three-dimensional relative phase.",
+      "theoryZh": "RoPE 通过相邻特征对的正交旋转表示位置。M-RoPE 将互不重叠的通道段分配给时间和空间坐标，在保持范数的同时编码三维相对相位。",
+      "diagramEn": "```text\nfeatures -> [temporal | height | width]\npositions -> [t rotation | h rotation | w rotation] -> concatenate\n```",
+      "diagramZh": "```text\n特征 -> [时间段 | 高度段 | 宽度段]\n坐标 -> [t 旋转 | h 旋转 | w 旋转] -> 拼接\n```",
+      "tests": [
+        {
+          "name": "shape and norm preservation",
+          "code": "import torch\nq=torch.randn(2,5,16); k=torch.randn(2,5,16); p=torch.randint(0,8,(2,5,3))\nqr,kr={fn}(q,k,p)\nassert qr.shape==q.shape and kr.shape==k.shape\nassert torch.allclose(qr.norm(dim=-1),q.norm(dim=-1),atol=1e-5)\nassert torch.allclose(kr.norm(dim=-1),k.norm(dim=-1),atol=1e-5)\n"
+        },
+        {
+          "name": "exact axis reference",
+          "code": "import torch\nq=torch.arange(1.,13.).reshape(1,1,12); k=-q; p=torch.tensor([[[1.,2.,3.]]]); dims=(2,4,6); base=100.\nqr,kr={fn}(q,k,p,dims,base)\ndef rot(x,d,pos):\n f=1/(base**(torch.arange(0,d,2).float()/d)); a=pos*f\n e=x[...,0::2]; o=x[...,1::2]\n return torch.stack((e*torch.cos(a)-o*torch.sin(a),e*torch.sin(a)+o*torch.cos(a)),-1).flatten(-2)\nparts=torch.split(q,dims,-1); ref=torch.cat([rot(parts[i],dims[i],p[...,i:i+1]) for i in range(3)],-1)\nassert torch.equal(qr,ref) and torch.equal(kr,-ref)\n"
+        },
+        {
+          "name": "zero position identity edge",
+          "code": "import torch\nq=torch.randn(1,3,8); k=torch.randn(1,3,8); p=torch.zeros(1,3,3)\nqr,kr={fn}(q,k,p,(2,2,4))\nassert torch.equal(qr,q) and torch.equal(kr,k)\n"
+        },
+        {
+          "name": "gradient flow",
+          "code": "import torch\nq=torch.randn(2,3,12,requires_grad=True); k=torch.randn(2,3,12,requires_grad=True)\np=torch.randn(2,3,3,requires_grad=True); qr,kr={fn}(q,k,p,(4,4,4))\n(qr.square().sum()+kr.sum()).backward()\nassert q.grad is not None and k.grad is not None and p.grad is not None\nassert torch.isfinite(p.grad).all()\n"
+        }
+      ]
+    },
+    {
+      "id": "nf4_double_quantization",
+      "title": "QLoRA NF4 Codebook & Double Quantization",
+      "titleZh": "QLoRA NF4 分位数码本与双重量化",
+      "difficulty": "Hard",
+      "functionName": "nf4_double_quantize",
+      "hint": "Normalize each flattened block by its absmax and use a broadcasted distance to all 16 codebook entries. Then quantize the vector of absmax values with one global 8-bit scale.",
+      "hintZh": "用各展平块的绝对值最大值归一化，并广播计算到 16 个码本值的距离；随后用一个全局 8 位尺度量化 absmax 向量。",
+      "descriptionEn": "Quantize weights blockwise to a 16-entry NF4 codebook, then double-quantize the block scales and reconstruct the dequantized tensor.",
+      "descriptionZh": "按块将权重量化到 16 项 NF4 码本，再双重量化块尺度并重建反量化张量。",
+      "category": "量化",
+      "theoryEn": "NF4 allocates its levels to a distribution suited to normally distributed weights. Double quantization reduces metadata cost by quantizing the per-block absmax values themselves.",
+      "theoryZh": "NF4 将量化级分配给适合近似正态权重的分布。双重量化进一步量化逐块 absmax，从而降低元数据开销。",
+      "diagramEn": "```text\nW -> flat blocks -> /absmax -> nearest NF4 index\nabsmax -> /c2 -> int8 levels -> dequantized absmax -> reconstruct W\n```",
+      "diagramZh": "```text\nW -> 展平分块 -> /absmax -> 最近 NF4 索引\nabsmax -> /c2 -> int8 级别 -> 反量化 absmax -> 重建 W\n```",
+      "tests": [
+        {
+          "name": "returned tensor shapes",
+          "code": "import torch\ncb = torch.linspace(-1,1,16)\nW = torch.randn(4,8)\nidx, qa, c2, deq = {fn}(W,cb,block_size=8)\nassert idx.shape == deq.shape == W.shape\nassert qa.shape == (4,) and c2.shape == torch.Size([])\nassert idx.dtype == torch.long\n"
+        },
+        {
+          "name": "exact two-level reference",
+          "code": "import torch\ncb = torch.tensor([-1.,-.8,-.6,-.45,-.3,-.2,-.1,0.,.08,.16,.25,.4,.55,.7,.85,1.],dtype=torch.double)\nW = torch.tensor([[1.,-.7,.2,0.],[-2.,.9,-.4,.1]],dtype=torch.double)\nidx, qa, c2, deq = {fn}(W,cb,block_size=4,eps=1e-12)\nb = W.reshape(-1,4); a = b.abs().amax(-1).clamp(min=1e-12)\nri = torch.argmin((b.div(a[:,None]).unsqueeze(-1)-cb).abs(),-1)\nrc = a.abs().max().clamp(min=1e-12)/127.; rq = torch.clamp(torch.round(a/rc),-127.,127.)\nrd = (cb[ri]*(rq*rc)[:,None]).reshape_as(W)\nassert torch.equal(idx,ri.reshape_as(W)) and torch.equal(qa,rq)\nassert torch.equal(c2,rc) and torch.equal(deq,rd)\n"
+        },
+        {
+          "name": "zero-block edge case",
+          "code": "import torch\ncb = torch.linspace(-1,1,16)\nW = torch.zeros(16)\nidx, qa, c2, deq = {fn}(W,cb,block_size=8,eps=1e-6)\nassert qa.shape == (2,) and torch.equal(qa,torch.full_like(qa,127.))\nassert torch.allclose(c2,torch.tensor(1e-6/127.))\nassert torch.all(deq.abs() <= 1e-6) and torch.isfinite(deq).all()\n"
+        },
+        {
+          "name": "gradient through reconstruction scales",
+          "code": "import torch\ncb = torch.linspace(-1,1,16,requires_grad=True)\nW = torch.tensor([1.,-.4,.2,.1,-2.,.3,.6,-.2],requires_grad=True)\nidx, qa, c2, deq = {fn}(W,cb,block_size=4)\ndeq.square().sum().backward()\nassert deq.requires_grad and idx.shape == W.shape\nassert W.grad is not None and cb.grad is not None\nassert torch.isfinite(W.grad).all() and torch.isfinite(cb.grad).all()\n"
+        }
+      ]
     }
   ]
 }

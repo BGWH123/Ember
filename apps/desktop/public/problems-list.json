@@ -1126,6 +1126,146 @@
       "titleZh": "YaRN 旋转位置编码",
       "difficulty": "Hard",
       "category": "位置编码与嵌入"
+    },
+    {
+      "id": "attn_softcap_and_sink",
+      "title": "Attention Logit Soft-Capping & Streaming Sink Mask",
+      "titleZh": "注意力 Logit 软截断与 StreamingLLM 汇聚掩码",
+      "difficulty": "Medium",
+      "category": "注意力机制"
+    },
+    {
+      "id": "causal_conv3d",
+      "title": "Video VAE Temporal Causal 3D Convolution",
+      "titleZh": "视频 VAE 时间因果三维卷积（Causal Conv3D）",
+      "difficulty": "Medium",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "consistency_distillation_loss",
+      "title": "Consistency Distillation & Pseudo-Huber Loss",
+      "titleZh": "一致性蒸馏（Consistency Distillation）与伪 Huber 损失",
+      "difficulty": "Medium",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "ipo_and_kto_loss",
+      "title": "IPO (Identity Preference) & KTO (Prospect Theory) Alignment Losses",
+      "titleZh": "IPO 与 KTO 偏好对齐损失",
+      "difficulty": "Medium",
+      "category": "损失函数"
+    },
+    {
+      "id": "kivi_kv_cache_quant",
+      "title": "KIVI Asymmetric KV Cache Quantization (Per-Channel K, Per-Token V)",
+      "titleZh": "KIVI 非对称 KV Cache 量化（按通道 K / 按 Token V）",
+      "difficulty": "Medium",
+      "category": "推理优化"
+    },
+    {
+      "id": "kmeans_pca_and_cem",
+      "title": "PCA via SVD & Cross-Entropy Method (CEM) Trajectory Planner",
+      "titleZh": "SVD 主成分分析（PCA）与 CEM 交叉熵规划器",
+      "difficulty": "Medium",
+      "category": "具身智能与控制"
+    },
+    {
+      "id": "mdlm_and_block_diffusion",
+      "title": "Masked Diffusion LM (MDLM) Loss & Block-Causal Attention Mask",
+      "titleZh": "掩码扩散语言模型（MDLM）损失与块因果掩码",
+      "difficulty": "Medium",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "min_snr_and_edm_precond",
+      "title": "Diffusion Min-SNR-Gamma Weighting & EDM Preconditioning",
+      "titleZh": "扩散模型 Min-SNR-γ 损失加权与 EDM 预处理",
+      "difficulty": "Medium",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "pointcloud_fps_and_unproject",
+      "title": "Depth Map 3D Unprojection & Farthest Point Sampling (FPS)",
+      "titleZh": "相机深度图三维反投影与最远点采样（FPS）",
+      "difficulty": "Medium",
+      "category": "三维与具身感知"
+    },
+    {
+      "id": "rloo_and_prm_aggregation",
+      "title": "RLOO Leave-One-Out Advantage & PRM Step-Score Aggregation",
+      "titleZh": "RLOO 留一法优势估计与 PRM 步骤评分聚合",
+      "difficulty": "Medium",
+      "category": "强化学习"
+    },
+    {
+      "id": "awq_and_gptq_quant",
+      "title": "AWQ Salience Scaling & GPTQ Hessian Error Compensation",
+      "titleZh": "AWQ 激活显著度缩放与 GPTQ 黑塞误差补偿",
+      "difficulty": "Hard",
+      "category": "量化"
+    },
+    {
+      "id": "chunkwise_linear_attention",
+      "title": "Chunkwise Parallel Causal Linear Attention",
+      "titleZh": "分块并行因果线性注意力（Chunkwise Linear Attention）",
+      "difficulty": "Hard",
+      "category": "注意力机制"
+    },
+    {
+      "id": "deepseek_mtp_module",
+      "title": "DeepSeek-V3 Sequential Multi-Token Prediction (MTP) Module",
+      "titleZh": "DeepSeek-V3 链式多 Token 预测（MTP）模块",
+      "difficulty": "Hard",
+      "category": "训练技巧"
+    },
+    {
+      "id": "flow_grpo_sde_loss",
+      "title": "Flow-GRPO Reverse SDE Step & Velocity-Space KL",
+      "titleZh": "Flow-GRPO 逆向 SDE 采样步与速度场 KL",
+      "difficulty": "Hard",
+      "category": "扩散与流模型"
+    },
+    {
+      "id": "jepa_and_vicreg_loss",
+      "title": "JEPA Latent Prediction & VICReg Anti-Collapse Regularization",
+      "titleZh": "JEPA 潜空间预测与 VICReg 防坍缩正则损失",
+      "difficulty": "Hard",
+      "category": "世界模型"
+    },
+    {
+      "id": "mla_rope_absorption",
+      "title": "MLA Decoupled RoPE & Weight Matrix Absorption",
+      "titleZh": "MLA 解耦 RoPE 与矩阵吸收推理",
+      "difficulty": "Hard",
+      "category": "注意力机制"
+    },
+    {
+      "id": "mod_and_expert_choice",
+      "title": "Mixture-of-Depths (MoD) & Expert-Choice Routing",
+      "titleZh": "混合深度路由（MoD）与专家选择路由（Expert-Choice）",
+      "difficulty": "Hard",
+      "category": "混合专家模型"
+    },
+    {
+      "id": "mot_asymmetric_attention",
+      "title": "Mixture-of-Transformers (MoT) Asymmetric Cross-Modal Attention",
+      "titleZh": "Mixture-of-Transformers (MoT) 非对称跨模态注意力",
+      "difficulty": "Hard",
+      "category": "多模态"
+    },
+    {
+      "id": "multimodal_3d_rope",
+      "title": "Multimodal 3D Rotary Position Embedding (M-RoPE)",
+      "titleZh": "多模态三维旋转位置编码（M-RoPE）",
+      "difficulty": "Hard",
+      "category": "多模态"
+    },
+    {
+      "id": "nf4_double_quantization",
+      "title": "QLoRA NF4 Codebook & Double Quantization",
+      "titleZh": "QLoRA NF4 分位数码本与双重量化",
+      "difficulty": "Hard",
+      "category": "量化"
     }
   ]
 }
