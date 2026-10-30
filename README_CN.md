@@ -17,6 +17,22 @@
 
 </div>
 
+## 界面预览
+
+<p align="center">
+  <a href="./docs/assets/screenshots/workspace-overview.png">
+    <img src="./docs/assets/screenshots/workspace-overview.png" width="100%" alt="Ember 工作台：181 道练习与结构化学习路径" />
+  </a>
+  <br />
+  <sub><b>你的本地 AI 工程师训练工作台</b> —— 181 道实战题、12 条学习路径与真实 PyTorch 评测。</sub>
+</p>
+
+| | |
+| :---: | :---: |
+| [![工作台概览](./docs/assets/screenshots/workspace-overview.png)](./docs/assets/screenshots/workspace-overview.png)<br><sub><b>工作台概览</b> · 学习进度、推荐练习与学习路线</sub> | [![编程题库](./docs/assets/screenshots/problems-catalog.png)](./docs/assets/screenshots/problems-catalog.png)<br><sub><b>181 道编程题库</b> · 难度统计与分类筛选</sub> |
+| [![深色编程工作区](./docs/assets/screenshots/coding-editor-dark.png)](./docs/assets/screenshots/coding-editor-dark.png)<br><sub><b>高阶编程工作区</b> · 深色模式、多题标签与实时测试结果</sub> | [![提交通过](./docs/assets/screenshots/submission-accepted.png)](./docs/assets/screenshots/submission-accepted.png)<br><sub><b>提交通过</b> · 运行耗时、峰值内存与逐测试计时</sub> |
+| [![AI 工程师知识地图](./docs/assets/screenshots/curriculum-map.png)](./docs/assets/screenshots/curriculum-map.png)<br><sub><b>八阶段知识地图</b> · 编程题、热题 50 与手册章节联动</sub> | [![理论手册](./docs/assets/screenshots/theory-handbook.png)](./docs/assets/screenshots/theory-handbook.png)<br><sub><b>双语理论手册</b> · 深度教程、技术长文与面试练习</sub> |
+
 ---
 
 ## 为什么选择 Ember？
@@ -36,7 +52,7 @@
 
 | 核心板块 | 内容规模 | 核心体验与亮点 |
 | :--- | :--- | :--- |
-| **编程题库** (`/problems`) | **181 道可评测 PyTorch 手撕题**（`32 简单` · `84 中等` · `65 困难`），横跨 19 大技术分类 | 中英双语题面、折叠式数学原理精讲、Mermaid 数据流图、分步提示、完整注释参考答案与可运行 Demo |
+| **编程题库** (`/problems`) | **181 道可评测 PyTorch 手撕题**（`42 简单` · `84 中等` · `55 困难`），横跨 19 大技术分类 | 中英双语题面、折叠式数学原理精讲、Mermaid 数据流图、分步提示、完整注释参考答案与可运行 Demo |
 | **学习路径** (`/paths`) | **12 条循序渐进的专题路线**，覆盖从 Transformer 底层到具身智能 | 自动追踪每条路径的已解决进度、最佳耗时与前置依赖 |
 | **知识体系** (`/curriculum`) | **8 大阶段 · 32 个核心知识模块**的 AI 工程师全景知识树 | 将每一个理论考点直接关联到对应的**动手编程题、热题 50 解析与八股专题章节**，学完即练 |
 | **理论手册** (`/bagu`) | **35 篇双语深度教程** + **3 篇前沿技术长文** + **9 卷具身智能面试题库** | 内置离线 MathJax 公式渲染、17 个配套纯 PyTorch 教学脚本与全文检索 |

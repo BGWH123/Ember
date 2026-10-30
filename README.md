@@ -17,6 +17,22 @@ English | [简体中文](./README_CN.md)
 
 </div>
 
+## Interface Preview
+
+<p align="center">
+  <a href="./docs/assets/screenshots/workspace-overview.png">
+    <img src="./docs/assets/screenshots/workspace-overview.png" width="100%" alt="Ember workspace dashboard with 181 exercises and guided learning paths" />
+  </a>
+  <br />
+  <sub><b>Your local AI engineering workspace</b> — 181 hands-on exercises, 12 guided paths, and a real PyTorch evaluator.</sub>
+</p>
+
+| | |
+| :---: | :---: |
+| [![Workspace overview](./docs/assets/screenshots/workspace-overview.png)](./docs/assets/screenshots/workspace-overview.png)<br><sub><b>Workspace Overview</b> · Progress, recommendations, and learning paths</sub> | [![Problems catalog](./docs/assets/screenshots/problems-catalog.png)](./docs/assets/screenshots/problems-catalog.png)<br><sub><b>181-Problem Catalog</b> · Difficulty totals and category filters</sub> |
+| [![Dark coding workspace](./docs/assets/screenshots/coding-editor-dark.png)](./docs/assets/screenshots/coding-editor-dark.png)<br><sub><b>Advanced Coding Workspace</b> · Dark mode, multi-tab editing, and live test results</sub> | [![Accepted submission](./docs/assets/screenshots/submission-accepted.png)](./docs/assets/screenshots/submission-accepted.png)<br><sub><b>Accepted Submission</b> · Runtime, peak memory, and per-test timing</sub> |
+| [![AI engineer curriculum map](./docs/assets/screenshots/curriculum-map.png)](./docs/assets/screenshots/curriculum-map.png)<br><sub><b>8-Stage Knowledge Map</b> · Coding tasks, Hot 50, and handbook links</sub> | [![Theory handbook](./docs/assets/screenshots/theory-handbook.png)](./docs/assets/screenshots/theory-handbook.png)<br><sub><b>Bilingual Theory Handbook</b> · Tutorials, technical blogs, and interview practice</sub> |
+
 ---
 
 ## Why Ember?
@@ -36,7 +52,7 @@ Reading papers and memorizing formulas is not enough when you are facing a blank
 
 | Module | What's Inside | Highlights |
 | :--- | :--- | :--- |
-| **Coding Arena** (`/problems`) | **181 executable PyTorch tasks** (`32 Easy` · `84 Medium` · `65 Hard`) across 19 categories | Bilingual problem statements, collapsible mathematical theory, Mermaid architecture diagrams, hints, runnable demos, and 4+ rigorous unit tests per task |
+| **Coding Arena** (`/problems`) | **181 executable PyTorch tasks** (`42 Easy` · `84 Medium` · `55 Hard`) across 19 categories | Bilingual problem statements, collapsible mathematical theory, Mermaid architecture diagrams, hints, runnable demos, and 4+ rigorous unit tests per task |
 | **Learning Paths** (`/paths`) | **12 guided sequences** from foundational layers to frontier architectures | Step-by-step progression with prerequisite tracking and completion badges |
 | **Knowledge Map** (`/curriculum`) | **8-stage AI Engineer Curriculum** covering 32 core competency modules | Bridges hands-on PyTorch exercises, Hot 50 interview breakdowns, and deep-dive handbook chapters in one unified graph |
 | **Theory Handbook** (`/bagu`) | **35 bilingual (ZH/EN) tutorials** + **3 deep-dive technical blogs** + **9 Embodied AI interview volumes** | Offline MathJax rendering, syntax-highlighted companion scripts, and full-text search |
