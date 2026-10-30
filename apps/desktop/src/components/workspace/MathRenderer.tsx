@@ -224,14 +224,47 @@ export function DisplayMath({ latex }: { latex: string }) {
 export function RichText({ text }: { text: string }) {
   const lines = text.split('\n');
   return (
-    <div className="text-sm text-text-2 leading-relaxed space-y-1">
+    <div className="text-sm text-text-2 leading-relaxed space-y-1.5">
       {lines.map((line, idx) => {
-        if (line === '') return <div key={idx} className="h-1.5" />;
-        if (line.startsWith('**') && line.endsWith('**')) {
-          return <strong key={idx} className="font-medium text-text block mt-2.5">{line.slice(2, -2)}</strong>;
+        const trimmed = line.trim();
+        if (trimmed === '') return <div key={idx} className="h-1.5" />;
+        if (trimmed.startsWith('### ')) {
+          return (
+            <h4 key={idx} className="font-semibold text-text text-[14px] flex items-center gap-2 mt-3.5 mb-1">
+              <span className="w-1 h-3.5 rounded-full" style={{ background: 'var(--accent, #f97316)' }} />
+              <span>{parseInline(trimmed.slice(4))}</span>
+            </h4>
+          );
         }
-        if (line.startsWith('$$') && line.endsWith('$$')) {
-          return <DisplayMath key={idx} latex={line.slice(2, -2).trim()} />;
+        if (trimmed.startsWith('#### ')) {
+          return (
+            <h5 key={idx} className="font-medium text-text text-[13.5px] mt-2.5 mb-0.5">
+              {parseInline(trimmed.slice(5))}
+            </h5>
+          );
+        }
+        if (trimmed.startsWith('**') && trimmed.endsWith('**') && !trimmed.slice(2, -2).includes('**')) {
+          return <strong key={idx} className="font-semibold text-text block mt-3 mb-0.5">{trimmed.slice(2, -2)}</strong>;
+        }
+        if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
+          return <DisplayMath key={idx} latex={trimmed.slice(2, -2).trim()} />;
+        }
+        if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-1">
+              <span className="text-text-3 select-none mt-[1px]">•</span>
+              <span className="flex-1">{parseInline(trimmed.slice(2))}</span>
+            </div>
+          );
+        }
+        const numMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
+        if (numMatch) {
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-1">
+              <span className="mono text-xs text-text-3 select-none mt-[2px] min-w-[16px]">{numMatch[1]}.</span>
+              <span className="flex-1">{parseInline(numMatch[2])}</span>
+            </div>
+          );
         }
         return <p key={idx}>{parseInline(line)}</p>;
       })}

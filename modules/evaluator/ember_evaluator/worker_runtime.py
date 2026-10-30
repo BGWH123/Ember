@@ -30,6 +30,7 @@ from torch_judge.tasks import get_task
 
 torch.set_num_threads(1)
 torch.set_num_interop_threads(1)
+_ = torch.tensor([0])
 prewarm()
 
 _MODULES = {"torch": torch, "torch.nn": torch.nn, "torch.nn.functional": torch.nn.functional,

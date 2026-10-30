@@ -1,6 +1,7 @@
 
 import Link from '@/routing/Link';
 import { CodeEditor } from '@/components/workspace/CodeEditor';
+import { RichText } from '@/components/workspace/MathRenderer';
 import { useLocale } from '@/context/LocaleContext';
 import { useSolution, solutionCode as extractSolutionCode } from '@/lib/problemContext';
 
@@ -72,10 +73,19 @@ export function SolutionPageContent({ problemId }: SolutionPageProps) {
           )}
 
           {/* Explanations */}
-          {explanations.length > 0 && <SectionHeader>Walkthrough</SectionHeader>}
-          {explanations.map((c, i) => (
-            <p key={i} className="text-[14.5px] text-text-2 leading-[1.7] mb-3.5 max-w-[68ch]">{c.source}</p>
-          ))}
+          {explanations.length > 0 && (
+            <>
+              <SectionHeader>Editorial & Key Notes</SectionHeader>
+              <div
+                className="rounded-xl p-5 mb-[18px] space-y-3"
+                style={{ border: '1px solid var(--line)', background: 'var(--bg-elev)' }}
+              >
+                {explanations.map((c, i) => (
+                  <RichText key={i} text={c.source} />
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Demo code */}
           {demoCode && (

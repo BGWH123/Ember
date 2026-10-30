@@ -1,198 +1,164 @@
 """Implement Softmax task."""
 
 TASK = {
-    "title": "Implement Softmax",
-    "title_zh": "实现 Softmax",
-    "difficulty": "Easy",
-    "category": "激活函数",
-    "description_en": (
-        "Implement the softmax function.\n\nSoftmax converts raw logits into a probability distribution by exponentiating and normalizing, used in classification and attention.\n\n**Signature:** `my_softmax(x, dim=-1) -> Tensor`\n\n**Parameters:**\n- `x` — input tensor of any shape\n- `dim` — dimension along which to compute softmax\n\n**Returns:** probability tensor (sums to 1 along dim), same shape as input\n\n**Constraints:**\n- Subtract max for numerical stability before exp\n- Must handle large values without NaN/Inf"
-    ),
-    "description_zh": (
-        "实现 softmax 函数。\n\nSoftmax 通过指数化和归一化将原始 logits 转换为概率分布，用于分类和注意力机制。\n\n**签名:** `my_softmax(x, dim=-1) -> Tensor`\n\n**参数:**\n- `x` — 任意形状的输入张量\n- `dim` — 计算 softmax 的维度\n\n**返回:** 概率张量（沿 dim 求和为 1），形状与输入相同\n\n**约束:**\n- 在 exp 之前减去最大值以保证数值稳定\n- 必须处理大值而不产生 NaN/Inf"
-    ),
-    "function_name": "my_softmax",
-    "hint": (
-        "1. `x_max = x.max(dim=dim, keepdim=True).values`\n2. `e_x = exp(x - x_max)`\n3. `return e_x / e_x.sum(dim=dim, keepdim=True)`"
-    ),
-    "hint_zh": (
-        "1. `x_max = x.max(dim=dim, keepdim=True).values`\n2. `e_x = exp(x - x_max)`\n3. `return e_x / e_x.sum(dim=dim, keepdim=True)`"
-    ),
-    "theory_en": (
-        "Softmax converts a vector of real values into a probability distribution.\n\n**Formula:**\n$$\\text{softmax}(x_i) = \\frac{e^{x_i}}{\\sum_{j=1}^C e^{x_j}}$$\n\n**Numerical Stability:**\nDirect computation can overflow for large $x_i$. The stable version subtracts $\\max(x)$ before exponentiation:\n$$\\text{softmax}(x_i) = \\frac{e^{x_i - \\max(x)}}{\\sum_{j=1}^C e^{x_j - \\max(x)}}$$\n\n**Temperature Scaling:**\n$$\\text{softmax}_\\tau(x_i) = \\frac{e^{x_i / \\tau}}{\\sum_j e^{x_j / \\tau}}$$\n- $\\tau \\to 0$: sharp (argmax-like)\n- $\\tau \\to \\infty$: uniform distribution"
-    ),
-    "theory_zh": (
-        "Softmax 将实数值向量转换为概率分布。\n\n**公式：**\n$$\\text{softmax}(x_i) = \\frac{e^{x_i}}{\\sum_{j=1}^C e^{x_j}}$$\n\n**数值稳定性：**\n大值 $x_i$ 的直接计算可能溢出。稳定版本在指数化前减去 $\\max(x)$：\n$$\\text{softmax}(x_i) = \\frac{e^{x_i - \\max(x)}}{\\sum_{j=1}^C e^{x_j - \\max(x)}}$$\n\n**温度缩放：**\n$$\\text{softmax}_\\tau(x_i) = \\frac{e^{x_i / \\tau}}{\\sum_j e^{x_j / \\tau}}$$\n- $\\tau \\to 0$：尖锐（接近 argmax）\n- $\\tau \\to \\infty$：均匀分布"
-    ),
-    "diagram_en": (
-        "```mermaid\nflowchart TD\n    X[x] --> MAX[x_max = max(x)]\n    MAX --> SUB[Subtract: x - x_max]\n    SUB --> EXP[Exp: e^(x - x_max)]\n    EXP --> SUM[Sum: sum(e^(x - x_max))]\n    EXP --> DIV[Divide: exp / sum]\n    SUM --> DIV\n    DIV --> OUT[Softmax output]\n```"
-    ),
-    "diagram_zh": (
-        "```mermaid\nflowchart TD\n    X[x] --> MAX[x_max = max(x)]\n    MAX --> SUB[减去: x - x_max]\n    SUB --> EXP[指数: e^(x - x_max)]\n    EXP --> SUM[求和: sum(e^(x - x_max))]\n    EXP --> DIV[相除: exp / sum]\n    SUM --> DIV\n    DIV --> OUT[Softmax 输出]\n```"
-    ),
+    'title': 'Implement Softmax',
+    'title_zh': '实现 Softmax',
+    'difficulty': 'Easy',
+    'category': '激活函数',
+    'function_name': 'my_softmax',
+    'starter_code': """def my_softmax(x, dim=-1):
+    pass""",
+    'hint': """1. `x_max = x.max(dim=dim, keepdim=True).values`
+2. `e_x = exp(x - x_max)`
+3. `return e_x / e_x.sum(dim=dim, keepdim=True)`""",
+    'hint_zh': """1. `x_max = x.max(dim=dim, keepdim=True).values`
+2. `e_x = exp(x - x_max)`
+3. `return e_x / e_x.sum(dim=dim, keepdim=True)`""",
+    'description_en': """Implement the softmax function.
+
+Softmax converts raw logits into a probability distribution by exponentiating and normalizing, used in classification and attention.
+
+**Signature:** `my_softmax(x, dim=-1) -> Tensor`
+
+**Parameters:**
+- `x` — input tensor of any shape
+- `dim` — dimension along which to compute softmax
+
+**Returns:** probability tensor (sums to 1 along dim), same shape as input
+
+**Constraints:**
+- Subtract max for numerical stability before exp
+- Must handle large values without NaN/Inf""",
+    'description_zh': """实现 softmax 函数。
+
+Softmax 通过指数化和归一化将原始 logits 转换为概率分布，用于分类和注意力机制。
+
+**签名:** `my_softmax(x, dim=-1) -> Tensor`
+
+**参数:**
+- `x` — 任意形状的输入张量
+- `dim` — 计算 softmax 的维度
+
+**返回:** 概率张量（沿 dim 求和为 1），形状与输入相同
+
+**约束:**
+- 在 exp 之前减去最大值以保证数值稳定
+- 必须处理大值而不产生 NaN/Inf""",
+    'theory_en': r"""Softmax converts a vector of real values into a probability distribution.
+
+**Formula:**
+$$\text{softmax}(x_i) = \frac{e^{x_i}}{\sum_{j=1}^C e^{x_j}}$$
+
+**Numerical Stability:**
+Direct computation can overflow for large $x_i$. The stable version subtracts $\max(x)$ before exponentiation:
+$$\text{softmax}(x_i) = \frac{e^{x_i - \max(x)}}{\sum_{j=1}^C e^{x_j - \max(x)}}$$
+
+**Temperature Scaling:**
+$$\text{softmax}_\tau(x_i) = \frac{e^{x_i / \tau}}{\sum_j e^{x_j / \tau}}$$
+- $\tau \to 0$: sharp (argmax-like)
+- $\tau \to \infty$: uniform distribution""",
+    'theory_zh': r"""Softmax 将实数值向量转换为概率分布。
+
+**公式：**
+$$\text{softmax}(x_i) = \frac{e^{x_i}}{\sum_{j=1}^C e^{x_j}}$$
+
+**数值稳定性：**
+大值 $x_i$ 的直接计算可能溢出。稳定版本在指数化前减去 $\max(x)$：
+$$\text{softmax}(x_i) = \frac{e^{x_i - \max(x)}}{\sum_{j=1}^C e^{x_j - \max(x)}}$$
+
+**温度缩放：**
+$$\text{softmax}_\tau(x_i) = \frac{e^{x_i / \tau}}{\sum_j e^{x_j / \tau}}$$
+- $\tau \to 0$：尖锐（接近 argmax）
+- $\tau \to \infty$：均匀分布""",
+    'diagram_en': """```mermaid
+flowchart TD
+    X[x] --> MAX[x_max = max(x)]
+    MAX --> SUB[Subtract: x - x_max]
+    SUB --> EXP[Exp: e^(x - x_max)]
+    EXP --> SUM[Sum: sum(e^(x - x_max))]
+    EXP --> DIV[Divide: exp / sum]
+    SUM --> DIV
+    DIV --> OUT[Softmax output]
+```""",
+    'diagram_zh': """```mermaid
+flowchart TD
+    X[x] --> MAX[x_max = max(x)]
+    MAX --> SUB[减去: x - x_max]
+    SUB --> EXP[指数: e^(x - x_max)]
+    EXP --> SUM[求和: sum(e^(x - x_max))]
+    EXP --> DIV[相除: exp / sum]
+    SUM --> DIV
+    DIV --> OUT[Softmax 输出]
+```""",
     "tests": [
         {
-            "name": "Basic 1-D",
-            "code": """
-
-
-
-
-
-
-
-
-
-import torch
+            "name": 'Basic 1-D',
+            "code": """import torch
 x = torch.tensor([1.0, 2.0, 3.0])
 out = {fn}(x, dim=-1)
 expected = torch.softmax(x, dim=-1)
-assert torch.allclose(out, expected, atol=1e-5), f'{out} vs {expected}'
-
-            
-            
-            
-            
-            
-            
-            
-            
-            """,
+assert torch.allclose(out, expected, atol=1e-5), f'{out} vs {expected}'""",
         },
         {
-            "name": "2-D along dim=-1",
-            "code": """
-
-
-
-
-
-
-
-
-
-import torch
+            "name": '2-D along dim=-1',
+            "code": """import torch
 x = torch.randn(4, 8)
 out = {fn}(x, dim=-1)
 expected = torch.softmax(x, dim=-1)
 assert out.shape == expected.shape, f'Shape mismatch'
 assert torch.allclose(out, expected, atol=1e-5), 'Values differ'
-assert torch.allclose(out.sum(dim=-1), torch.ones(4), atol=1e-5), 'Rows must sum to 1'
-
-            
-            
-            
-            
-            
-            
-            
-            
-            """,
+assert torch.allclose(out.sum(dim=-1), torch.ones(4), atol=1e-5), 'Rows must sum to 1'""",
         },
         {
-            "name": "Numerical stability",
-            "code": """
-
-
-
-
-
-
-
-
-
-import torch
+            "name": 'Numerical stability',
+            "code": """import torch
 x = torch.tensor([1000., 1001., 1002.])
 out = {fn}(x, dim=-1)
 assert not torch.isnan(out).any(), 'NaN in output — not numerically stable'
 assert not torch.isinf(out).any(), 'Inf in output — not numerically stable'
 expected = torch.softmax(x, dim=-1)
-assert torch.allclose(out, expected, atol=1e-5), 'Values differ on large input'
-
-            
-            
-            
-            
-            
-            
-            
-            
-            """,
+assert torch.allclose(out, expected, atol=1e-5), 'Values differ on large input'""",
         },
         {
-            "name": "dim=0 softmax",
-            "code": """
-
-
-
-
-
-
-
-
-
-import torch
+            "name": 'dim=0 softmax',
+            "code": """import torch
 torch.manual_seed(3)
 x = torch.randn(4, 3)
 out = {fn}(x, dim=0)
 exp_x = (x - x.max(dim=0, keepdim=True).values).exp()
 expected = exp_x / exp_x.sum(dim=0, keepdim=True)
 assert torch.allclose(out, expected, atol=1e-5), f'dim=0 softmax failed'
-assert torch.allclose(out.sum(dim=0), torch.ones(3), atol=1e-5), 'columns should sum to 1'
-
-            
-            
-            
-            
-            
-            
-            
-            
-            """,
+assert torch.allclose(out.sum(dim=0), torch.ones(3), atol=1e-5), 'columns should sum to 1'""",
         },
     ],
-    "solution": '''
+    'solution': '''def my_softmax(x, dim=-1):
+    """实现实现 Softmax（Implement Softmax）。"""
+    # Step 1: 沿归一化轴提取每个切片的最大 logit 作为稳定平移量
+    x_max = x.max(dim=dim, keepdim=True).values
+    # Step 2: 对平移后的非正 logits 求指数以避免上溢
+    exp_x = torch.exp(x - x_max)
+    # Step 3: 用同一轴上的指数和归一化为离散概率分布
+    return exp_x / exp_x.sum(dim=dim, keepdim=True)''',
+    'demo': r"""torch.manual_seed(42)
+x = torch.tensor([[1000.0, 1001.0, 1002.0], [-2.0, 0.0, 2.0]])
+probs = my_softmax(x, dim=-1)
+print("Probabilities:\n", probs)
+print("Row sums:", probs.sum(dim=-1))
+print("All finite:", torch.isfinite(probs).all().item())""",
+    'explanation': r"""### 核心思路
+Softmax 在指定轴上把 logits 转成 $p_i=e^{x_i}/\sum_j e^{x_j}$。利用平移不变性 $\operatorname{softmax}(x+c)=\operatorname{softmax}(x)$，取 $m=\max_jx_j$ 后计算 $p_i=e^{x_i-m}/\sum_je^{x_j-m}$，所有指数参数均不大于 0，且至少一个分母项等于 1。
 
+### 代码步骤拆解
+- **Step 1（求切片最大值）**：`x.max(dim=dim, keepdim=True).values` 为每个待归一化切片保留一个 `x_max`，维数保持不变以便逐元素相减。
+- **Step 2（稳定指数化）**：`x - x_max` 最大为 0，`exp_x` 因此位于 $(0,1]$，大正 logits 不再导致指数上溢。
+- **Step 3（概率归一化）**：沿同一个 `dim` 求 `exp_x.sum(...)` 并逐项相除，使每个切片的概率和为 1，输出形状与 `x` 完全一致。
 
-def my_softmax(x):
-    """
-    Numerically stable Softmax implementation.
-    Softmax 将任意实数向量映射为概率分布，所有元素非负且和为1。
-    """
-    # 数值稳定性: 先减去最大值，防止指数溢出
-    # x_max 沿最后一个维度（类别维度）取最大值，keepdim=True 保证广播兼容
-    x_max = x.max(dim=-1, keepdim=True).values           # max(x) 沿类别维
+### 重点与易错点分析
+- **注意点 1（max 与 sum 的轴）**：两次归约必须使用同一 `dim`；例如二维张量的 `dim=0` 是按列归一化，不能写死最后一维。
+- **注意点 2（为什么分母安全）**：减最大值后至少存在 $e^0=1$，所以有限 logits 下分母不会下溢为 0；`keepdim=True` 则保证任意正负轴索引都能正确广播。
+- **注意点 3（耦合梯度）**：softmax 不是逐元素独立激活，其 Jacobian 为 $\partial p_i/\partial x_j=p_i(\delta_{ij}-p_j)$；改变一个 logit 会影响同切片内全部概率。
 
-    # 指数化: exp(x - x_max)，所有值 ≤ 1，避免溢出
-    exp_x = torch.exp(x - x_max)                         # e^(x_i - max(x))
-
-    # 归一化: 每个元素除以该维度上的指数和
-    # dim=-1 保证每个样本/位置独立归一化
-    return exp_x / exp_x.sum(dim=-1, keepdim=True)       # (B, S, C)，每行和为1
-
-    
-    
-    ''',
-    "demo": '''
-
-
-
-
-
-
-
-
-x = torch.tensor([1.0, 2.0, 3.0])
-print("Output:", my_softmax(x, dim=-1))
-print("Sum:   ", my_softmax(x, dim=-1).sum())
-print("Ref:   ", torch.softmax(x, dim=-1))
-    
-    
-    
-    
-    
-    
-    
-    
-    ''',
+### 复杂度分析
+- **时间复杂度**：$O(N)$，对输入总元素数 $N$ 依次执行最大值归约、指数和求和归约。
+- **空间复杂度**：$O(N)$，`exp_x` 与输出占主导，归约结果大小为 $N/C$，其中 $C$ 是 `dim` 的长度。""",
 }
